@@ -23,14 +23,15 @@
 - `packages/db` is an empty placeholder until M2. `tools/` are documented but not created (first: `tools/run`, `tools/balance` in M0). `assets/` is empty apart from the manifest header.
 - CI (`ci.yml`, one `check` job) runs audit, typecheck, lint, format check and test; action SHA-pinning and the licence check are OPS-01.3; determinism/bench/asset/e2e/preview-db/smoke/release/backup/engines workflows arrive with the code they test.
 - `render.yaml`, `docker-compose.yml`, `.github/CODEOWNERS` exist only as planned items in `connections.md` (CODEOWNERS is committed; the other two land in OPS-02.1 / OPS-08).
+- `minimumReleaseAge: 10080` makes `pnpm add` fail while any transitive dependency's locked version is under a week old; `fast-check` was added with `--config.minimumReleaseAge=0` for that one call. CI with the frozen lockfile is unaffected. Lexer corpus snapshot tests (`__corpus__`) are deferred to LANG-02, which needs the corpus for the parser anyway.
 - Provisional numbers everywhere are tagged `[SIM-BAL]` or "provisional"; nothing is tuned yet.
 - Owner-confirmation items recorded in docs: age-gate boundary rule (month + year, pass at 13 full years) for the lawyer; placement doubling applies to gains only; bot-match 4th place pays ₵7 (floorDiv).
 
 ## Done
 
 ### Session 3 (2026-10-07, cloud): LANG-01
-- `packages/lang/src/lexer/`: hand-written lexer (no regex), Python-style INDENT/DEDENT/NEWLINE with tab = 4, implicit line joining, every diagnostic in the lexical section of the spec (`E-SRC-TOO-BIG`, `E-IDENT-TOO-LONG`, `E-LEADING-ZERO`, `E-INT-TOO-BIG`, `E-UNTERMINATED-STRING`, `E-STRING-TOO-LONG`, `E-BAD-ESCAPE`, `E-UNEXPECTED-CHAR`, `E-MIXED-INDENT` with fix-its), ERROR-token recovery, `countTokens`. 32 tests incl. fast-check properties (never throws, INDENT/DEDENT balance, monotone offsets).
-- `src/types.ts` holds the shared source/diagnostic/limit types; `Limits.maxFiles` added; `passWithNoTests` removed.
+- `packages/lang/src/lexer/`: hand-written lexer (no regex), reviewed by the `reviewer` agent (one real bug found and fixed: indentation after a mid-line bracket close), Python-style INDENT/DEDENT/NEWLINE with tab = 4, implicit line joining, every diagnostic in the lexical section of the spec (`E-SRC-TOO-BIG`, `E-IDENT-TOO-LONG`, `E-LEADING-ZERO`, `E-INT-TOO-BIG`, `E-UNTERMINATED-STRING`, `E-STRING-TOO-LONG`, `E-BAD-ESCAPE`, `E-UNEXPECTED-CHAR`, `E-MIXED-INDENT` with fix-its), ERROR-token recovery, `countTokens`. 47 tests incl. alphabet-driven fast-check properties (never throws, exact text slices, no overlap, line/col from offset, INDENT/DEDENT only at line start).
+- `src/types.ts` holds the shared source/diagnostic/limit types; `Limits.maxFiles` added (owner: LANG-03); `passWithNoTests` removed; committed pre-commit hook runs `pnpm check`.
 - PR #1 opened to `main`.
 
 ### Session 2 (2026-10-07, cloud): end-to-end plan audit
