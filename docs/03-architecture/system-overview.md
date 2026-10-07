@@ -1,0 +1,104 @@
+# System Overview
+
+## Components
+
+```mermaid
+flowchart LR
+  subgraph Browser["Browser (apps/web)"]
+    UI[React UI shell]
+    ED[CodeMirror 6 editor<br/>Sprout mode]
+    R3F[three.js / R3F<br/>voxel renderer]
+    LW[Web Worker:<br/>lang + sim<br/>test runs]
+    AU[Audio engine]
+  end
+
+  subgraph Render["Render"]
+    STATIC[Static site<br/>CDN: JS, assets]
+    API[Game server<br/>apps/server<br/>Fastify + ws]
+  end
+
+  subgraph Neon["Neon Postgres"]
+    DB[(users, saves,<br/>matches, ranks,<br/>ledger)]
+  end
+
+  RESEND[Resend<br/>email codes]
+  GOOGLE[Google OAuth]
+
+  UI -- HTTPS --> STATIC
+  UI -- HTTPS REST /api --> API
+  UI <-- WSS /ws --> API
+  ED --> LW
+  LW --> R3F
+  API -- pooled SQL --> DB
+  API --> RESEND
+  UI -- OAuth redirect --> GOOGLE --> API
+```
+
+## Responsibilities
+
+| Component | Owns | Never does |
+|---|---|---|
+| **apps/web** | Rendering, editor, local test runs, UI state, audio | Decides official scores, grants credits, trusts its own clock for deadlines |
+| **Web Worker** | Runs `lang` + `sim` off the main thread so the UI never freezes, even on `while True:` | Touches the DOM |
+| **apps/server** | Auth, sessions, REST API, WebSocket rooms, matchmaking, official simulation, rewards, persistence | Renders anything; runs player code as JS |
+| **packages/lang** | Sprout → AST → bytecode → VM | I/O of any kind |
+| **packages/sim** | Farm world, actions, market, event log, determinism | I/O of any kind |
+| **Neon** | Durable state | Real-time room state (that's in server memory) |
+
+## Single process to start
+
+v1 runs **one game-server process** on one Render instance. Rooms, queues and presence live in memory. That's enough for roughly a few thousand concurrent connections, because the workload is light: messages are infrequent (no 60 Hz state sync), and a full 8-player execution takes on the order of 10–100 ms of CPU.
+
+**Scale-out path** (only when needed; see [hosting](../06-infrastructure/hosting.md)):
+1. Move queue, presence and room directory to **Redis** (Render Key Value).
+2. Run N server instances. A room is pinned to the instance that created it, and the room directory in Redis maps `roomId → instance`.
+3. Move official simulation to a worker pool (`worker_threads`) if executions start to block the event loop.
+
+## Request types
+
+| Kind | Transport | Examples |
+|---|---|---|
+| Account & content | REST (`/api/*`) | profile, saves, shop, friends list, match history, replays |
+| Auth | REST (`/api/auth/*`, handled by Better Auth) | sign-in, OAuth callback, email OTP |
+| Real-time | WebSocket (`/ws`) | queue, ready check, rooms, coding-phase timers, presence, invites |
+
+## Core data flow: a showdown
+
+```mermaid
+sequenceDiagram
+  participant C as Clients (×4)
+  participant S as Server
+  participant DB as Neon
+  C->>S: queue.join {mode: ranked}
+  S-->>C: queue.found {matchId, acceptBy}
+  C->>S: ready.accept
+  S-->>C: room.state {phase: lobby, seed, rules}
+  S-->>C: phase {coding, deadline}
+  loop every 10 s while coding
+    C->>S: program.draft {source}
+  end
+  Note over C: Test runs happen locally in the Worker
+  S->>S: deadline → lock, compile all, run lockstep sim
+  S->>DB: insert match, programs, results, ledger, rank changes (one transaction)
+  S-->>C: phase {finale} + eventLog (chunked)
+  C->>S: finale.ack
+  S-->>C: results {...}
+```
+
+## Core data flow: single-player credit claim
+
+```mermaid
+sequenceDiagram
+  participant W as Browser Worker
+  participant S as Server
+  participant DB as Neon
+  W->>W: run program on contract seed (local, instant feedback)
+  W->>S: POST /api/runs {contractId, programHash, source, seed, cycles, claimed}
+  S->>S: recompile + re-simulate (same packages)
+  alt results match
+    S->>DB: ledger += credits, save progress
+    S-->>W: 200 {granted}
+  else mismatch
+    S-->>W: 409 {serverResult}  (client shows server result; logs anomaly)
+  end
+```

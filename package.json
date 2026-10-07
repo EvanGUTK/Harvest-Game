@@ -1,0 +1,16 @@
+{
+  "name": "code-harvest",
+  "private": true,
+  "description": "Program a farm drone in Sprout, a Python-style language. Single-player campaign + multiplayer coding showdowns.",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "build": "tsc -b"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}
