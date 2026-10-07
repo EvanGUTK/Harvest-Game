@@ -4,19 +4,18 @@
 
 ## Now
 
-- **Phase:** Architecture complete and audited end to end. Engineering scaffolding complete. **M0 (Foundations) is ready to start.**
-- **Branch:** `claude/sleepy-gauss-gxgilk` (all work so far). `main` is empty apart from the initial commit. Open the PR to `main` when Evan says so.
+- **Phase:** M0 (Foundations) in progress. LANG-01 (lexer, `countTokens`) is done; LANG-02 (parser) is next.
+- **Branch:** `claude/sleepy-gauss-gxgilk`, PR [EvanGUTK/Harvest-Game#1](https://github.com/EvanGUTK/Harvest-Game/pull/1) to `main` is open. New M0 work lands on this branch until the PR merges; after that, `feat/LANG-xx-*` branches from `main`.
 - **Blocking decisions:** none for the design. All 28 rows in `docs/00-overview/decisions-needed.md` have assumed defaults and the docs are written against them. D-22 defaults to "Start M0 now". Before M0 code, Evan ticks D-02, D-03, D-04, D-06, D-07, D-17, D-18, D-20 and D-24 (the rows M0 content values depend on) and accepts ADR-0001, 0002 and 0003; all seven ADRs are still `proposed`.
 - **Owner inputs:** the single checklist of accounts, credentials, DNS records, OAuth settings, CI secrets and repo settings is [`docs/06-infrastructure/connections.md`](docs/06-infrastructure/connections.md) (36 connections, per-environment variable matrix, console steps, rotation, verification). Nothing there blocks M0 code. Do the **M0 section** (GitHub 2FA, branch protection with the `check` job, secret scanning with push protection, Dependabot) before the first merge to `main`; everything else is M2 or later.
 
 ## Next steps (in order)
 
-1. **LANG-01 Lexer** in `packages/lang/src/lexer/`: tokens with spans, INDENT/DEDENT stack, implicit line joining, error tokens, `countTokens`. Tests: corpus snapshots + fuzz (never throws). Remove `passWithNoTests` from `vitest.config.ts` in this task.
-2. **LANG-02 Parser**: recursive descent per `docs/02-language/language-spec.md`, recovery to the next statement, fix-it diagnostics (`E-MISSING-COLON`, `E-ASSIGN-IN-IF`, `E-SLASH-DIVISION`).
-3. **LANG-03 Checker** (features, `lockedNames`, arity), **LANG-04 Compiler** (op-cost table in `interpreter-vm.md` is normative), **LANG-05 VM** (resumable `run`/`resume(value, cost?)`, `line` yields, snapshots).
-4. **SIM-01..07**: world with lazy advancement and `ripeAt`, host table (costs from `content`, failed actions cost 5), discrete-event scheduler with the normative tie-break, shared market, PRNG streams, event log + state hash, scoring/awards/idle program.
-5. **SIM-08** golden tests + Playwright cross-engine determinism; **CNT-03** three bot programs; **SIM-BAL** balance harness (first question: does the 2-row starter reach ~₵250 solo and ~30 % of Agronomist?).
-6. **OPS-01.3** SHA-pin CI actions + licence check (M1), then M0 exit check (`docs/07-roadmap/milestones.md`), `/handoff`, open M1.
+1. **LANG-02 Parser**: recursive descent per `docs/02-language/language-spec.md`, recovery to the next statement, fix-it diagnostics (`E-MISSING-COLON`, `E-ASSIGN-IN-IF`, `E-SLASH-DIVISION`).
+2. **LANG-03 Checker** (features, `lockedNames`, arity), **LANG-04 Compiler** (op-cost table in `interpreter-vm.md` is normative), **LANG-05 VM** (resumable `run`/`resume(value, cost?)`, `line` yields, snapshots).
+3. **SIM-01..07**: world with lazy advancement and `ripeAt`, host table (costs from `content`, failed actions cost 5), discrete-event scheduler with the normative tie-break, shared market, PRNG streams, event log + state hash, scoring/awards/idle program.
+4. **SIM-08** golden tests + Playwright cross-engine determinism; **CNT-03** three bot programs; **SIM-BAL** balance harness (first question: does the 2-row starter reach ~₵250 solo and ~30 % of Agronomist?).
+5. **OPS-01.3** SHA-pin CI actions + licence check (M1), then M0 exit check (`docs/07-roadmap/milestones.md`), `/handoff`, open M1.
 
 ## Known gaps / debt
 
@@ -28,6 +27,11 @@
 - Owner-confirmation items recorded in docs: age-gate boundary rule (month + year, pass at 13 full years) for the lawyer; placement doubling applies to gains only; bot-match 4th place pays ₵7 (floorDiv).
 
 ## Done
+
+### Session 3 (2026-10-07, cloud): LANG-01
+- `packages/lang/src/lexer/`: hand-written lexer (no regex), Python-style INDENT/DEDENT/NEWLINE with tab = 4, implicit line joining, every diagnostic in the lexical section of the spec (`E-SRC-TOO-BIG`, `E-IDENT-TOO-LONG`, `E-LEADING-ZERO`, `E-INT-TOO-BIG`, `E-UNTERMINATED-STRING`, `E-STRING-TOO-LONG`, `E-BAD-ESCAPE`, `E-UNEXPECTED-CHAR`, `E-MIXED-INDENT` with fix-its), ERROR-token recovery, `countTokens`. 32 tests incl. fast-check properties (never throws, INDENT/DEDENT balance, monotone offsets).
+- `src/types.ts` holds the shared source/diagnostic/limit types; `Limits.maxFiles` added; `passWithNoTests` removed.
+- PR #1 opened to `main`.
 
 ### Session 2 (2026-10-07, cloud): end-to-end plan audit
 - Nine-lens audit (deployment trace, connections, cross-doc consistency, vision coverage, M0 spec precision, engineering config, security/ops, UX flow, numbers sanity) → 222 findings → 3 refuted, 204 fixes applied in 15 file-disjoint batches, 249 cross-file follow-ups applied in a second round of 10 batches, 19 architect rulings (RULINGS R1–R19 in the session scratchpad; the decisions themselves live in the docs and `decisions-needed.md` D-23..D-28).
