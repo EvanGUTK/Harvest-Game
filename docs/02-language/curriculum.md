@@ -42,7 +42,7 @@ The compiler gates by **feature** (syntax) and by **name** (builtins and constan
 
 Rules:
 
-- **Never gated:** literals (`5`, `"hi"`, `True`, `None`), call syntax, `pass`, `for` loop targets (`for i in range(5)` binds `i` before `variables` unlocks) and `def` parameters. Integer literals work before `arithmetic`, so `range(5)` is fine in Ch 2.
+- **Never gated:** literals (`5`, `"hi"`, `True`, `None`), call syntax and `pass`. Binding a `for` loop target (`for i in range(5)` binds `i` before `variables` unlocks) and a `def` parameter never needs `variables`. Integer literals work before `arithmetic`, so `range(5)` is fine in Ch 2.
 - **Builtins and constants are gated by name**, not by Feature. `CompileOptions.lockedNames: ReadonlySet<string>` lists the names the player cannot use yet: a name is locked until its chapter has been reached and, for command nodes, until the node has been bought. A reference to a locked name is `E-LOCKED-FEATURE` and takes precedence over `E-UNKNOWN-NAME`. Chapter not reached: "`sell` isn't unlocked yet. You'll get it in Chapter 8." Chapter reached, node not bought: "`sell` isn't unlocked yet. Buy the Sell node in the skill tree."
 - `HostSignature` carries an optional `unlock?: string` (chapter number or skill node id), so the editor can show the 🔒 text in autocomplete without a second lookup.
 - Gating applies to the campaign only. In multiplayer everything is unlocked (see [standard-library](standard-library.md)).

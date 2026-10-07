@@ -34,6 +34,7 @@ type Tile = {
     kind: CropKind;
     plantedAt: number;                  // cycle
     growth: number;                     // 0..crop.growCycles, integer
+    ripeAt: number | null;              // first cycle growth reached growCycles; null until ripe. Wither is measured from here
     withered: boolean;
   };
 };
@@ -43,7 +44,8 @@ type Tile = {
 
 - A crop gains **+1 growth per cycle** while its tile's `moisture > 0`. With moisture at 0, growth pauses. It doesn't die.
 - When `growth >= growCycles`, the crop is **ripe**.
-- A ripe crop left unharvested for `witherCycles` becomes **withered**. Harvesting a withered crop yields 0 and clears the tile. This punishes "plant everything, harvest once at the end".
+- A ripe crop left unharvested for `witherCycles` after `ripeAt` becomes **withered**. Harvesting a withered crop yields 0 and clears the tile. This punishes "plant everything, harvest once at the end".
+- **Wither pressure toward smaller plots is intended.** A naive full 8×8 sweep lets radishes wither. One lap that moves to, plants and waters all 64 tiles costs roughly 80 cycles per tile (about 5,000 cycles, from the costs in [standard-library](../02-language/standard-library.md)). That is longer than a radish needs to ripen (300) plus its `witherCycles` (3,000), so radishes planted early in the lap have withered by the time the drone returns to harvest them. The fast loop is a strip you can lap before its crops wither, and the showdown starter program deliberately farms a 2-row (16-tile) strip for that reason. Provisional; the balance harness (`SIM-BAL`) re-checks it.
 - Some crops need **tilled** soil (`till()` first). Tilling persists until harvest.
 
 ## Moisture
@@ -51,12 +53,13 @@ type Tile = {
 - `water()` sets moisture to `min(100, moisture + 40)` and costs 25 cycles plus 1 **water unit**.
 - Moisture decays by 1 every 50 cycles (integer, deterministic).
 - Water supply: showdown starts with 60 units. `refill()` at the well tile, which is `(0,0)` in v1, restores to max and costs 60 cycles. This creates a routing decision without being a chore.
+- **Design intent: water is the scarce resource.** One watering (+40) is worth 2,000 tile-cycles of growth for about 26 drone cycles, so keeping one tile in continuous growth for a whole 30,000-cycle match costs about 15 waterings (roughly 390 cycles). Doing that for all 64 tiles would cost about 25,000 cycles and 960 water units (16 refills). One drone can irrigate roughly 16–24 tiles for a full showdown, and the 8×8 grid is deliberately larger than that, so deciding how much of it to farm is part of the puzzle. Provisional (`SIM-BAL`).
 
 ## Rocks and seeds (procedural layout)
 
 Each match or contract seed generates:
 - the starting soil map (a few `rock` tiles in later chapters and in casual "rocky" variants, none in ranked v1)
-- starting moisture per tile (0–40)
+- starting moisture per tile: seeded in `0–40` for showdowns, and for any campaign run once the player owns the Water node. **Until the Water node is owned, campaign runs (contracts and Free Farm) start every tile at moisture 100 and moisture does not decay.** Otherwise dry soil would make early contracts unwinnable with no tool to fix it: a radish needs about 6 moisture to ripen unwatered, so roughly 1 tile in 7 could never grow one. The range and the no-decay switch are part of the sim config, so the server re-simulates the same rule (see [simulation-engine](../03-architecture/simulation-engine.md)).
 - crow events (later; see [crops-and-economy](crops-and-economy.md) "Interference")
 
 Generation uses the deterministic PRNG described in [simulation-engine](../03-architecture/simulation-engine.md).
@@ -73,4 +76,4 @@ In multiplayer every drone has the same stats. Drone *cosmetics* are visual only
 
 - All state is integers. There are no floats anywhere in `packages/sim` or `packages/lang`.
 - Iteration order over tiles is always row-major `y` then `x`.
-- Multi-farm ordering at equal cycle uses player slot order rotated by tick (see simulation-engine).
+- Multi-farm ordering at equal cycle: every drone has a fixed `agentIndex = slot × MAX_DRONES + droneNo`, and the pending action whose `(agentIndex − (t mod N) + N) mod N` is smallest runs first, where `t` is the cycle of the pending action and `N = nSlots × MAX_DRONES` is constant for the match (see simulation-engine).

@@ -1,6 +1,17 @@
 # Sprout Standard Library
 
-Costs are in **cycles** and are **in addition to** the 1-cycle `CALL` instruction. The values are provisional and tuned in the balance harness. Campaign availability shows the chapter or skill-tree node that unlocks each builtin. In multiplayer, everything is unlocked.
+Costs are in cycles and are **in addition to** the 1-cycle `CALL_HOST` instruction that reaches every builtin (so `halt()` is cost 0 plus that 1-cycle call). The values are provisional and tuned in the balance harness. Campaign availability shows the chapter or skill-tree node that unlocks each builtin.
+
+In multiplayer, everything is unlocked, with two exceptions:
+
+- `spawn()` is **single-player only in v1**. The Twin drone upgrade is campaign-only (see [farm-simulation](../01-game-design/farm-simulation.md)); in a showdown every farm runs exactly one drone. Decision D-24 in [decisions-needed](../00-overview/decisions-needed.md).
+- `random()` is **disabled in ranked** (D-18).
+
+Calling either where it is unavailable is the compile-time error `E-LOCKED-FEATURE`, and the message says why: *"`spawn()` is single-player only in v1."* / *"`random()` is turned off in ranked matches so replays stay clean."*
+
+**Bad arguments.** A builtin called with an argument of the wrong type, or outside its allowed range, raises the runtime error `R-BAD-ARG` and stops that drone (see [errors-and-diagnostics](errors-and-diagnostics.md)). Builtins never clamp.
+
+**Argument-dependent costs.** Most costs below are fixed. A few depend on the arguments (`wait`, `goto`, `str`, `int`, `print`, `min`/`max` over a list, `pop(i)`). The host computes those from the arguments when the call is made. The per-element cost table in [interpreter-vm](../03-architecture/interpreter-vm.md#bytecode) is the single source of truth if a number here ever disagrees with it.
 
 ## Constants
 
@@ -14,16 +25,53 @@ Costs are in **cycles** and are **in addition to** the 1-cycle `CALL` instructio
 
 | Builtin | Cost | Returns | Behaviour | Unlock |
 |---|---|---|---|---|
-| `move(dir)` | 20 (Rotor upgrades: 16/12/9) | `None` | Move one tile, wrapping at edges | Ch 1 |
-| `plant(crop)` | 30 | `bool` | Buys a seed and plants it. `False` (cost 5 instead) if the tile is occupied, the soil is wrong or credits are insufficient | Ch 1 |
-| `harvest()` | 30 | `bool` | Ripe crop → silo, tile cleared (tilled soil reverts to grass). Unripe → crop destroyed, returns `False`. Empty → `False`, cost 5 | Ch 1 |
-| `till()` | 30 | `bool` | Grass → tilled. `False` on rock or occupied tile | Skill: Till |
-| `water()` | 25 | `bool` | +40 moisture (Sprayer: +60), uses 1 water unit. `False` if out of water | Skill: Water |
-| `refill()` | 60 | `bool` | Only on the well tile `(0,0)`. Restores water to max | Skill: Water |
+| `move(dir)` | 20 (Rotor upgrades: 16/12/9) | `None` | Move one tile, wrapping at edges. Always succeeds, even onto a rock tile: the drone flies, and rock only blocks `plant` and `till` | Ch 1 |
+| `plant(crop)` | 30 | `bool` | Buys a seed and plants it. `False` (cost 5 instead) if the tile has an unripe or ripe crop, the soil is wrong or credits are insufficient. Planting on a **withered** crop replaces it. See the outcome matrix | Ch 1 |
+| `harvest()` | 30 | `bool` | Ripe crop → silo, tile cleared (tilled soil reverts to grass). Unripe → crop destroyed, returns `False`. Withered → cleared with 0 yield, returns `False`. Empty → `False`, cost 5. See the outcome matrix | Ch 1 |
+| `till()` | 30 | `bool` | Grass → tilled. `False` (cost 5 instead) on rock, on already-tilled soil or on a tile with a crop | Skill: Till |
+| `water()` | 25 | `bool` | +40 moisture (Sprayer: +60), capped at 100, uses 1 water unit. Works on any tile, with or without a crop, even at moisture 100. `False` (cost 5 instead) if out of water | Skill: Water |
+| `refill()` | 60 | `bool` | Only on the well tile `(0,0)`. Restores water to max. `False` (cost 5 instead) anywhere else | Skill: Water |
+| `goto(x, y)` | `move` cost × *d* | `None` | Flies to `(x, y)` by the shortest wrapped path. *d* is the wrapped Manhattan distance: `min(\|dx\|, N−\|dx\|) + min(\|dy\|, N−\|dy\|)` on an N×N grid (so `goto` to the current tile costs 0, plus the call). The travel costs exactly what the `move` calls it replaces would, Rotor upgrades included: no discount on the flight itself, the saving is the loop and the typing. Flies over rocks. `x` or `y` outside `0..N−1` is `R-BAD-ARG`. The drone is at `(x, y)` from the start of the call and emits a single `move` event; the client animates the flight along the wrapped x-then-y path (a half-grid tie goes east/north, which is visual only) | Ch 5 (after the player writes it), always (MP) |
 | `sell(crop, n)` | 10 | `int` | Sells up to `n` from the silo at current price. Returns credits gained | Ch 8 (SP), always (MP) |
-| `wait(n)` | `n` (1 ≤ n ≤ 5,000) | `None` | Do nothing for `n` cycles. Cheaper than a busy loop | Ch 4 |
-| `spawn(fn)` | 200 | `bool` | Starts a second drone at your position running `fn()`. Max 1 extra drone | Ch 10 (SP only in v1) |
-| `halt()` | 0 | — | Stops this drone | Ch 1 |
+| `wait(n)` | `n` | `None` | Do nothing for `n` cycles. `n` must be an int in `1..5,000`; anything else is `R-BAD-ARG` (no clamping). Cheaper than a busy loop. It is a world-touching call, so other drones interleave normally, but it changes nothing and is not logged: the renderer simply idles the drone until its next event | Ch 4 |
+| `spawn(fn)` | 200 | `bool` | Starts a second drone at your position running `fn()`. Max 1 extra drone. See [Second drone](#second-drone-spawn) | Ch 10 (SP only in v1, D-24) |
+| `halt()` | 0 (plus the 1-cycle call) | — | Stops this drone. With a second drone, only the calling drone stops | Ch 1 |
+
+### Outcome matrix (normative)
+
+Every action has exactly one row that applies, checked top to bottom within its group. Costs are in addition to the 1-cycle call. A failed action that did nothing costs 5, the same as `plantFailed` and `harvestEmpty` in `content`.
+
+| Call | Condition | Returns | Cost | Effect |
+|---|---|---|---|---|
+| `plant` | tile has an unripe or ripe crop | `False` | 5 | none |
+| `plant` | soil is `ROCK`, or the crop needs tilled soil and the soil is `GRASS` | `False` | 5 | none |
+| `plant` | credits < seed cost | `False` | 5 | none |
+| `plant` | otherwise (tile empty or holding a withered crop; radish and other crops without a soil need may go on grass or tilled soil) | `True` | 30 | credits −= seed cost; a withered crop is cleared; the new crop is placed at growth 0 |
+| `harvest` | tile empty | `False` | 5 | none |
+| `harvest` | crop unripe | `False` | 30 | crop destroyed; soil **keeps** its tilled state |
+| `harvest` | crop withered | `False` | 30 | crop cleared, 0 to the silo; tilled soil → grass; not counted as a harvested crop |
+| `harvest` | crop ripe | `True` | 30 | +1 to the silo; tilled soil → grass; counts as a harvested crop (🌾 Bumper Crop) |
+| `till` | grass and no crop | `True` | 30 | soil → tilled |
+| `till` | rock, already tilled, or has a crop | `False` | 5 | none |
+| `water` | water left = 0 | `False` | 5 | none |
+| `water` | otherwise (any soil, with or without a crop, even at moisture 100) | `True` | 25 | moisture = `min(100, moisture + 40)` (Sprayer +60); water −= 1 |
+| `refill` | drone is not on `(0,0)` | `False` | 5 | none |
+| `refill` | drone is on `(0,0)` (even if the tank is already full) | `True` | 60 | water = capacity |
+| `move` | always | `None` | 20 (Rotor: 16/12/9) | position wraps |
+
+The editor's Run log explains each `False` in words ("`till` at (3,2): that tile is rock"). Rivals never see it.
+
+### Second drone (`spawn`)
+
+Single-player only in v1 (see above); the rules below are what the campaign's Chapter 10 uses.
+
+- **What is shared.** Credits, silo and market belong to the **player**. Position, facing, water tank and clock belong to each **drone**. Globals, lists and dicts are one heap per player, so the second drone can read the first drone's tracking lists, and the list/dict limits are per player.
+- **How it starts.** `spawn(fn)` costs 200, paid by the caller. The new drone appears at the caller's position with a full tank, and its clock starts at the cycle at which the caller's `spawn` call finishes (`atCycle + 200`). It runs the **same bytecode module** in its own call stack.
+- **`fn`** must be a user-defined function with 0 parameters, otherwise `R-BAD-ARG`. When `fn` returns, that drone stops.
+- **Stopping.** `halt()` and runtime errors stop only the drone that called or raised them. The player's program is finished when both drones have stopped.
+- **Only one extra drone.** A second `spawn` (from either drone) returns `False` and costs 5.
+- **No collisions.** Drones never block each other, and two may share a tile.
+- **Scheduling.** Each drone is its own agent with `agentIndex = slot × MAX_DRONES + droneNo` (0 for the original, 1 for the spawned drone); see [simulation-engine](../03-architecture/simulation-engine.md).
 
 ## Sensors (read the world; cheap)
 
@@ -33,6 +81,7 @@ Costs are in **cycles** and are **in addition to** the 1-cycle `CALL` instructio
 | `world_size()` | 1 | `int` (grid is square) | Ch 2 |
 | `crop()` | 2 | crop constant or `None` | Ch 3 |
 | `is_ripe()` | 2 | `bool` | Ch 3 |
+| `is_withered()` | 2 | `bool` | Ch 3 |
 | `growth()` | 2 | `int` 0–100 (% grown) | Ch 4 |
 | `soil()` | 2 | soil constant | Skill: Till |
 | `moisture()` | 2 | `int` 0–100 | Skill: Moisture sensor |
@@ -45,32 +94,49 @@ Costs are in **cycles** and are **in addition to** the 1-cycle `CALL` instructio
 | `cycles()` | 1 | `int` cycles elapsed | Ch 4 |
 | `cycles_left()` | 1 | `int` | Ch 4 |
 
+**What the crop sensors say** (a withered crop stays on the tile until it is cleared, so the sensors tell the truth about it):
+
+| Tile | `crop()` | `is_ripe()` | `is_withered()` | `growth()` |
+|---|---|---|---|---|
+| Empty | `None` | `False` | `False` | 0 |
+| Growing | the crop constant | `False` | `False` | `floorDiv(growth × 100, growCycles)` (always below 100 until ripe) |
+| Ripe | the crop constant | `True` | `False` | 100 |
+| Withered | the crop constant | `False` | `True` | 100 |
+
+`is_ripe()` is `True` only when `growth ≥ growCycles` and the crop is not withered. `soil()` is not affected by crops. To recover a withered tile, `harvest()` clears it (0 yield) or `plant()` replaces it.
+
 ## Pure helpers (no world access)
 
 | Builtin | Cost | Notes |
 |---|---|---|
-| `range(n)`, `range(a, b)`, `range(a, b, step)` | 1 + 0 per element (lazy) | Lazy iterator, so it doesn't allocate a list |
+| `range(n)`, `range(a, b)`, `range(a, b, step)` | 1 for the call, then 1 per iteration (the loop's `ITER_NEXT`) | Lazy iterator, so it doesn't allocate a list. Arguments must be ints (`R-BAD-ARG`). `step = 0` is `R-BAD-ARG` (*"range step can't be 0"*); a negative step counts down as in Python. `range(...)` is **only valid as the iterable of a `for` statement**. Using it anywhere else (`r = range(5)`, `len(range(5))`, `5 in range(10)`, passing it to a function) is the compile error `E-RANGE-ONLY-IN-FOR`: *"`range` can only be used in `for x in range(...)`."* |
 | `len(x)` | 1 | str/list/dict |
 | `abs(n)`, `min(a, b, …)`, `max(a, b, …)` | 1 | `min`/`max` also accept one list (cost +1 per element) |
 | `list.append(x)`, `list.pop([i])` | 1 (pop(i): +1 per shifted element) | |
 | `dict.get(k, d)` | 1 | |
-| `str(x)`, `int(s)` | 1 + length | `int("12")` → 12, error on bad input |
-| `print(…)` | 1 | Output panel. Max 200 lines/run. Not shown to rivals |
-| `random(n)` | 2 | Deterministic seeded `0..n-1`, separate stream per player. **Disabled in ranked** for clean replays and fewer arguments, unlocked in campaign Ch 8 |
+| `str(x)` | 1 + length of the result | Ints in decimal; `True`, `False`, `None` as in Python; constants by their name (`RADISH`); strings unchanged; lists as `[1, 'a', RADISH]` and dicts as `{1: 2}` using Python `repr` rules (strings single-quoted). A result longer than the 256-character string limit is `R-STR-TOO-LONG` |
+| `int(s)` | 1 + length of `s` | `int("12")` → 12. Accepts an optional sign and digits, with optional `_` separators as in literals, and surrounding spaces; leading zeros are fine here. Anything else is `R-BAD-ARG` (*"`int` can't read 'abc' as a whole number"*). `int(True)` is 1 and `int(5)` is 5 |
+| `print(…)` | 1 + length of the printed line | Joins its arguments with one space and ends with a newline; `print()` prints an empty line. Arguments are formatted as `str` does, except that a top-level string prints without quotes. Output panel. Max 200 lines/run (rest dropped with notice). Not shown to rivals. In official (server) executions the first 200 lines per player are kept in `PlayerResult.output: string[]` and sent only to that player in `match.results`; the balance harness prints them to stdout |
+| `random(n)` | 2 | `n` must be an int ≥ 1, else `R-BAD-ARG`. Deterministic seeded `0..n-1`, separate stream per player. **Disabled in ranked** for clean replays and fewer arguments (D-18); every other mode allows it, and the campaign unlocks it in Ch 8. Where it is off, using it is the compile error `E-LOCKED-FEATURE`. The server compiles with the match's setting, so a ranked program that uses `random()` runs the idle program |
 
 ## Builtins we deliberately **don't** provide
 
 | Not provided | Why |
 |---|---|
-| `goto(x, y)` | In the campaign the player writes it in Ch 5. Then it unlocks as a native builtin costing `move` × distance (no discount, just convenience). It's available in MP. |
 | Global farm scan (`get_all_tiles()`) | It would remove the core spatial puzzle. The drone only senses the tile it's on. |
 | Time-of-day or wall-clock | It breaks determinism. |
+
+(`goto(x, y)` used to be on this list. It *is* provided: the campaign makes you write it yourself in Ch 5, and it then unlocks as a native builtin, available in multiplayer. See Actions.)
 
 ## Example: a complete starter showdown program
 
 ```python
-# Starter program shown in the coding phase. Works, but is not efficient.
+# Starter program shown in the coding phase.
+# Inefficient but profitable: it farms only the 2 bottom rows (16 tiles),
+# waters when the soil is dry, and refills and sells after every pass.
 def tend():
+    if moisture() < 10:
+        water()
     if crop() == None:
         plant(RADISH)
     elif is_ripe():
@@ -78,10 +144,15 @@ def tend():
         plant(RADISH)
 
 while True:
-    for y in range(world_size()):
+    for y in range(2):
         for x in range(world_size()):
             tend()
             move(EAST)
         move(NORTH)
+    move(SOUTH)
+    move(SOUTH)
+    refill()
     sell(RADISH, inventory(RADISH))
 ```
+
+Why only two rows? A radish withers a fixed time after it ripens, and a full sweep of all 64 tiles takes longer than that window, so a naive 8×8 starter would watch its crops die. Farming a small plot well beats farming a big one badly; that pressure toward smaller plots is intended (see [farm-simulation](../01-game-design/farm-simulation.md) §Growth rules). The balance harness keeps this program honest: it must stay profitable and land at a modest fraction of a strong bot's score (see [simulation-engine](../03-architecture/simulation-engine.md) §Balance harness).

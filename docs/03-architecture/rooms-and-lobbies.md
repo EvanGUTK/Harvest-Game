@@ -39,7 +39,9 @@ type RoomState = {
 ## Lifecycle
 
 - A room is an in-memory object with a phase machine (see [multiplayer-modes](../01-game-design/multiplayer-modes.md)) and **one timer at a time**.
-- Custom rooms: the host can change settings in Lobby only, and can kick. If the host leaves, host passes to the longest-present player.
+- Custom rooms: the host can change settings in Lobby only, and can kick. A player the server removes from a room (kicked, room closed or expired, or blocked) receives `room.left { reason: 'kicked' | 'host_closed' | 'room_expired' | 'blocked' }`, see [realtime-protocol](realtime-protocol.md).
+- **Host migration.** If the host leaves, or is disconnected for 30 s while the room is in Lobby, host passes to the longest-present *connected* player. Everyone gets `room.patch { hostUserId }`. The new host sees the toast "maple_rows left. You're now the host." and the settings, kick and Start controls appear for them. Everyone else sees "byte_farmer is now the host." A returning former host is a normal player. From Coding to Finale the host role is irrelevant (the server owns every timer), so no migration happens then; if the host is gone when the room returns to Lobby for a rematch, the same rule applies at that moment.
+- **Disconnected players in Lobby.** Their row shows a ⚡ "reconnecting…" state (`connected: false`), their slot is held, and their `ready` flag is cleared, so "all ready" cannot start the match without them. After they have been disconnected for 30 s the host may start anyway ("Start without sproutling?"); the absent player is then handled like any disconnect during coding (see [multiplayer-modes](../01-game-design/multiplayer-modes.md)). A Lobby in which nobody is connected for 30 s is destroyed, the same as an empty one.
 - Rooms are destroyed 5 min after Results with nobody present, or immediately if empty in Lobby.
 - Only **finished matches** are persisted (with programs, seed and results). In-progress rooms are lost on a server restart, so deploys use graceful drain: stop new rooms, let existing ones finish (max 20 min), then exit.
 
@@ -47,7 +49,7 @@ type RoomState = {
 
 ```
 ┌ Browse rooms ──────────────────────────────────────────────┐
-│ [Casual ▾]  Grid [Any ▾]  Time [Any ▾]  [ ] Has friends    │
+│ [Custom ▾ | Ranked (watch)]  Grid [Any ▾]  Time [Any ▾]  [ ] Has friends │
 │ Search: [ room name or host ]                    ⟳ live     │
 ├────────────────────────────────────────────────────────────┤
 │ 🌽 "Lunch break showdown"  host: maple_rows   3/8  10 min  8×8  Lobby   [Join] │
@@ -56,13 +58,16 @@ type RoomState = {
 └────────────────────────────────────────────────────────────┘
 ```
 
+- **What the browser lists.** Only `custom-public` rooms are joinable from the browser, so the filter is `Custom` (default) or `Ranked (watch)`; there is no `Casual` tab. Matchmade casual rooms are formed by Find Match and are never listed: that is how casual pays wallet credits. Custom rooms pay XP only (see [multiplayer-modes](../01-game-design/multiplayer-modes.md)), so a browsable room can never be used to farm wallet credits.
 - Live updates via `rooms.subscribe` (deltas, throttled to 1/s).
 - Rooms past Lobby show **Watch** once spectating ships, otherwise grey.
-- "Ranked" filter tab: lists live ranked matches for spectating only (M6+). You can't join ranked from the browser, which prevents arranged matches. *(D-09 discusses the user's request to search ranked rooms; this is the recommended compromise.)*
+- The **Ranked (watch)** tab lists live ranked matches for spectating only (M6+). You can't join ranked from the browser, which prevents arranged matches. *(D-09 discusses the user's request to search ranked rooms; this is the recommended compromise.)*
 - Room names: max 32 chars, profanity-filtered, can be reported.
 
-## Room codes
+## Room codes & joining
 
-- 6 chars from a 31-symbol alphabet, which gives about 887M combinations. Codes are random and checked for collisions among live rooms.
-- A shareable link: `https://<site>/r/K7MPQ3` (deep-links through sign-in if needed).
-- Code join rate limit: 10 attempts per minute per user, to prevent enumeration.
+- A code is 6 characters from the 31-symbol alphabet (about 887M combinations), generated with `crypto.randomInt`, collision-checked among live rooms, and never reused while its room lives.
+- `room.join { code }` is the only way into a `custom-private` room without an invite. `room.join { roomId }` is accepted only when the room is `custom-public` (listed in the browser) **or** the user holds a pending party or friend invite to that room. Otherwise the server answers exactly as it does for a wrong code.
+- Every join failure (unknown code, private room joined by id, room full, match already started, blocked by a player in the room) returns the same `error { code: 'ROOM_UNAVAILABLE' }` to the joiner, so codes and room ids cannot be probed. The real reason is logged server-side with ids only.
+- Rate limits: 10 code attempts per minute per user and 30 per minute per IP. Ten consecutive failures start a 5-minute join cooldown, reported as `cooldownUntil` in the error. *(Provisional.)*
+- A shareable link `https://<site>/r/K7MPQ3` carries the code through the landing-screen age gate, sign-in and first-time onboarding in the OAuth `state` / return-URL parameter. Only the exact pattern `/r/` plus 6 code-alphabet characters is accepted as a return URL. The code is used for a single `room.join { code }` once the account is ready. A visitor who fails the age gate never reaches it.
