@@ -36,7 +36,7 @@ flowchart LR
 **Exit:** A non-programmer friend completes Ch1 contracts without help in 10 minutes. 60 fps on a mid laptop.
 
 ## M2: Accounts & Campaign v1 (L)
-- Fastify server, Better Auth (Google, email OTP via Resend, email+password), onboarding (handle, 13+)
+- Fastify server, Better Auth (Google, email OTP via Resend, email+password), pre-auth 13+ age gate on the landing screen, onboarding (handle, then versioned Terms/Privacy acceptance)
 - Drizzle schema v1 on Neon, migrations, preview branches
 - Campaign save/load, run receipts with server re-simulation, farm credits, skill tree v1 (Ch1–5 nodes)
 - Chapters 1–5 content, lesson cards
@@ -49,9 +49,9 @@ flowchart LR
 - Rooms: create/join by code, lobby, ready, phase machine, timers
 - Coding phase with draft autosave, lock, official lockstep execution in a worker_thread
 - Event-log streaming, finale v1 (functional, not pretty), results with code viewing and replay
-- Casual rewards: wallet credits + XP, ledger
+- Rewards v1 (SRV-07): XP for custom rooms, match persistence + ledger write in one transaction. The placement-to-credit payout table is implemented but gated to matchmade modes (casual/ranked), which arrive in M5 (scoring-and-judging §Multiplayer rewards)
 
-**Exit:** 4 people on 4 devices complete a showdown. A disconnect and reconnect mid-coding keeps their code. Replays reproduce exactly.
+**Exit:** 4 people on 4 devices complete a showdown. A disconnect and reconnect mid-coding keeps their code. Replays reproduce exactly. Custom-room matches award XP only; no wallet credits are minted (multiplayer-modes Modes table).
 
 ## M4: Social & Room Browser (M)
 - Handles search, friend requests, friends panel, presence, block
@@ -64,7 +64,7 @@ flowchart LR
 ## M5: Matchmaking & Ranked (L)
 - Casual queue (solo + party), bots fallback
 - Ranked queue (solo, 4 FFA), ready check with accept UI, cooldowns
-- Season 0, RP rules, placements, shields, rank emblems, leaderboard
+- Season 0 (internal/closed-beta test season, no end-of-season rewards; rank state is wiped at open launch in M8, when the first public season, e.g. "Season 1: Sowing", begins), RP rules, placements, shields, rank emblems, leaderboard
 - Queue pill, match-found modal, notifications
 
 **Exit:** With 12 test accounts, queues form matches within the window rules. Declines requeue the others at original priority. RP math matches the docs in unit tests.
