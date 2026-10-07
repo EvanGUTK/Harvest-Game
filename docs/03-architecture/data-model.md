@@ -89,6 +89,7 @@ run_receipt (
   contract_id text null, attempt_id uuid null unique references contract_attempt(id),  -- required for 'contract'; one receipt per attempt
   session_id uuid null references free_farm_session(id),  -- required for 'free_farm'
   sequence int null,                           -- Free Farm only: strictly greater than the session's last accepted sequence
+  sell_all_at int[] not null default '{}',     -- Free Farm only: cycles at which Sell all was pressed (replayed by the server)
   seed bigint check (seed between 0 and 4294967295),  -- copied from the attempt or session, never taken from the client
   rules_version text, language_version text,
   source_hash bytea, source text, start_state_hash bytea,
@@ -222,7 +223,7 @@ Columns: `profile.deleted_at` and `profile.hard_delete_after` (`= deleted_at + 3
 | `moderation_action` | keep, with `target_user_id = null` |
 | Sentry events, pino logs, Resend logs | not deleted one by one; they expire by retention (see the privacy doc) |
 
-The job also appends the opaque user id and the deletion time to the deletion log in the backup bucket, so a restore can re-apply deletions (see [hosting](../06-infrastructure/hosting.md) Backups & restore). Whether to keep a peppered hash of the email of permanently banned accounts to stop ban evasion is an open privacy decision and is **not** part of v1. The one-sentence-per-row version of this table is mirrored in [privacy-and-age](../08-legal-safety/privacy-and-age.md) under User rights.
+The job runs inside the server process (`apps/server/src/jobs/account-deletion`, nightly) and also appends the opaque user id and the deletion time to the deletion log in the backup bucket (via the `R2_*` credentials in the `harvest-prod` env group; no other server code touches the bucket), so a restore can re-apply deletions (see [hosting](../06-infrastructure/hosting.md) Backups & restore). Whether to keep a peppered hash of the email of permanently banned accounts to stop ban evasion is an open privacy decision and is **not** part of v1. The one-sentence-per-row version of this table is mirrored in [privacy-and-age](../08-legal-safety/privacy-and-age.md) under User rights.
 
 ## Neon specifics
 - Use the **pooled** connection string (PgBouncer) from the server (`DATABASE_URL`). Use the direct, non-PgBouncer string (`DATABASE_URL_UNPOOLED`) for migrations, seeds and CI branch setup. Where each variable is stored is listed in [connections](../06-infrastructure/connections.md).

@@ -5,7 +5,7 @@
 | Level | Tool | Where | Must cover |
 |---|---|---|---|
 | Unit | Vitest | beside source | every exported function with behaviour; every diagnostic code; every limit |
-| Golden | Vitest + `__golden__/` | `lang`, `sim` | program + seed → expected final state hash and event count |
+| Golden | Vitest + `__golden__/` | `lang`, `sim` | program + seed → expected hash. `lang` goldens: FNV-1a over `str()` of every global plus the print output. `sim` goldens: `finalStateHash` plus the event count (see simulation-engine.md §State hash) |
 | Cross-engine determinism | Playwright (Chromium, Firefox, WebKit) + Node | `sim` | golden hashes identical in all four engines (browsers installed with `pnpm exec playwright install --with-deps chromium firefox webkit`) |
 | Differential | nightly CI | `lang` | random Python-subset programs vs CPython output (pinned CPython 3.12) |
 | Property/fuzz | Vitest + fast-check | `lang` | lexer/parser never throw; compile(valid) ok |

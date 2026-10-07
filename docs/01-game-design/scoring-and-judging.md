@@ -67,6 +67,8 @@ For other lobby sizes, interpolate linearly by percentile. There's also a daily 
 
 ## Results screen contents
 
+Your own program's `print` output (`PlayerResult.output`, first 200 lines) is shown in an **Output** tab of the results panel. Rivals' output is never sent to anyone.
+
 1. Podium (animated)
 2. Table: place, player, score, crops, cycles used, awards
 3. Per-player **credit-over-time chart** (sparkline from the event log)

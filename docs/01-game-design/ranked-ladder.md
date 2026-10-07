@@ -27,7 +27,7 @@ The concept says matchmaking should not use hidden MMR. In this design:
 
 **Trade-off, stated honestly:** without hidden MMR, a strong new player has to climb through every tier, and opponents along the way have a bad time. Mitigations that stay within "no hidden MMR":
 1. **Placements:** your first 5 ranked games start you at Bronze III and double the RP you **gain** (losses are not doubled). Winning all five is worth 280 RP (5 × 2 × 28), plus the win-streak bonus (+45 over five wins, not doubled), which lands you at **Silver III with 25 RP**. Mixed-lobby adjustments are added after doubling, not doubled.
-2. **Win-streak bonus:** a 1st place that follows *n* consecutive 1st places pays +5 × min(*n*, 3) RP, so +5, +10, then +15 at most. Any other placement resets the streak.
+2. **Win-streak bonus:** a 1st place that follows *n* consecutive 1st places pays +5 × min(*n*, 3) RP, so +5, +10, then +15 at most. A shared 1st ("=1st") counts as a 1st for the streak. Any other placement resets the streak.
 3. **Campaign prerequisite:** ranked unlocks at account level 10 *and* campaign Chapter 4 cleared. This filters out true beginners and gives everyone shared fundamentals.
 
 *(D-11: if smurfing or stomping becomes a problem, add hidden MMR only as a matchmaking tiebreaker within the same division. Visible rank stays the source of truth.)*

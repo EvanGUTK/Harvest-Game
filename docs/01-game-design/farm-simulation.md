@@ -59,7 +59,7 @@ type Tile = {
 ## Rocks and seeds (procedural layout)
 
 Each match or contract seed generates:
-- the starting soil map (a few `rock` tiles in later chapters and in casual "rocky" variants, none in ranked v1)
+- the starting soil map (a few `rock` tiles in later chapters and in casual "rocky" variants, none in ranked v1; rock probability per tile is `WORLD.rockDensityBp` = 8 %, provisional, and the well tile is never rock)
 - starting moisture per tile: seeded in `0–40` for showdowns, and for any campaign run once the player owns the Water node. **Until the Water node is owned, campaign runs (contracts and Free Farm) start every tile at moisture 100 and moisture does not decay.** Otherwise dry soil would make early contracts unwinnable with no tool to fix it: a radish needs about 6 moisture to ripen unwatered, so roughly 1 tile in 7 could never grow one. The range and the no-decay switch are part of the sim config, so the server re-simulates the same rule (see [simulation-engine](../03-architecture/simulation-engine.md)).
 - crow events (later; see [crops-and-economy](crops-and-economy.md) "Interference")
 
@@ -69,7 +69,7 @@ The layout is generated once per match and every player gets a copy. Rock densit
 
 - Position, facing (cosmetic only), carried water.
 - No carrying capacity limit in v1. Harvest goes straight to the silo.
-- Upgrades (campaign only): **Rotor I/II/III** reduces `move` cost 20, 16, 12, 9. **Sprayer** gives `water()` +60 instead of +40. **Twin drone** lets you call `spawn(fn)` to run a second drone (same program, its own call stack; late game, see [curriculum](../02-language/curriculum.md)).
+- Upgrades (campaign only): **Rotor I/II/III** reduces `move` cost 20, 16, 12, 9. **Sprayer** gives `water()` +60 instead of +40. **Twin drone** lets you call `spawn(fn)` to run a second drone (same program, its own call stack, sharing the farm's credits, silo and water: one farm, two drones; late game, see [curriculum](../02-language/curriculum.md); campaign only in v1, D-24).
 - Single-player only in v1. Credits, silo, water tank and market belong to the player (one farm, two drones); position, facing and clock belong to each drone. Full rules: [standard-library](../02-language/standard-library.md#second-drone-spawn).
 
 In multiplayer every drone has the same stats. Drone *cosmetics* are visual only.

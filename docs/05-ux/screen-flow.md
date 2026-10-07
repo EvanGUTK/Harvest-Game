@@ -46,9 +46,9 @@ flowchart TD
 ### Landing: age gate, then sign in
 Every signed-out visitor sees the **age gate before any sign-in button, email field or Google redirect**. A valid session skips Landing and goes to Home.
 
-- The gate asks **"What year were you born?"** with a year picker that has no default and gives no hint of the cut-off. The threshold rule is owned by [privacy-and-age](../08-legal-safety/privacy-and-age.md).
+- The gate asks **"When were you born?"** with a month and year picker that has no default and gives no hint of the cut-off. The threshold rule is owned by [privacy-and-age](../08-legal-safety/privacy-and-age.md).
 - **Under 13:** the screen reads *"Code Harvest isn't available for your age yet."* with no sign-in options, and the browser keeps a 24 h flag so a reload doesn't simply ask again. No account, email or Google id is ever received from this visitor.
-- **13 or older:** the sign-in options appear (see [auth](../03-architecture/auth.md)). On first sign-in the client sends only the boolean `birth_year_confirmed_13plus`. The year itself is never sent or stored, and there is no later age step and no "abandon account" endpoint.
+- **13 or older:** the sign-in options appear (see [auth](../03-architecture/auth.md)). On first sign-in the browser's age-pass flag travels with the handle claim, and the server stores only the boolean `birth_year_confirmed_13plus`. The month and year are never sent or stored, and there is no later age step and no "abandon account" endpoint.
 - Share links (`/r/CODE`) pass through the gate, sign-in and onboarding first (see [rooms-and-lobbies](../03-architecture/rooms-and-lobbies.md)).
 
 ### Onboarding (first sign-in only)

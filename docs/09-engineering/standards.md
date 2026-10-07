@@ -49,7 +49,7 @@ The point of these rules: code that a stranger (or Claude on another machine, ne
 - **Install scripts stay blocked.** pnpm 10 does not run dependency lifecycle scripts. A package that genuinely needs a build step is added to `onlyBuiltDependencies` in `pnpm-workspace.yaml` with a comment saying why (today: `esbuild` only).
 - **CI audit.** CI runs `pnpm audit --prod --audit-level=high` (fails the build) and checks the licenses of production dependencies (`pnpm licenses list --prod`), failing on GPL, AGPL or unknown.
 - **Actions are pinned to full commit SHAs** with a version comment (`actions/checkout@<sha> # v4.2.2`). Dependabot's `github-actions` entry keeps them fresh. Dependabot `groups` keep tooling bumps in one PR; security updates always come as separate PRs.
-- **Repo protection** (owner's one-time GitHub settings, tracked in [connections](../06-infrastructure/connections.md)): `main` requires a PR, the CI `check` job (plus `determinism` once it exists) and one approving review; secret scanning **with push protection** and Dependabot security updates are on; a `CODEOWNERS` file names `@evanggoodman` for `/packages/db`, `/apps/server/src/http` and `/.github`.
+- **Repo protection** (owner's one-time GitHub settings, tracked in [connections](../06-infrastructure/connections.md)): `main` requires a PR, the CI `check` job (plus `determinism` once it exists); the "one approving review" rule is switched on only once a second maintainer exists, because GitHub never lets an author approve their own PR and the owner is the only committer today; secret scanning **with push protection** and Dependabot security updates are on; a `CODEOWNERS` file names `@evanggoodman` for `/packages/db`, `/apps/server/src/http` and `/.github`.
 
 ## Data and numbers
 

@@ -14,7 +14,6 @@ Every stage is a pure function, apart from the VM's own state. No stage ever cal
 
 ```ts
 // packages/lang/src/index.ts. The checked-in stub is the type source of truth.
-// † marks members agreed in these docs that the stub does not have yet; they are added with LANG-01.
 
 export const LANGUAGE_VERSION: string;       // '0.1.0'
 export const DEFAULT_LIMITS: Limits;         // the numbers in language-spec §Limits
@@ -25,7 +24,7 @@ export interface LangEngine {
   restoreVM(snapshot: VMSnapshot): VM;
   readonly values: ValueOps;      // the only way hosts build and inspect Values
 }
-export function countTokens(source: SourceFiles): number;   // † the one token counter (see scoring-and-judging)
+export function countTokens(source: SourceFiles): number;   // the one token counter (see scoring-and-judging)
 
 type SourceFile = { name: string; text: string };
 type SourceFiles = readonly SourceFile[];
@@ -35,7 +34,7 @@ type CompileOptions = {
   hostSignatures: readonly HostSignature[];   // per player: host costs are baked from these
   constants: readonly ConstantDef[];
   lockedFeatures: ReadonlySet<Feature>;       // syntax gating (the gating map in curriculum.md)
-  lockedNames: ReadonlySet<string>;           // † builtin and constant gating by name
+  lockedNames: ReadonlySet<string>;           // builtin and constant gating by name
   limits: Limits;
 };
 
@@ -69,7 +68,7 @@ interface VM {
    *  `remaining >= 1`, regardless of `host.cost`; at `remaining = 0` the VM yields `budget`. */
   run(maxCycles: number, opts?: { stopAtLine?: boolean }): VMYield;
   /** Provide the result of the pending host call and continue. `cost` is the host cost the
-   *  scheduler actually applied (†); when omitted, `yield.cost` is charged. It is charged to
+   *  scheduler actually applied; when omitted, `yield.cost` is charged. It is charged to
    *  the VM cycle counter, so the counter equals `agent.clock` when the VM runs again. */
   resume(value: Value, cost?: number): void;
   readonly cycles: number;        // cycles consumed by this VM so far

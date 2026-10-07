@@ -62,7 +62,7 @@ Casual and custom rooms show a rematch vote. If at least 50 % accept within 20 s
 
 ## Variants (post-MVP rotation, casual and custom only)
 - **Sprint:** 5:00 coding, 6×6 grid.
-- **Rocky:** seeded rock obstacles.
+- **Rocky:** seeded rock obstacles. Each tile is rock with probability `WORLD.rockDensityBp` (8 %, provisional) from the `layout` PRNG stream; the well tile is never rock.
 - **Weather:** crows, rain and market-boom events.
 - **Golf:** placement uses `golfScore = floorDiv((score − startCredits) × 1_000, max(50, programTokens))`, integers only: profit per token, scaled by 1,000. `programTokens` is defined in [scoring-and-judging](scoring-and-judging.md) and the floor of 50 keeps a tiny program from dividing by almost nothing. The shortest good program wins. Idle programs score 0 and place last, and ties use the normal tiebreakers.
 - **Relay (2v2):** teammates alternate 2:30 coding blocks on a shared program. This needs a collaborative editor, so it's deferred.

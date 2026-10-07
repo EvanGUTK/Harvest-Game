@@ -21,6 +21,7 @@ export const ERROR_CODES = [
   'MAINTENANCE',
   'SERVER_RESTARTING',
   'BANNED',
+  'SPECTATOR_LIMIT',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
@@ -63,7 +64,8 @@ export type Loadout = {
 
 export type RoomSettings = {
   gridSize: 6 | 8 | 10;
-  codingSeconds: 300 | 600 | 900;
+  /** null = no timer; allowed for type 'practice' only. */
+  codingSeconds: 300 | 600 | 900 | null;
   maxPlayers: number; // 2..8
   modifiers: readonly ('rocky' | 'weather' | 'golf')[];
   botSlots: number;
@@ -108,6 +110,8 @@ export type ClientMessage =
   | Envelope<'room.ready', { ready: boolean }>
   | Envelope<'room.start', Record<string, never>>
   | Envelope<'room.kick', { userId: string }>
+  | Envelope<'room.close', Record<string, never>>
+  | Envelope<'queue.acceptBots', Record<string, never>>
   | Envelope<'program.draft', { source: string; rev: number }>
   | Envelope<'program.lockIn', { source: string; rev: number }>
   | Envelope<'finale.ack', Record<string, never>>
@@ -132,6 +136,7 @@ export type ServerMessage =
       'queue.status',
       { mode: Mode; searchingSince: number; estimatedWaitSec: number; playersInQueue: number }
     >
+  | Envelope<'queue.botsOffer', { expiresAt: number }>
   | Envelope<'ready.check', { readyCheckId: string; acceptBy: number; players: number }>
   | Envelope<'ready.update', { accepted: number; total: number }>
   | Envelope<
@@ -154,7 +159,10 @@ export type ServerMessage =
   | Envelope<'match.results', unknown>
   | Envelope<'presence.update', { userId: string; status: string; activity?: string }>
   | Envelope<'emote', { fromSlot: number; emoteId: string }>
-  | Envelope<'error', { code: ErrorCode; message: string; ref?: string; cooldownUntil?: number }>
+  | Envelope<
+      'error',
+      { code: ErrorCode; message: string; ref?: string; cooldownUntil?: number; until?: string | null }
+    >
   | Envelope<'session.replaced', Record<string, never>>
   | Envelope<'session.revoked', Record<string, never>>
   | Envelope<'server.draining', { until: number | null; message: string }>;

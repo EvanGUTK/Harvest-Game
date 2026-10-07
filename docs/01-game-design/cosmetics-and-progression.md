@@ -26,7 +26,7 @@ Everything here is **visual or social only**. Nothing bought affects simulation 
 
 The **High-contrast** editor theme is owned by default (it is an accessibility feature, not a purchase).
 
-**Badges are never sold.** Badges are earned only (achievements, awards, season rewards, campaign ★★★) and are not catalogue cosmetics. They live in `profile.equipped_badges`, not in `packages/content/cosmetics` or `profile.loadout`. The vision's "credits buy level badges" maps to **profile frames**: level and season frames are free unlocks, and premium frame designs are bought with wallet credits like any other slot (decision D-23).
+**Badges are never sold.** Badges are earned only (achievements, awards, season rewards, campaign ★★★) and are not catalogue cosmetics. They live in `profile.equipped_badges`, not in `packages/content/cosmetics` or `profile.loadout`. The vision's "credits buy level badges" maps to **profile frames**: level and season frames are free unlocks, and premium frame designs are bought with wallet credits like any other slot (decision D-26).
 
 ## Shop
 

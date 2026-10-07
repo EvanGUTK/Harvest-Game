@@ -76,3 +76,5 @@ Friends (12 online)            [+ Add]
 ## Data
 
 Tables: `friendship(user_a, user_b, created_at)` with `a < b`, `friend_request`, `block`. See [data-model](data-model.md).
+
+**Transport.** Friend requests, accepts, removals and blocks are REST (`/api/friends/*`, `/api/blocks`), like every other account action in [system-overview](system-overview.md). The WebSocket carries only the live notifications (`friend.request`, `presence.update`, party messages).

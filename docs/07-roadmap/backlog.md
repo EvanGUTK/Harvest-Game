@@ -127,6 +127,7 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - OPS-01 CI workflows (ci, determinism, differential, assets, bench, e2e, preview-db, smoke, release) [M0→M3]
   - OPS-01.1 Root `build` script (`pnpm -r build`): web + tools in M1, server + db in M2; add a build step to `ci.yml`
   - OPS-01.2 `engines.yml` (retired-engine bundle build on a `LANGUAGE_VERSION` / `RULES_VERSION` major bump; see environments-and-ci.md) [M8]
+  - OPS-01.3 Supply chain in `ci.yml`: pin every action to a full commit SHA (with a `# vX.Y.Z` comment) and add a production-dependency licence check (fail on GPL/AGPL/unknown) [M1]
 - OPS-02 Render services (GitHub App connection, staging + prod with Pre-Deploy migrate), the `production` GitHub Environment, Neon branches (`dev` is the parent of preview and staging, synthetic seed data only; plus `staging` and `ci`) + API keys, preview envs [M2]; owner prerequisites: see [connections](../06-infrastructure/connections.md)
   - OPS-02.1 `render.yaml` Blueprint (staging + prod services, previews) + env groups; see hosting.md [M2]
   - OPS-02.2 `preview-db.yml` (create/migrate/seed/delete the Neon branch `preview/<branch-slug>`, weekly prune) [M2]

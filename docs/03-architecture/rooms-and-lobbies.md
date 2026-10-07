@@ -20,7 +20,7 @@ type RoomState = {
   hostUserId: string | null;      // null for matchmade
   settings: {
     gridSize: 6 | 8 | 10;
-    codingSeconds: 300 | 600 | 900;
+    codingSeconds: 300 | 600 | 900 | null;   // null = no timer; allowed for type 'practice' only
     maxPlayers: 2..8;
     modifiers: ('rocky' | 'weather' | 'golf')[];
     botSlots: number;             // practice/custom only
@@ -31,7 +31,7 @@ type RoomState = {
     slot: number; userId: string; name: string; level: number; rankIndex?: number;
     loadout: Loadout; ready: boolean; connected: boolean; lockedIn: boolean; isBot: boolean;
   }>;
-  seed?: number;                  // revealed at coding start
+  seed?: number;                  // unsigned 32-bit; revealed at coding start (match.preview)
   rulesVersion: string;
 };
 ```

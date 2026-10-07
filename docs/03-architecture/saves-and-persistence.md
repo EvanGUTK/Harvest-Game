@@ -11,7 +11,7 @@
 | Event logs | Regenerated from inputs on demand: by the client for replays, by the server when it streams the live run for the finale. **No object storage and no server-side cache in v1** | Not stored |
 | Live rooms, queues, presence | Server memory | Lost on restart (acceptable v1) |
 
-If replay or finale load ever becomes measurable, the first option is a `match_event_log (match_id, gz bytea)` table in Neon (about 30 KB gzipped per match, see [simulation-engine](simulation-engine.md)). An S3-compatible store would need a new ADR and an entry in the [connections inventory](../06-infrastructure/connections.md) first.
+If replay or finale load ever becomes measurable, the first option is a `match_event_log (match_id, gz bytea)` table in Neon (about 80 KB gzipped per 8-player match, see [simulation-engine](simulation-engine.md)). An S3-compatible store would need a new ADR and an entry in the [connections inventory](../06-infrastructure/connections.md) first.
 
 ## Campaign save protocol
 
@@ -50,7 +50,7 @@ Free Farm receipts are **cumulative for their session** and also carry:
 2. Compiles with the player's unlocked features (`lockedFeatures` and `lockedNames`). A locked feature or name means the receipt is rejected.
 3. Applies the caps.
    - **Contracts:** the contract's cycle budget bounds the claim. `Max` speed exists only here (and in showdown test runs).
-   - **Free Farm:** the speed selector offers 1×, 4× and 16× only (`FREE_FARM_MAX_SPEED = 16` in `content`, so at `CYCLES_PER_SECOND = 100` that is 1,600 cycles/s). The receipt's cumulative `cycles` must satisfy `cycles ≤ (now − startedAt) × 1_600 + 5 % slack` (`now − startedAt` in seconds, from the `free_farm_session` row), so a client can't claim a week of farming from a 5-minute session. `cycles` must also exceed the last accepted receipt's. Because the server replays from cycle 0, `cycles` is capped at `FREE_FARM_RECEIPT_MAX_CYCLES = 200_000`; at that point the client ends the session and starts a new one.
+   - **Free Farm:** the speed selector offers 1×, 4× and 16× only (`FREE_FARM_MAX_SPEED = 16` in `content`, so at `CYCLES_PER_SECOND = 100` that is 1,600 cycles/s). The receipt's cumulative `cycles` must satisfy `cycles ≤ (now − startedAt) × 1_600 + 5 % slack` (`now − startedAt` in seconds, from the `free_farm_session` row), so a client can't claim a week of farming from a 5-minute session. `cycles` must also exceed the last accepted receipt's. The server replays only the cycles since the last accepted receipt (from that receipt's stored state hash), so `FREE_FARM_RECEIPT_MAX_CYCLES = 200_000` bounds that **delta**, not the session total: at 1,600 cycles/s and one receipt per 60 s a receipt carries about 96,000 new cycles, and a client that has been offline longer than the delta allows gets `409 RECEIPT_REJECTED (over_cap)` and must start a new session. Sessions themselves have no cycle ceiling.
    - The farm keeps running in a hidden tab and never catches up lost time, so the wall-clock cap is only ever under-run, never exceeded.
    - A receipt over any cap is rejected, not clamped.
 4. Simulates `cycles` from the server-issued seed and compares results. On a match it grants. On a mismatch it grants the *server's* result and logs the anomaly with ids only (`userId`, `receiptId`, a hash of `sessionId`), never the source (see [observability](../06-infrastructure/observability.md#what-may-be-logged-pii-policy)).

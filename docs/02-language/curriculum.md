@@ -67,7 +67,7 @@ Python note: "In Python you'd write `for _ in range(N):`, and you'll learn that 
 
 ## Python bridge
 
-Starting in Chapter 2, each lesson includes a short **"In real Python…"** note. After Chapter 10, a **Graduation** screen shows the player's best campaign program converted to plain Python, with a stub library and a link to a free Python tutorial. This is the "it teaches you to code" promise made concrete (Pillar 2, learn by wanting). The conversion is a `toPython()` pretty-printer over the AST (backlog LANG-07, M7; post-MVP if M7 runs long).
+Starting in Chapter 2, each lesson includes a short **"In real Python…"** note. After Chapter 10, a **Graduation** screen shows a campaign program of the player's choice (defaulting to their latest Chapter 10 solution) converted to plain Python, with a stub library and a link to a free Python tutorial. This is the "it teaches you to code" promise made concrete (Pillar 2, learn by wanting). The conversion is a `toPython()` pretty-printer over the AST (backlog LANG-07, M7; post-MVP if M7 runs long).
 
 ## Assessment hooks (for future classroom mode)
 
