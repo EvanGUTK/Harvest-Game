@@ -33,17 +33,28 @@ export type Diagnostic = {
 // ---------- Features & limits ----------
 
 export type Feature =
-  | 'repeat' | 'for' | 'if' | 'while' | 'boolean_ops' | 'variables' | 'arithmetic'
-  | 'def' | 'return' | 'lists' | 'for_in_list' | 'dicts' | 'global';
+  | 'repeat'
+  | 'for'
+  | 'if'
+  | 'while'
+  | 'boolean_ops'
+  | 'variables'
+  | 'arithmetic'
+  | 'def'
+  | 'return'
+  | 'lists'
+  | 'for_in_list'
+  | 'dicts'
+  | 'global';
 
 export type Limits = {
-  maxSourceBytes: number;     // 16_384
-  maxAstNodes: number;        // 5_000
-  maxNesting: number;         // 12
-  maxCallDepth: number;       // 64
-  maxCollectionSize: number;  // 1_024
-  maxHeapCells: number;       // 16_384
-  maxPrintLines: number;      // 200
+  maxSourceBytes: number; // 16_384
+  maxAstNodes: number; // 5_000
+  maxNesting: number; // 12
+  maxCallDepth: number; // 64
+  maxCollectionSize: number; // 1_024
+  maxHeapCells: number; // 16_384
+  maxPrintLines: number; // 200
 };
 
 export const DEFAULT_LIMITS: Limits = {
@@ -90,8 +101,7 @@ export type CompileOptions = {
 export type BytecodeModule = { readonly __brand: 'BytecodeModule'; readonly languageVersion: string };
 
 export type CompileResult =
-  | { ok: true; module: BytecodeModule; warnings: Diagnostic[] }
-  | { ok: false; diagnostics: Diagnostic[] };
+  { ok: true; module: BytecodeModule; warnings: Diagnostic[] } | { ok: false; diagnostics: Diagnostic[] };
 
 // ---------- VM ----------
 

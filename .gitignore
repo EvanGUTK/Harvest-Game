@@ -10,3 +10,5 @@ coverage/
 apps/web/public/assets/
 .DS_Store
 *.log
+.claude/settings.local.json
+.vitest-reports/

@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@harvest/lang": "workspace:*", "@harvest/content": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@harvest/lang": "workspace:*",
+    "@harvest/content": "workspace:*"
+  }
 }

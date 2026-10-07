@@ -28,9 +28,36 @@ export type CropDef = {
 };
 
 export const CROPS: Readonly<Record<CropId, CropDef>> = {
-  radish: { id: 'radish', constant: 'RADISH', seedCost: 2, basePrice: 5, growCycles: 300, witherCycles: 900, needsTilled: false, minMoisture: 1 },
-  corn: { id: 'corn', constant: 'CORN', seedCost: 6, basePrice: 18, growCycles: 900, witherCycles: 1_500, needsTilled: true, minMoisture: 1 },
-  melon: { id: 'melon', constant: 'MELON', seedCost: 15, basePrice: 60, growCycles: 2_400, witherCycles: 2_400, needsTilled: true, minMoisture: 30 },
+  radish: {
+    id: 'radish',
+    constant: 'RADISH',
+    seedCost: 2,
+    basePrice: 5,
+    growCycles: 300,
+    witherCycles: 900,
+    needsTilled: false,
+    minMoisture: 1,
+  },
+  corn: {
+    id: 'corn',
+    constant: 'CORN',
+    seedCost: 6,
+    basePrice: 18,
+    growCycles: 900,
+    witherCycles: 1_500,
+    needsTilled: true,
+    minMoisture: 1,
+  },
+  melon: {
+    id: 'melon',
+    constant: 'MELON',
+    seedCost: 15,
+    basePrice: 60,
+    growCycles: 2_400,
+    witherCycles: 2_400,
+    needsTilled: true,
+    minMoisture: 30,
+  },
 };
 
 // ---------- Builtin cycle costs (on top of the 1-cycle CALL_HOST) ----------
@@ -50,9 +77,22 @@ export const ACTION_COSTS = {
 } as const;
 
 export const SENSOR_COSTS = {
-  pos_x: 1, pos_y: 1, world_size: 1, crop: 2, is_ripe: 2, growth: 2, soil: 2,
-  moisture: 2, water_left: 1, credits: 1, inventory: 1, price: 3, seed_cost: 1,
-  measure: 5, cycles: 1, cycles_left: 1,
+  pos_x: 1,
+  pos_y: 1,
+  world_size: 1,
+  crop: 2,
+  is_ripe: 2,
+  growth: 2,
+  soil: 2,
+  moisture: 2,
+  water_left: 1,
+  credits: 1,
+  inventory: 1,
+  price: 3,
+  seed_cost: 1,
+  measure: 5,
+  cycles: 1,
+  cycles_left: 1,
 } as const;
 
 // ---------- World rules ----------
@@ -87,11 +127,16 @@ export const DIVISIONS = ['Iron', 'Bronze', 'Silver', 'Gold', 'Diamond'] as cons
 export const TIERS = ['III', 'II', 'I'] as const;
 export type Division = (typeof DIVISIONS)[number];
 export type Tier = (typeof TIERS)[number];
+export type Rank = { rankIndex: number; division: Division; tier: Tier; name: `${Division} ${Tier}` };
 
-/** rankIndex 0 = Iron III … 14 = Diamond I */
-export function rankName(rankIndex: number): `${Division} ${Tier}` {
-  const division = DIVISIONS[Math.floor(rankIndex / 3)];
-  const tier = TIERS[rankIndex % 3];
-  if (division === undefined || tier === undefined) throw new RangeError(`rankIndex out of range: ${rankIndex}`);
-  return `${division} ${tier}`;
-}
+/** All 15 ranks in order. rankIndex 0 = Iron III … 14 = Diamond I. */
+export const RANKS: readonly Rank[] = DIVISIONS.flatMap((division, d) =>
+  TIERS.map((tier, t) => ({
+    rankIndex: d * TIERS.length + t,
+    division,
+    tier,
+    name: `${division} ${tier}` as const,
+  })),
+);
+
+export const RP_PER_TIER = 100;

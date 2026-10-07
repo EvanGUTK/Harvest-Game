@@ -2,7 +2,14 @@
 
 A browser game where you program a farm drone in **Sprout**, a small Python-style language. You can play a single-player campaign that teaches programming one concept at a time, or compete in timed multiplayer showdowns where everyone writes code for the same farm and the most profitable, most efficient program wins.
 
-> **Status: architecture and design phase.** This repository currently holds the design docs, architecture decisions and an empty workspace skeleton. The milestone plan says when game code gets built: [`docs/07-roadmap/milestones.md`](docs/07-roadmap/milestones.md).
+> **Status: architecture complete, M0 (engine foundations) ready to start.** This repository holds the design docs, architecture decisions, engineering standards and a typed workspace skeleton. Current state and next steps: [`STATE.md`](STATE.md). Build order: [`docs/07-roadmap/milestones.md`](docs/07-roadmap/milestones.md).
+
+## Working on this repo (humans and Claude)
+
+1. `git clone`, `pnpm install`, `pnpm check`.
+2. Read [`CLAUDE.md`](CLAUDE.md) (roles, hard rules, workflow), then [`STATE.md`](STATE.md) (where we are), then [`ARCHITECTURE.md`](ARCHITECTURE.md) (one-page map).
+3. Standards live in [`docs/09-engineering/`](docs/09-engineering/). CI enforces typecheck, lint (including engine purity rules), formatting and tests on every PR.
+4. Claude Code users: `.claude/` ships project agents (`architect`, `engine-engineer`, `determinism-auditor`, `reviewer`, `docs-keeper`) and skills (`/task`, `/adr`, `/handoff`). Run `/handoff` before ending a session.
 
 ## Read in this order
 
@@ -71,10 +78,16 @@ docs/
 │   └── cost-estimate.md
 ├── 07-roadmap/
 │   ├── milestones.md             M0 … M8 with exit criteria
-│   └── backlog.md                epic → feature → task tree with IDs
+│   ├── backlog.md                epic → feature → task tree with IDs
+│   └── changelog.md              rules / language / protocol version history
 ├── 08-legal-safety/
 │   ├── privacy-and-age.md        COPPA/GDPR, age gate, data deletion
 │   └── moderation.md             names, chat, reports
+├── 09-engineering/
+│   ├── standards.md              coding standards (TS, purity, errors, naming)
+│   ├── testing.md                test levels and rules
+│   ├── git-workflow.md           branches, commits, PRs, cross-machine handoff
+│   └── definition-of-done.md     the checklist every task must pass
 └── adr/                          Architecture Decision Records (one per decision)
 ```
 
@@ -92,4 +105,4 @@ assets/          Source art & audio + MANIFEST (every file has a license row)
 tools/           Build scripts (voxel baking, asset manifest check)
 ```
 
-The workspace uses pnpm (`pnpm install`). There is no runnable game yet.
+`pnpm check` runs typecheck, lint, format check and tests. There is no runnable game yet.

@@ -28,7 +28,7 @@ export type RoomSettings = {
   gridSize: 6 | 8 | 10;
   codingSeconds: 300 | 600 | 900;
   maxPlayers: number; // 2..8
-  modifiers: ReadonlyArray<'rocky' | 'weather' | 'golf'>;
+  modifiers: readonly ('rocky' | 'weather' | 'golf')[];
   botSlots: number;
 };
 
@@ -82,14 +82,27 @@ export type ClientMessage =
 
 export type ServerMessage =
   | Envelope<'hello', { userId: string; serverNow: number; protocol: number; resume?: unknown }>
-  | Envelope<'queue.status', { mode: Mode; searchingSince: number; estimatedWaitSec: number; playersInQueue: number }>
+  | Envelope<
+      'queue.status',
+      { mode: Mode; searchingSince: number; estimatedWaitSec: number; playersInQueue: number }
+    >
   | Envelope<'ready.check', { readyCheckId: string; acceptBy: number; players: number }>
   | Envelope<'ready.update', { accepted: number; total: number }>
-  | Envelope<'ready.failed', { reason: 'you_declined' | 'you_timed_out' | 'other_declined'; requeued: boolean; cooldownUntil?: number }>
+  | Envelope<
+      'ready.failed',
+      {
+        reason: 'you_declined' | 'you_timed_out' | 'other_declined';
+        requeued: boolean;
+        cooldownUntil?: number;
+      }
+    >
   | Envelope<'room.state', RoomState>
   | Envelope<'room.patch', Partial<RoomState>>
   | Envelope<'phase', { phase: Phase; deadline?: number; serverNow: number }>
-  | Envelope<'match.preview', { seed: number; rulesVersion: string; languageVersion: string; grid: number; startCredits: number }>
+  | Envelope<
+      'match.preview',
+      { seed: number; rulesVersion: string; languageVersion: string; grid: number; startCredits: number }
+    >
   | Envelope<'match.events', { chunk: number; of: number; events: SimEvent[] }>
   | Envelope<'match.results', unknown>
   | Envelope<'presence.update', { userId: string; status: string; activity?: string }>
