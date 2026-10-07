@@ -13,24 +13,65 @@ Every stage is a pure function, apart from the VM's own state. No stage ever cal
 ## Public API
 
 ```ts
-// packages/lang/src/index.ts (mirrors the checked-in stub; the stub is the type source of truth)
+// packages/lang/src/index.ts. The checked-in stub is the type source of truth.
+// † marks members agreed in these docs that the stub does not have yet; they are added with LANG-01.
+
+export const LANGUAGE_VERSION: string;       // '0.1.0'
+export const DEFAULT_LIMITS: Limits;         // the numbers in language-spec §Limits
+
 export interface LangEngine {
   compile(source: SourceFiles, opts: CompileOptions): CompileResult;
   createVM(module: BytecodeModule, limits: Limits): VM;
   restoreVM(snapshot: VMSnapshot): VM;
   readonly values: ValueOps;      // the only way hosts build and inspect Values
 }
-//   CompileOptions { languageVersion; lockedFeatures: ReadonlySet<Feature>; hostSignatures: readonly HostSignature[];
-//                    constants: readonly ConstantDef[]; limits: Limits }
-//   CompileResult  { ok: true; module: BytecodeModule; tokenCount; warnings: Diagnostic[] } | { ok: false; diagnostics: Diagnostic[] }
+export function countTokens(source: SourceFiles): number;   // † the one token counter (see scoring-and-judging)
+
+type SourceFile = { name: string; text: string };
+type SourceFiles = readonly SourceFile[];
+
+type CompileOptions = {
+  languageVersion: string;
+  hostSignatures: readonly HostSignature[];   // per player: host costs are baked from these
+  constants: readonly ConstantDef[];
+  lockedFeatures: ReadonlySet<Feature>;       // syntax gating (the gating map in curriculum.md)
+  lockedNames: ReadonlySet<string>;           // † builtin and constant gating by name
+  limits: Limits;
+};
+
+type CompileResult =
+  | { ok: true; module: BytecodeModule; tokenCount: number; warnings: Diagnostic[] }
+  | { ok: false; diagnostics: Diagnostic[] };
+
+type HostSignature = {
+  id: HostId; name: string;
+  params: readonly ValueKind[]; optionalParams?: number;
+  returns: ValueKind | 'any';
+  cost: number;           // extra cycles on top of the 1-cycle CALL_HOST; the default baked into the bytecode
+  touchesWorld: boolean;  // true: the call yields to the scheduler
+  locked?: boolean;       // stub field; the docs gate builtins through lockedNames instead
+};
+type ConstantDef = { name: string; id: number; group: string };   // e.g. { name: 'RADISH', id: 10, group: 'crop' }
+type ValueKind = 'int' | 'bool' | 'none' | 'str' | 'list' | 'dict' | 'function' | 'const';
+
+interface ValueOps {              // Value is opaque outside lang
+  int(n: number): Value;  bool(b: boolean): Value;  str(s: string): Value;  constant(id: number): Value;
+  readonly none: Value;
+  kindOf(v: Value): ValueKind;
+  asInt(v: Value): number;  asBool(v: Value): boolean;  asStr(v: Value): string;  asConstantId(v: Value): number;
+}
 
 interface VM {
   /** Run pure instructions until: a host call needs the world, the program halts,
    *  a runtime error occurs, or `maxCycles` elapse. With `stopAtLine`, also yield at the
-   *  next statement boundary (debugger Step). */
+   *  next statement boundary (debugger Step).
+   *  A pure instruction executes only while `remaining >= 1`. A CALL_HOST yields `host` whenever
+   *  `remaining >= 1`, regardless of `host.cost`; at `remaining = 0` the VM yields `budget`. */
   run(maxCycles: number, opts?: { stopAtLine?: boolean }): VMYield;
-  /** Provide the result of the pending host call and continue. */
-  resume(value: Value): void;
+  /** Provide the result of the pending host call and continue. `cost` is the host cost the
+   *  scheduler actually applied (†); when omitted, `yield.cost` is charged. It is charged to
+   *  the VM cycle counter, so the counter equals `agent.clock` when the VM runs again. */
+  resume(value: Value, cost?: number): void;
   readonly cycles: number;        // cycles consumed by this VM so far
   snapshot(): VMSnapshot;         // serializable, self-contained (debugger timeline, tests)
 }
@@ -38,6 +79,8 @@ interface VM {
 type VMSnapshot = { readonly __brand: 'VMSnapshot'; readonly languageVersion: string };  // opaque outside lang
 
 type VMYield =
+  // atCycle: the clock after argument evaluation and after the 1-cycle CALL_HOST base.
+  // cost: the baked host.cost only; it excludes the base cycle.
   | { kind: 'host'; fn: HostId; args: readonly Value[]; cost: number; atCycle: number }
   | { kind: 'line'; line: number; atCycle: number }        // only with stopAtLine
   | { kind: 'halt'; atCycle: number }
@@ -45,9 +88,13 @@ type VMYield =
   | { kind: 'budget'; atCycle: number };
 ```
 
-`lang` doesn't know what `plant` means. `sim` passes **host signatures** (name, arity, arg types, cost, whether it touches the world) and game constants to `compile`; the compiler bakes each builtin's id, cycle cost and world-touching flag into its `CALL_HOST` operands. A module, and therefore a `VMSnapshot`, is self-contained: `createVM` needs only the module and the limits, and `restoreVM` needs only the snapshot. Per-player cost differences (campaign drone upgrades) are expressed by compiling each player's program with that player's signatures. `sim` handles the `host` yields itself.
+`Feature` (the syntax gating union), `Limits` (with `DEFAULT_LIMITS`), `Diagnostic` and `Span` are as in the stub; their values are owned by [curriculum](../02-language/curriculum.md#feature-gating-map-normative), [language-spec](../02-language/language-spec.md#limits-hard-enforced-by-the-compilervm) and [errors-and-diagnostics](../02-language/errors-and-diagnostics.md).
 
-**Yield clock arithmetic.** `atCycle` in a `host` yield is the VM's cycle counter **after** the 1-cycle `CALL_HOST` base has been charged (the cycle at which the action starts). `cost` is `host.cost` only, without that base cycle, and `sim` sets `agent.clock = atCycle + host.cost`. The scheduler side of this is in [simulation-engine](simulation-engine.md).
+`lang` doesn't know what `plant` means. `sim` passes **host signatures** (name, arity, arg types, cost, whether it touches the world) and game constants to `compile`; the compiler bakes each builtin's id, cycle cost and world-touching flag into its `CALL_HOST` operands. A module, and therefore a `VMSnapshot`, is self-contained: `createVM` needs only the module and the limits, and `restoreVM` needs only the snapshot. Host costs are therefore fixed at compile time, and per-player cost differences (campaign drone upgrades) are expressed by compiling each player's program with that player's own `hostSignatures`. `sim` handles the `host` yields itself.
+
+`HostSignature.cost` is the static default. Some calls cost something else on the day: `wait(n)` costs `n`, `goto` costs `move` cost × wrapped distance, and a failed `plant`, `harvest`, `till`, `water` or `refill` costs 5. `sim` works the real cost out from the arguments and the world and passes it to `resume(value, cost)`; `lang` never sees the farm.
+
+**Yield clock arithmetic.** `atCycle` in a `host` yield is the VM's cycle counter **after** the 1-cycle `CALL_HOST` base has been charged (the cycle at which the action starts). `cost` is `host.cost` only, without that base cycle, and `sim` sets `agent.clock = atCycle + the applied cost`. The scheduler side of this is in [simulation-engine](simulation-engine.md#clock-arithmetic-normative).
 
 ## Lexer
 
@@ -67,7 +114,8 @@ type VMYield =
 ## Checker
 
 - Resolves names (local / global / builtin), checks arity against `hostSignatures`.
-- Rejects `lockedFeatures` (e.g. `while` before Chapter 4) with `E-LOCKED-FEATURE`.
+- Rejects `lockedFeatures` (syntax, e.g. `while` before Chapter 4) and references to `lockedNames` (builtins and constants, e.g. `sell` before Chapter 8) with `E-LOCKED-FEATURE`, which takes precedence over `E-UNKNOWN-NAME`. The `Feature` list is the gating map in [curriculum](../02-language/curriculum.md#feature-gating-map-normative).
+- Multi-file programs: the compiler merges every file into one program (one global namespace) that runs every file except `main.sprout` in tab order, then `main.sprout` last, as in [language-spec](../02-language/language-spec.md#files). The checker reports `E-DUPLICATE-DEF` (the same function name in two files), `E-TOO-MANY-FILES` (over the limit) and the warning `W-USE-BEFORE-DEF` (a top-level call above its `def`).
 - Static warnings: unreachable code, unused variables, and `W-PURE-INFINITE-LOOP`: a `while True` whose body, directly or through any user function it calls (transitively over the static call graph), contains no `break` that exits this loop, `return`, `halt()`, action call or sensor call. The check is transitive on purpose: the recommended starter program's main loop does its work inside `tend()` and `sweep()`, and must not warn.
 
 ## Bytecode
@@ -85,6 +133,13 @@ Stack machine, compact `Int32Array` code with a constant pool.
 | Calls | `CALL argc`, `CALL_HOST id argc`, `RETURN`, `HALT` |
 | Data | `BUILD_LIST n`, `BUILD_DICT n`, `INDEX_GET`, `INDEX_SET`, `CALL_METHOD m argc` |
 | Debug | `LINE n` (0 cycles; marks statement boundaries for step/breakpoints/cost lens) |
+
+**Compilation rules the VM relies on** (the player-facing behaviour is in [language-spec](../02-language/language-spec.md)):
+
+- `ITER_INIT` over a `list` iterates **by index** and re-reads the length on every `ITER_NEXT`, so appended elements are visited and popped ones shrink the loop. Over a `str` it yields 1-unit strings. Over a `dict` it copies the key list when the loop starts ([Iteration](../02-language/language-spec.md#iteration)).
+- `and` / `or` compile to `JUMP_IF_FALSE_KEEP` / `JUMP_IF_TRUE_KEEP`, which leave the deciding operand on the stack, so they return an operand, not a bool. `NOT` always yields a bool. Only `0`, `None`, `""`, `[]`, `{}` and `False` are falsy ([Truthiness](../02-language/language-spec.md#truthiness-and-and--or)).
+- `def` compiles to a function constant plus `STORE_GLOBAL`, executed in program order, so calling a function before its `def` has run is `R-UNBOUND-GLOBAL`.
+- A name assigned anywhere in a `def` body (and not declared `global`) is a local slot for the whole body. Reading an empty slot is `R-UNBOUND-LOCAL` ([Scoping](../02-language/language-spec.md#scoping)).
 
 ### Op cost table (normative, single source of truth)
 
@@ -105,7 +160,7 @@ World time is cycles, so every implementation must charge exactly these costs. [
 | `ITER_INIT` over a `range`, `list` or `str` | 1 |
 | `ITER_NEXT` (every iterable kind) | 1 per call, including the final call that ends the loop |
 | `INDEX_GET`, `INDEX_SET` | 1 |
-| `CALL_HOST` | 1 here (the call). The builtin's `host.cost` is added by `sim`: `agent.clock = atCycle + host.cost`. `halt()` has `host.cost` 0, so it costs 1 in total |
+| `CALL_HOST` | 1 here (the call). The builtin's `host.cost` is added by `sim`: `agent.clock = atCycle + the applied cost` (see [Clock arithmetic](simulation-engine.md#clock-arithmetic-normative)). `halt()` has `host.cost` 0, so it costs 1 in total |
 | `CALL_METHOD` | 1 here (the call), plus the method's cost from the builtin rows below |
 | every other op (`CONST`, `POP`, `DUP`, loads, stores, int `ADD SUB MUL FLOORDIV MOD`, `NEG`, `NOT`, `LT LE GT GE`, `EQ`/`NE` on scalars, jumps, `REPEAT_*`, `CALL`, `RETURN`, `HALT`) | 1 |
 
@@ -122,6 +177,8 @@ World time is cycles, so every implementation must charge exactly these costs. [
 | `print(…)` | 1 + len(printed line) |
 | `wait(n)` | `n` (1 ≤ n ≤ 5,000) |
 | `goto(x, y)` | `move` cost × wrapped Manhattan distance (see standard-library) |
+
+`wait` and `goto` are the rows where the real cost differs from the static `HostSignature.cost` baked into the module: `sim` computes it from the arguments and passes it to `resume(value, cost)` ([Public API](#public-api)). [standard-library](../02-language/standard-library.md) points here for these costs.
 
 **Atomic ops.** An op starts only while at least 1 cycle of budget remains, and is then charged in full, surcharge included. A run can therefore end a few cycles past `maxCycles`; `sim` clamps world time to the budget. A failed op (a limit or type error) charges only its base cycle, because limits are checked before any element is copied.
 
@@ -142,13 +199,15 @@ Costs never depend on wall-clock time or on the host machine. Changing any row c
 |---|---|
 | Compile 16 KB source | < 10 ms |
 | VM throughput (Node, M1-class CPU) | ≥ 30M ops/s |
-| Full 8-player × 30k-cycle showdown | < 100 ms server CPU |
+| Full 8-player × 30k-cycle showdown | < 100 ms server CPU (CI ceiling; expected ≈ 10 ms, since the cycle budget caps it at 240,000 costed instructions; the 2 s worker kill switch is a ~20× backstop) |
 
 These are verified by a benchmark suite in CI (`pnpm bench`). If a regression of more than 20 % appears, the build fails.
 
 ## Testing
 
 - **Lexer/parser:** snapshot tests of AST for the corpus. Fuzz with random token streams to make sure nothing throws, only diagnostics.
-- **Compiler/VM:** a differential test against CPython for the Python-compatible subset. A generator produces random pure programs (ints, lists, loops, functions), runs them in CPython in CI, and compares outputs. This catches semantic drift such as `%` with negatives or chained comparisons.
+- **Compiler/VM:** a differential test against CPython for the Python-compatible subset. A generator produces random pure programs, runs them in CPython in CI, and compares outputs. This catches semantic drift such as `%` with negatives or chained comparisons. The subset is:
+  - **Included:** int arithmetic and comparisons; `bool`; `str` with `+ * == in len`; `list` with `+ * == in len append pop index`; `dict` with `get`, `[]`, `in`, `len` and `for` (no mutation inside the loop); `range`; `if` / `while` / `for` / `def` / `return` / `break` / `continue` / `global`; `print`.
+  - **Excluded:** `repeat`, game constants, host calls, `x += list` aliasing (Sprout builds a new list, Python extends in place), dict mutation during iteration (Sprout allows it, Python raises), and non-ASCII strings. The generator emits ASCII only because Sprout counts UTF-16 units and CPython counts code points.
 - **Limits:** a test per limit that the right error code fires, including `R-OUT-OF-MEMORY` after a dropped-list loop (must pass) and after a kept-list loop (must fire at the same iteration every run).
 - **Costs:** one golden test per row of the op-cost table asserts the exact cycle count, including the boundaries (empty list, match at the first and last element, first-pair difference in `==`, count below 1 in `*`).
