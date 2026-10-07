@@ -8,6 +8,7 @@ import { DEFAULT_LIMITS, type SourceFiles } from '../types';
 import { tokenize } from './lexer';
 import { isCountedToken } from './token';
 
+/** Counts the tokens of every file; see scoring-and-judging.md §Token count for what counts. */
 export function countTokens(source: SourceFiles): number {
   let count = 0;
   for (const file of source) {

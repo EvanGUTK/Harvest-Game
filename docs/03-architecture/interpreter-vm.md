@@ -25,6 +25,11 @@ export interface LangEngine {
   readonly values: ValueOps;      // the only way hosts build and inspect Values
 }
 export function countTokens(source: SourceFiles): number;   // the one token counter (see scoring-and-judging)
+export function tokenize(file: SourceFile, limits?: Limits): LexResult;   // editor highlighting fallback, tests, parser input
+//   LexResult { tokens: readonly Token[]; diagnostics: readonly Diagnostic[] }
+//   Token { kind: TokenKind; text; value?; file; line; col; offset; length }  (kinds: NAME KEYWORD INT STRING OP NEWLINE INDENT DEDENT EOF ERROR)
+export const KEYWORDS: ReadonlySet<string>; export const OPERATORS: readonly string[]; export function isCountedToken(kind): boolean;
+export function utf8Length(text: string): number;   // maxSourceBytes is measured in UTF-8 bytes without TextEncoder
 
 type SourceFile = { name: string; text: string };
 type SourceFiles = readonly SourceFile[];
@@ -102,6 +107,8 @@ type VMYield =
 - Implicit line joining inside `()`, `[]`, `{}`.
 - Every token carries `{line, col, offset, length}` for diagnostics.
 - Error recovery: an unknown character becomes an `ERROR` token. The lexer continues, so the editor can show multiple errors.
+- Division of labour with the parser: the lexer reports only lexical problems (`E-SRC-TOO-BIG`, `E-IDENT-TOO-LONG`, `E-LEADING-ZERO`, `E-INT-TOO-BIG`, `E-UNTERMINATED-STRING`, `E-STRING-TOO-LONG`, `E-BAD-ESCAPE`, `E-UNEXPECTED-CHAR`, and `E-MIXED-INDENT` for a dedent to a level no enclosing block used). An unexpected `INDENT` (a block body indented without a `:` line), `E-BAD-INDENT`, `E-SLASH-DIVISION` (the lexer emits `/` and `/=` as operators), juxtaposed tokens such as `12abc`, `1.5` (`INT . INT`) or `**` (`* *`), and an unclosed bracket at EOF are the parser's to report.
+- Tabs: a tab always counts as 4 columns of indentation, even after spaces (`" \t"` is width 5); the spec's "tab = 4" is literal, not Python's tab stops. Column numbers count UTF-16 code units, so a tab is one column.
 
 ## Parser
 

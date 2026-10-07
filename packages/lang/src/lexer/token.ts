@@ -8,16 +8,16 @@ export type TokenKind =
   'NAME' | 'KEYWORD' | 'INT' | 'STRING' | 'OP' | 'NEWLINE' | 'INDENT' | 'DEDENT' | 'EOF' | 'ERROR';
 
 export type Token = {
-  kind: TokenKind;
-  /** Exact source text (empty for NEWLINE at EOF, INDENT, DEDENT, EOF). */
-  text: string;
-  /** Decoded value: the integer for INT, the unescaped string for STRING. */
+  readonly kind: TokenKind;
+  /** Exact source slice at `offset` (empty for NEWLINE at EOF, DEDENT, EOF). */
+  readonly text: string;
+  /** Decoded value: the integer for INT (0 when E-INT-TOO-BIG was reported), the unescaped string for STRING. */
   value?: number | string;
-  file: string;
-  line: number;
-  col: number;
-  offset: number;
-  length: number;
+  readonly file: string;
+  readonly line: number;
+  readonly col: number;
+  readonly offset: number;
+  readonly length: number;
 };
 
 export const KEYWORDS: ReadonlySet<string> = new Set([

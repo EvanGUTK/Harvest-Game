@@ -13,7 +13,7 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
   - LANG-02.2 Statements: assign, aug-assign, if/elif/else, while, for, repeat, def, return, break, continue, pass, global
   - LANG-02.3 Error recovery to next statement. Diagnostics with fix-its (missing colon, `=` vs `==`, `/`)
   - LANG-02.4 AST node limit, nesting limit
-- **LANG-03 Checker**
+- **LANG-03 Checker** (also owns `Limits.maxFiles` / `E-TOO-MANY-FILES` and the file run order)
   - LANG-03.1 Scope resolution (local/global/builtin), `global` handling
   - LANG-03.2 Host-signature arity/type hints
   - LANG-03.3 Locked-feature gating

@@ -32,6 +32,7 @@ import type { Diagnostic, Limits, SourceFiles } from './types';
 // ---------- Lexer (LANG-01) ----------
 
 export { tokenize, type LexResult } from './lexer/lexer';
+export { utf8Length } from './lexer/utf8';
 export { countTokens } from './lexer/count-tokens';
 export { KEYWORDS, OPERATORS, isCountedToken, type Token, type TokenKind } from './lexer/token';
 

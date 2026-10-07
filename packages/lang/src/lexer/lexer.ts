@@ -1,18 +1,25 @@
 /**
  * Sprout lexer: source text → tokens with Python-style INDENT/DEDENT/NEWLINE.
  * Spec: docs/02-language/language-spec.md §Lexical structure; docs/03-architecture/interpreter-vm.md §Lexer.
- * Invariants: hand-written (no regex), never throws on any input, every token has a span,
- * INDENT and DEDENT are balanced by EOF, and an unknown character becomes an ERROR token so
- * lexing continues and the editor can show every problem at once.
+ * Invariants: hand-written (no regex), never throws on any input, every token's `text` is the exact
+ * source slice at `offset`, tokens never overlap, INDENT/DEDENT appear only at the start of a logical
+ * line and are balanced by EOF, and an unknown character becomes an ERROR token so lexing continues.
+ *
+ * `Lexer` is a class because a tokenisation has lifecycle state (position, indent stack, bracket
+ * depth); it is created and discarded inside `tokenize()` and never shared.
  */
 
 import { DEFAULT_LIMITS, type Diagnostic, type Limits, type SourceFile, type Span } from '../types';
 import { KEYWORDS, OPERATORS, type Token, type TokenKind } from './token';
+import { utf8Length } from './utf8';
 
-export type LexResult = { tokens: Token[]; diagnostics: Diagnostic[] };
+export type LexResult = { readonly tokens: readonly Token[]; readonly diagnostics: readonly Diagnostic[] };
 
+/** language-spec.md: "A tab counts as 4 spaces." */
 const TAB_WIDTH = 4;
-const MAX_SAFE_DIGITS = '9007199254740991';
+/** Decimal digits of Number.MAX_SAFE_INTEGER (9,007,199,254,740,991), compared as strings. */
+const MAX_SAFE_DIGITS = String(Number.MAX_SAFE_INTEGER);
+const MAX_SAFE_PRETTY = '9,007,199,254,740,991';
 
 export function tokenize(file: SourceFile, limits: Limits = DEFAULT_LIMITS): LexResult {
   return new Lexer(file, limits).run();
@@ -40,45 +47,18 @@ class Lexer {
 
   run(): LexResult {
     if (utf8Length(this.src) > this.limits.maxSourceBytes) {
-      this.report('E-SRC-TOO-BIG', this.spanAt(1, 1, 0, 0), {
+      this.report('E-SRC-TOO-BIG', this.spanAt(1, 1, 0), {
         message: `This file is bigger than ${String(this.limits.maxSourceBytes)} bytes.`,
         help: 'Split the program into smaller functions or files.',
       });
       this.emit('EOF', '', 0, 0, 1, 1);
       return { tokens: this.tokens, diagnostics: this.diagnostics };
     }
-
     while (this.pos < this.src.length) {
-      if (this.atLineStart && this.bracketDepth === 0) {
-        this.handleIndentation();
-        continue;
-      }
-      const ch = this.src[this.pos] ?? '';
-      if (ch === ' ' || ch === '\t') {
-        this.advance(1);
-      } else if (ch === '\n' || ch === '\r') {
-        this.handleNewline();
-      } else if (ch === '#') {
-        this.skipComment();
-      } else if (isDigit(ch)) {
-        this.lexNumber();
-      } else if (isIdentStart(ch)) {
-        this.lexName();
-      } else if (ch === '"' || ch === "'") {
-        this.lexString(ch);
-      } else {
-        const op = this.matchOperator();
-        if (op !== null) {
-          this.lexOperator(op);
-        } else {
-          this.lexUnexpected();
-        }
-      }
+      if (this.atLineStart) this.handleIndentation();
+      else this.lexToken();
     }
-
-    if (this.lineHasTokens) {
-      this.emit('NEWLINE', '', this.pos, 0, this.line, this.col);
-    }
+    if (this.lineHasTokens) this.emit('NEWLINE', '', this.pos, 0, this.line, this.col);
     while (this.indentStack.length > 1) {
       this.indentStack.pop();
       this.emit('DEDENT', '', this.pos, 0, this.line, this.col);
@@ -87,9 +67,27 @@ class Lexer {
     return { tokens: this.tokens, diagnostics: this.diagnostics };
   }
 
+  private lexToken(): void {
+    const ch = this.src[this.pos] ?? '';
+    if (ch === ' ' || ch === '\t') this.advance(1);
+    else if (ch === '\n' || ch === '\r') this.handleNewline();
+    else if (ch === '#') this.skipComment();
+    else if (isDigit(ch)) this.lexNumber();
+    else if (isIdentStart(ch)) this.lexName();
+    else if (ch === '"' || ch === "'") this.lexString(ch);
+    else {
+      const op = this.matchOperator();
+      if (op === null) this.lexUnexpected();
+      else this.lexOperator(op);
+    }
+  }
+
   // ---------- line structure ----------
 
-  /** Measures leading whitespace (tab = 4) and emits INDENT/DEDENT. Blank and comment-only lines produce nothing. */
+  /**
+   * Measures leading whitespace (tab = 4) and emits INDENT/DEDENT. Blank and comment-only lines
+   * produce nothing. Only called at the start of a logical line, never inside brackets.
+   */
   private handleIndentation(): void {
     const start = this.pos;
     const startCol = this.col;
@@ -101,10 +99,9 @@ class Lexer {
       else break;
       this.advance(1);
     }
-    const next = this.src[this.pos];
     this.atLineStart = false;
-    if (next === undefined) return;
-    if (next === '\n' || next === '\r') return;
+    const next = this.src[this.pos];
+    if (next === undefined || next === '\n' || next === '\r') return;
     if (next === '#') {
       this.skipComment();
       return;
@@ -114,24 +111,34 @@ class Lexer {
     if (width > top) {
       this.indentStack.push(width);
       this.emit('INDENT', this.src.slice(start, this.pos), start, this.pos - start, this.line, startCol);
-      return;
+    } else if (width < top) {
+      this.dedentTo(width, start, startCol);
     }
-    if (width < top) {
-      let level = top;
-      while (this.indentStack.length > 1 && level > width) {
-        this.indentStack.pop();
-        this.emit('DEDENT', '', this.pos, 0, this.line, this.col);
-        level = this.indentStack[this.indentStack.length - 1] ?? 0;
-      }
-      if (level !== width) {
-        const span = this.spanAt(this.line, startCol, this.pos - start);
-        this.report('E-MIXED-INDENT', span, {
-          message: 'These lines are indented by different amounts. Pick one (4 spaces is standard).',
-          help: `This line is indented by ${String(width)} spaces, but the block around it uses ${String(level)}.`,
-          fix: { label: `Indent by ${String(level)} spaces`, edits: [{ span, newText: ' '.repeat(level) }] },
-        });
-      }
+  }
+
+  /** Pops to `width`; a width no enclosing block used is E-MIXED-INDENT, fixed to the enclosing level. */
+  private dedentTo(width: number, start: number, startCol: number): void {
+    let level = this.indentStack[this.indentStack.length - 1] ?? 0;
+    while (this.indentStack.length > 1 && level > width) {
+      this.indentStack.pop();
+      this.emit('DEDENT', '', this.pos, 0, this.line, this.col);
+      level = this.indentStack[this.indentStack.length - 1] ?? 0;
     }
+    if (level === width) return;
+    const span = this.spanAt(this.line, startCol, this.pos - start);
+    this.report('E-MIXED-INDENT', span, {
+      message: 'These lines are indented by different amounts. Pick one (4 spaces is standard).',
+      help:
+        level === 0
+          ? `This line is indented by ${String(width)}, but it is not inside any block.`
+          : `This line is indented by ${String(width)}, but the block around it uses ${String(level)}.`,
+      fix: {
+        label: level === 0 ? 'Start this line at the left edge' : `Indent by ${String(level)} spaces`,
+        edits: [{ span, newText: ' '.repeat(level) }],
+      },
+    });
+    // Treat the odd width as its own level so following lines at that width don't cascade errors.
+    this.indentStack.push(width);
   }
 
   private handleNewline(): void {
@@ -140,13 +147,15 @@ class Lexer {
     const first = this.src[this.pos];
     this.pos += 1;
     if (first === '\r' && this.src[this.pos] === '\n') this.pos += 1;
-    if (this.bracketDepth === 0 && this.lineHasTokens) {
-      this.emit('NEWLINE', this.src.slice(start, this.pos), start, this.pos - start, this.line, startCol);
+    if (this.bracketDepth === 0) {
+      if (this.lineHasTokens) {
+        this.emit('NEWLINE', this.src.slice(start, this.pos), start, this.pos - start, this.line, startCol);
+      }
+      this.atLineStart = true;
+      this.lineHasTokens = false;
     }
     this.line += 1;
     this.col = 1;
-    this.atLineStart = true;
-    this.lineHasTokens = false;
   }
 
   private skipComment(): void {
@@ -164,37 +173,32 @@ class Lexer {
     const startCol = this.col;
     for (;;) {
       const ch = this.src[this.pos] ?? '';
-      if (isDigit(ch)) {
-        this.advance(1);
-      } else if (ch === '_' && isDigit(this.src[this.pos + 1] ?? '')) {
-        this.advance(1);
-      } else {
-        break;
-      }
+      if (isDigit(ch) || (ch === '_' && isDigit(this.src[this.pos + 1] ?? ''))) this.advance(1);
+      else break;
     }
     const text = this.src.slice(start, this.pos);
     const digits = removeUnderscores(text);
     const stripped = stripLeadingZeros(digits);
     const span = this.spanAt(this.line, startCol, text.length);
-
     if (digits.length > 1 && digits.startsWith('0')) {
       this.report('E-LEADING-ZERO', span, {
         message: "Whole numbers can't start with a zero.",
         fix: { label: 'Remove the leading zeros', edits: [{ span, newText: stripped }] },
       });
     }
-    let value = 0;
-    if (
+    this.emit('INT', text, start, text.length, this.line, startCol, this.intValue(stripped, span));
+  }
+
+  /** 0 when the literal is out of range; the E-INT-TOO-BIG diagnostic makes the compile fail anyway. */
+  private intValue(stripped: string, span: Span): number {
+    const tooBig =
       stripped.length > MAX_SAFE_DIGITS.length ||
-      (stripped.length === MAX_SAFE_DIGITS.length && stripped > MAX_SAFE_DIGITS)
-    ) {
-      this.report('E-INT-TOO-BIG', span, {
-        message: 'That number is too big. Whole numbers go up to 9,007,199,254,740,991.',
-      });
-    } else {
-      value = Number(stripped);
-    }
-    this.emit('INT', text, start, text.length, this.line, startCol, value);
+      (stripped.length === MAX_SAFE_DIGITS.length && stripped > MAX_SAFE_DIGITS);
+    if (!tooBig) return Number(stripped);
+    this.report('E-INT-TOO-BIG', span, {
+      message: `That number is too big. Whole numbers go up to ${MAX_SAFE_PRETTY}.`,
+    });
+    return 0;
   }
 
   private lexName(): void {
@@ -218,15 +222,7 @@ class Lexer {
     for (;;) {
       const ch = this.src[this.pos];
       if (ch === undefined || ch === '\n' || ch === '\r') {
-        const text = this.src.slice(start, this.pos);
-        this.report('E-UNTERMINATED-STRING', this.spanAt(this.line, startCol, text.length), {
-          message: 'This text is missing its closing quote.',
-          fix: {
-            label: `Add the closing ${quote}`,
-            edits: [{ span: this.spanAt(this.line, this.col, 0), newText: quote }],
-          },
-        });
-        this.emit('ERROR', text, start, text.length, this.line, startCol);
+        this.unterminatedString(start, startCol, quote);
         return;
       }
       if (ch === quote) {
@@ -234,24 +230,11 @@ class Lexer {
         break;
       }
       if (ch === '\\') {
-        const escaped = this.src[this.pos + 1];
-        const decoded = decodeEscape(escaped);
-        if (decoded === null) {
-          const escapeText =
-            escaped === undefined || escaped === '\n' || escaped === '\r' ? '\\' : `\\${escaped}`;
-          this.report('E-BAD-ESCAPE', this.spanAt(this.line, this.col, escapeText.length), {
-            message: `\`${escapeText}\` isn't a known escape. You can use \\\\, \\', \\", \\n and \\t.`,
-          });
-          value += escapeText;
-          this.advance(escapeText.length);
-        } else {
-          value += decoded;
-          this.advance(2);
-        }
-        continue;
+        value += this.readEscape();
+      } else {
+        value += ch;
+        this.advance(1);
       }
-      value += ch;
-      this.advance(1);
     }
     const text = this.src.slice(start, this.pos);
     if (value.length > this.limits.maxStringLength) {
@@ -262,10 +245,40 @@ class Lexer {
     this.emit('STRING', text, start, text.length, this.line, startCol, value);
   }
 
-  private matchOperator(): string | null {
-    for (const op of OPERATORS) {
-      if (this.src.startsWith(op, this.pos)) return op;
+  /** At a backslash. Advances past the escape and returns its decoded text; unknown escapes are kept literally. */
+  private readEscape(): string {
+    const nextCp = this.src.codePointAt(this.pos + 1);
+    const next = nextCp === undefined ? undefined : String.fromCodePoint(nextCp);
+    if (next === undefined || next === '\n' || next === '\r') {
+      // A trailing backslash: the unterminated-string diagnostic that follows is enough.
+      this.advance(1);
+      return '\\';
     }
+    const decoded = decodeEscape(next);
+    const escapeText = `\\${next}`;
+    if (decoded === null) {
+      this.report('E-BAD-ESCAPE', this.spanAt(this.line, this.col, escapeText.length), {
+        message: `\`${escapeText}\` isn't a known escape. You can use \\\\, \\', \\", \\n and \\t.`,
+      });
+    }
+    this.advance(escapeText.length);
+    return decoded ?? escapeText;
+  }
+
+  private unterminatedString(start: number, startCol: number, quote: string): void {
+    const text = this.src.slice(start, this.pos);
+    this.report('E-UNTERMINATED-STRING', this.spanAt(this.line, startCol, text.length), {
+      message: 'This text is missing its closing quote.',
+      fix: {
+        label: `Add the closing ${quote}`,
+        edits: [{ span: this.spanAt(this.line, this.col, 0), newText: quote }],
+      },
+    });
+    this.emit('ERROR', text, start, text.length, this.line, startCol);
+  }
+
+  private matchOperator(): string | null {
+    for (const op of OPERATORS) if (this.src.startsWith(op, this.pos)) return op;
     return null;
   }
 
@@ -277,8 +290,7 @@ class Lexer {
   }
 
   private lexUnexpected(): void {
-    const cp = this.src.codePointAt(this.pos) ?? 0;
-    const text = String.fromCodePoint(cp);
+    const text = String.fromCodePoint(this.src.codePointAt(this.pos) ?? 0);
     this.report('E-UNEXPECTED-CHAR', this.spanAt(this.line, this.col, text.length), {
       message: `I don't know what to do with \`${text}\`. Sprout doesn't use that character.`,
     });
@@ -309,8 +321,9 @@ class Lexer {
     this.tokens.push(token);
   }
 
-  private spanAt(line: number, col: number, length: number, endLine = line): Span {
-    return { file: this.name, line, col, endLine, endCol: col + length };
+  /** Every lexical span is single-line: strings cannot span lines and no other token contains a newline. */
+  private spanAt(line: number, col: number, length: number): Span {
+    return { file: this.name, line, col, endLine: line, endCol: col + length };
   }
 
   private report(
@@ -328,7 +341,7 @@ class Lexer {
 // ---------- character classes (ASCII only; anything else is E-UNEXPECTED-CHAR outside strings) ----------
 
 function isDigit(ch: string): boolean {
-  return ch >= '0' && ch <= '9' && ch.length === 1;
+  return ch.length === 1 && ch >= '0' && ch <= '9';
 }
 
 function isIdentStart(ch: string): boolean {
@@ -339,7 +352,7 @@ function isIdentChar(ch: string): boolean {
   return isIdentStart(ch) || isDigit(ch);
 }
 
-function decodeEscape(ch: string | undefined): string | null {
+function decodeEscape(ch: string): string | null {
   switch (ch) {
     case 'n':
       return '\n';
@@ -351,7 +364,6 @@ function decodeEscape(ch: string | undefined): string | null {
       return "'";
     case '"':
       return '"';
-    case undefined:
     default:
       return null;
   }
@@ -367,17 +379,4 @@ function stripLeadingZeros(digits: string): string {
   let i = 0;
   while (i < digits.length - 1 && digits[i] === '0') i += 1;
   return digits.slice(i);
-}
-
-/** UTF-8 byte length without TextEncoder, so the lexer stays free of host globals. */
-export function utf8Length(text: string): number {
-  let bytes = 0;
-  for (const ch of text) {
-    const cp = ch.codePointAt(0) ?? 0;
-    if (cp < 0x80) bytes += 1;
-    else if (cp < 0x800) bytes += 2;
-    else if (cp < 0x10000) bytes += 3;
-    else bytes += 4;
-  }
-  return bytes;
 }

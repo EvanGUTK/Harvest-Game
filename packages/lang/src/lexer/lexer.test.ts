@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { DEFAULT_LIMITS } from '../types';
 import { countTokens } from './count-tokens';
-import { tokenize, utf8Length } from './lexer';
+import { tokenize } from './lexer';
+import { utf8Length } from './utf8';
 import type { TokenKind } from './token';
 
 const lex = (text: string, limits = DEFAULT_LIMITS) => tokenize({ name: 'main.sprout', text }, limits);
@@ -138,6 +139,11 @@ describe('tokenize: strings', () => {
   it('rejects literals longer than 256 characters (E-STRING-TOO-LONG) by decoded length', () => {
     expect(codes(`"${'a'.repeat(256)}"`)).toEqual([]);
     expect(codes(`"${'a'.repeat(257)}"`)).toEqual(['E-STRING-TOO-LONG']);
+    // 400 source characters decode to 200: no error
+    expect(codes(`"${'\\n'.repeat(200)}"`)).toEqual([]);
+    // UTF-16 code units: an astral character counts 2
+    expect(codes(`"${'😀'.repeat(128)}"`)).toEqual([]);
+    expect(codes(`"${'😀'.repeat(129)}"`)).toEqual(['E-STRING-TOO-LONG']);
   });
 });
 
@@ -296,32 +302,243 @@ describe('countTokens (scoring-and-judging.md §Token count)', () => {
   });
 });
 
+describe('tokenize: review cases (LANG-01 reviewer)', () => {
+  it('does not treat the rest of a line as indentation after a bracket closes mid-line', () => {
+    expect(kinds('x = f(1,\n2) + 3')).toEqual([
+      'NAME',
+      'OP',
+      'NAME',
+      'OP',
+      'INT',
+      'OP',
+      'INT',
+      'OP',
+      'OP',
+      'INT',
+      'NEWLINE',
+      'EOF',
+    ]);
+    const src = 'if x:\n    y = [\n1,\n2] + z\n    w';
+    expect(codes(src)).toEqual([]);
+    expect(kinds(src).filter((k) => k === 'INDENT' || k === 'DEDENT')).toEqual(['INDENT', 'DEDENT']);
+  });
+
+  it('places INDENT and DEDENT only at the start of a logical line', () => {
+    const { tokens } = lex('if x:\n    y = (1,\n  2)\n    z\nw');
+    tokens.forEach((t, i) => {
+      if (t.kind === 'INDENT' || t.kind === 'DEDENT') {
+        const prev = tokens[i - 1]?.kind;
+        expect(prev === undefined || prev === 'NEWLINE' || prev === 'INDENT' || prev === 'DEDENT').toBe(true);
+      }
+    });
+  });
+
+  it('checks maxSourceBytes at the boundary, in UTF-8 bytes', () => {
+    const limits = { ...DEFAULT_LIMITS, maxSourceBytes: 16 };
+    expect(lex('x'.repeat(16), limits).diagnostics).toHaveLength(0);
+    expect(codes('x'.repeat(17))).toEqual([]);
+    expect(lex('x'.repeat(17), limits).diagnostics.map((d) => d.code)).toEqual(['E-SRC-TOO-BIG']);
+    expect(lex('€'.repeat(5) + 'x', limits).diagnostics).toHaveLength(0); // 15 + 1 = 16 bytes
+    expect(lex('€'.repeat(5) + 'xx', limits).diagnostics.map((d) => d.code)).toEqual(['E-SRC-TOO-BIG']);
+    expect(countTokens([{ name: 'main.sprout', text: 'x '.repeat(10_000) }])).toBe(0);
+  });
+
+  it('fixes E-MIXED-INDENT to the enclosing level, including a non-zero one and with tabs', () => {
+    const { diagnostics } = lex('a:\n    b:\n        c\n      d');
+    expect(diagnostics.map((d) => d.code)).toEqual(['E-MIXED-INDENT']);
+    expect(diagnostics[0]?.fix?.edits[0]?.newText).toBe('    ');
+    expect(codes('a:\n\tb\n  c')).toEqual(['E-MIXED-INDENT']);
+  });
+
+  it('does not cascade E-MIXED-INDENT onto following lines at the same odd width', () => {
+    expect(codes('if x:\n    y\n  z\n  w\nv')).toEqual(['E-MIXED-INDENT']);
+  });
+
+  it('emits a silent INDENT for an over-indented line (the parser reports E-BAD-INDENT)', () => {
+    expect(kinds('if x:\n  a\n    b')).toContain('INDENT');
+    expect(codes('if x:\n  a\n    b')).toEqual([]);
+  });
+
+  it('lexes every operator in the table and rejects a lone `!`', () => {
+    const ops = [
+      '//=',
+      '//',
+      '==',
+      '!=',
+      '<=',
+      '>=',
+      '+=',
+      '-=',
+      '*=',
+      '%=',
+      '/=',
+      '+',
+      '-',
+      '*',
+      '%',
+      '/',
+      '=',
+      '<',
+      '>',
+      '(',
+      ')',
+      '[',
+      ']',
+      '{',
+      '}',
+      ',',
+      ':',
+      '.',
+    ];
+    for (const op of ops) {
+      const [t] = lex(`a ${op} b`).tokens.filter((x) => x.kind === 'OP');
+      expect(t?.text).toBe(op);
+    }
+    expect(codes('a ! b')).toEqual(['E-UNEXPECTED-CHAR']);
+  });
+
+  it('pins juxtaposed forms the parser must reject: `**` is `* *`, `1.5` is `INT . INT`, `12abc` is `INT NAME`', () => {
+    expect(texts('a ** b')).toEqual(['a', '*', '*', 'b']);
+    expect(texts('1.5')).toEqual(['1', '.', '5']);
+    expect(texts('12abc')).toEqual(['12', 'abc']);
+  });
+
+  it('tracks line and col across \\r\\n and lone \\r, and a NEWLINE token covers its line ending', () => {
+    const { tokens } = lex('a\r\nb\rc');
+    expect(tokens.find((t) => t.text === 'b')).toMatchObject({ line: 2, col: 1, offset: 3 });
+    expect(tokens.find((t) => t.text === 'c')).toMatchObject({ line: 3, col: 1, offset: 5 });
+    expect(tokens[1]).toMatchObject({ kind: 'NEWLINE', text: '\r\n', length: 2 });
+  });
+
+  it('counts a tab as one column but four indentation spaces, and a space before a tab as width 5', () => {
+    expect(lex('\tx').tokens.find((t) => t.text === 'x')).toMatchObject({ col: 2 });
+    expect(kinds('if a:\n \tb\n     c')).not.toContain('ERROR');
+    expect(codes('if a:\n \tb\n     c')).toEqual([]);
+  });
+
+  it('spans a bad escape with an astral character over the whole code point', () => {
+    const { diagnostics, tokens } = lex('"\\😀"');
+    expect(diagnostics[0]).toMatchObject({ code: 'E-BAD-ESCAPE', range: { col: 2, endCol: 5 } });
+    expect(tokens[0]).toMatchObject({ kind: 'STRING', value: '\\😀' });
+  });
+
+  it('reports only E-UNTERMINATED-STRING for a string ending in a backslash', () => {
+    expect(codes('"abc\\')).toEqual(['E-UNTERMINATED-STRING']);
+    expect(codes('"abc\\\nx')).toEqual(['E-UNTERMINATED-STRING']);
+  });
+
+  it('drops underscores in the leading-zero fix-it', () => {
+    expect(lex('007_000').diagnostics[0]?.fix?.edits[0]?.newText).toBe('7000');
+  });
+
+  it('lets an unclosed bracket swallow the rest of the file without NEWLINE or INDENT (the parser reports it)', () => {
+    expect(kinds('f(1,\n\nz = 1')).toEqual([
+      'NAME',
+      'OP',
+      'INT',
+      'OP',
+      'NAME',
+      'OP',
+      'INT',
+      'NEWLINE',
+      'EOF',
+    ]);
+  });
+});
+
 describe('tokenize: properties', () => {
-  it('never throws, always ends with EOF, and balances INDENT/DEDENT on any input', () => {
+  const alphabet = fc.constantFrom(
+    ' ',
+    ' ',
+    '\t',
+    '\n',
+    '\r\n',
+    '\r',
+    '(',
+    ')',
+    '[',
+    ']',
+    '{',
+    '}',
+    '"',
+    "'",
+    '\\',
+    '#',
+    'a',
+    'if',
+    '1',
+    '0',
+    '_',
+    ':',
+    '/',
+    '//',
+    '=',
+    '==',
+    '€',
+    '😀',
+    'x = 1',
+    'if a:\n    b',
+  );
+  const source = fc.array(alphabet, { maxLength: 40 }).map((parts) => parts.join(''));
+
+  const lineCol = (text: string, offset: number): { line: number; col: number } => {
+    let line = 1;
+    let col = 1;
+    for (let i = 0; i < offset; i += 1) {
+      const ch = text[i];
+      if (ch === '\n' || (ch === '\r' && text[i + 1] !== '\n')) {
+        line += 1;
+        col = 1;
+      } else if (ch !== '\r') {
+        col += 1;
+      }
+    }
+    return { line, col };
+  };
+
+  it('never throws, ends with EOF and balances INDENT/DEDENT on any input', () => {
     fc.assert(
-      fc.property(fc.string({ unit: 'grapheme' }), (text) => {
+      fc.property(source, (text) => {
         const { tokens } = lex(text);
         expect(tokens[tokens.length - 1]?.kind).toBe('EOF');
-        const indents = tokens.filter((t) => t.kind === 'INDENT').length;
-        const dedents = tokens.filter((t) => t.kind === 'DEDENT').length;
-        expect(indents).toBe(dedents);
+        expect(tokens.filter((t) => t.kind === 'INDENT')).toHaveLength(
+          tokens.filter((t) => t.kind === 'DEDENT').length,
+        );
       }),
-      { numRuns: 300 },
+      { numRuns: 500 },
     );
   });
 
-  it('produces tokens in non-decreasing offset order that lie within the source', () => {
+  it('every token text is the exact source slice, tokens never overlap, and line/col match the offset', () => {
     fc.assert(
-      fc.property(fc.string(), (text) => {
+      fc.property(source, (text) => {
         const { tokens } = lex(text);
-        let last = 0;
+        let end = 0;
         for (const t of tokens) {
-          expect(t.offset).toBeGreaterThanOrEqual(last);
-          expect(t.offset + t.length).toBeLessThanOrEqual(text.length);
-          last = t.offset;
+          expect(t.offset).toBeGreaterThanOrEqual(end);
+          expect(text.slice(t.offset, t.offset + t.length)).toBe(t.text);
+          expect(lineCol(text, t.offset)).toEqual({ line: t.line, col: t.col });
+          end = t.offset + t.length;
         }
+        expect(end).toBeLessThanOrEqual(text.length);
       }),
-      { numRuns: 300 },
+      { numRuns: 500 },
+    );
+  });
+
+  it('INDENT and DEDENT only ever follow NEWLINE, INDENT, DEDENT or the start of the file', () => {
+    fc.assert(
+      fc.property(source, (text) => {
+        const { tokens } = lex(text);
+        tokens.forEach((t, i) => {
+          if (t.kind !== 'INDENT' && t.kind !== 'DEDENT') return;
+          const prev = tokens[i - 1]?.kind;
+          expect(prev === undefined || prev === 'NEWLINE' || prev === 'INDENT' || prev === 'DEDENT').toBe(
+            true,
+          );
+        });
+      }),
+      { numRuns: 500 },
     );
   });
 });

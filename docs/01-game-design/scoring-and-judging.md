@@ -39,7 +39,7 @@ Applied to players with equal `score`.
 
 ### Token count
 
-`programTokens` is the number of lexer tokens over all files of the locked program, excluding `NEWLINE`, `INDENT`, `DEDENT`, `EOF`, comments and `ERROR` tokens. A number literal (`1_000`) or a string literal is one token. The idle program has 0 tokens. `lang` exports a single `countTokens(source: SourceFiles): number`, and `sim`, the server and the editor all call it, so every place that shows or compares a count agrees.
+`programTokens` is the number of lexer tokens over all files of the locked program, excluding `NEWLINE`, `INDENT`, `DEDENT`, `EOF`, comments and `ERROR` tokens. A number literal (`1_000`) or a string literal is one token. The idle program has 0 tokens, and so does a file over the source-size limit (it never lexes). `lang` exports a single `countTokens(source: SourceFiles): number`, and `sim`, the server and the editor all call it, so every place that shows or compares a count agrees.
 
 ## Awards (cosmetic badges, shown in results)
 
