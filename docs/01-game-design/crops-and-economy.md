@@ -2,13 +2,13 @@
 
 ## Crop roster
 
-All values are provisional and get tuned in M0/M1 with the balance harness. "Profit/kCycle" is a rough ideal-play number used to sanity-check that no crop dominates.
+All values are provisional and get tuned in M0/M1 with the balance harness (`[SIM-BAL]`). The harness reports an ideal-play profit per 1,000 drone-cycles for each crop, at base price and at the market floor, and is used to sanity-check that no crop dominates. Open concerns it must settle before these numbers are locked: at the 40 % floor a radish sells for ₵2, exactly its seed cost (margin ₵0), and melon looks like the best crop per drone-cycle at every price level.
 
 ### v1 (MVP: 3 crops)
 
 | Crop | Seed cost | Base price | Grow cycles | Wither after | Needs | Design role |
 |---|---|---|---|---|---|---|
-| **Radish** | ₵2 | ₵5 | 300 | 900 | — | Fast and cheap. Teaches the basic plant → harvest loop. |
+| **Radish** | ₵2 | ₵5 | 300 | 3,000 | — | Fast and cheap. Teaches the basic plant → harvest loop. |
 | **Corn** | ₵6 | ₵18 | 900 | 1,500 | tilled soil | Mid tier. Teaches `till()` and conditionals. |
 | **Melon** | ₵15 | ₵60 | 2,400 | 2,400 | tilled soil, moisture ≥ 30 to grow | High value, slow. Teaches watering and planning. |
 
@@ -47,19 +47,31 @@ Every player starts the showdown with **₵100** and an empty silo. Seeds are bo
 All players sell into one market. Prices react to *everyone's* sales:
 
 ```
-price(crop) = base × max(40%, 100% − 2% × pressure(crop))         // integer basis points
-pressure(crop) += units sold (by anyone)
-every 500 cycles: pressure(crop) = pressure(crop) × 80 / 100     // recovers over time
+priceBp(crop) = max(MARKET.priceFloorBp, 10_000 − MARKET.pressureStepBp × pressure(crop))
+price(crop)   = floorDiv(base(crop) × priceBp(crop), 10_000)     // what the price() sensor returns
+                                                                 // defaults: floor 4_000 bp (40 %), step 200 bp (2 % per unit)
+sell(crop, n):                                // n must be an int, else R-TYPE
+  k = min(n, inventory[crop])
+  if k ≤ 0: return 0                          // no event, pressure unchanged, cost still 10 (plus the 1-cycle call)
+  gained = k × price(crop)                    // one price for the whole lot, computed BEFORE the sale
+  inventory[crop] −= k;  credits += gained;  pressure(crop) += k   // pressure counts units sold by anyone
+  emit { t, slot, k:'sell', crop, n: k, price, credits };  return gained
+
+every 500 cycles (global multiples of 500): pressure(crop) = floorDiv(pressure(crop) × 80, 100)   // recovers over time
 ```
 
 - If all eight players spam radishes, radish prices collapse, and the player who planted melons wins.
+- **Lot pricing.** A `sell` call prices its whole lot at the pre-sale price and only then adds the units to the pressure, so the *next* sale sees the lower price. Many small `sell` calls walk down the curve; one large call does not. `[SIM-BAL]` the harness checks that "hoard and dump once per window" does not beat steady selling.
+- **Scale.** `[SIM-BAL]` At 2 % per unit, a pressure of 30 units already puts the price on the 40 % floor, and a lobby of busy radish farms can keep radish there for the whole match. The harness reports the mean realised sale price against base for an 8-player all-radish lobby; the step and floor (and the radish price) are tuned against that result.
 - `price(crop)` is a sensor (3 cycles), so programs *can* react to market conditions, e.g. "sell corn only when price ≥ 15".
 - This makes rivals matter **without sabotage**. Nobody can touch your farm, but everyone shares the market.
 - In the browser test run, the market is simulated with zero rival pressure. The coding-phase UI says so: *"Test runs assume no rivals. Prices in the real match will move."*
 
 ### End of match
 
-- Unsold silo contents are liquidated at **50 %** of the final market price. Selling at the right time is part of the skill.
+- Unsold silo contents are liquidated at **50 %** of the market price at the end of the match. Selling at the right time is part of the skill.
+- **Liquidation (normative).** At `t = budget`, after `world.advanceTo(budget)` and after every agent has finished, for each slot in ascending order and each crop in `CROPS` order:
+  `credits += floorDiv(inventory[crop] × price(crop) × MARKET.liquidationBp, 10_000)`, using the prices as they stand at `budget`. The floor is taken once per crop on the total, not per unit (10 radishes at ₵5 give 25, not 20). Liquidation never changes `pressure`, so every player liquidates at the same prices regardless of slot order. It emits no event and does not count as a credits change for tiebreak #1 (see [scoring-and-judging](scoring-and-judging.md)).
 - Crops still in the ground are worth 0.
 - **Score = final credits.** See [scoring-and-judging](scoring-and-judging.md).
 

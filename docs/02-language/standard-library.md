@@ -1,6 +1,6 @@
 # Sprout Standard Library
 
-Costs are in cycles and are **in addition to** the 1-cycle `CALL_HOST` instruction that reaches every builtin (so `halt()` is cost 0 plus that 1-cycle call). The values are provisional and tuned in the balance harness. Campaign availability shows the chapter or skill-tree node that unlocks each builtin.
+Costs are in cycles and are **in addition to** the 1-cycle `CALL_HOST` instruction that reaches every builtin (so `halt()` has cost 0, plus the 1-cycle call). The values are provisional and tuned in the balance harness. Campaign availability shows the chapter or skill-tree node that unlocks each builtin.
 
 In multiplayer, everything is unlocked, with two exceptions:
 
@@ -125,8 +125,6 @@ Single-player only in v1 (see above); the rules below are what the campaign's Ch
 |---|---|
 | Global farm scan (`get_all_tiles()`) | It would remove the core spatial puzzle. The drone only senses the tile it's on. |
 | Time-of-day or wall-clock | It breaks determinism. |
-
-(`goto(x, y)` used to be on this list. It *is* provided: the campaign makes you write it yourself in Ch 5, and it then unlocks as a native builtin, available in multiplayer. See Actions.)
 
 ## Example: a complete starter showdown program
 

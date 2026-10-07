@@ -2,9 +2,9 @@
 
 ## Branches
 
-- `main`: always green, always deployable to staging. Protected: PR required, CI must pass.
+- `main`: always green, always deployable to staging. Protected on GitHub: a PR is required, the `check` status check from `ci.yml` must pass, and force-push and deletion are blocked. These are repository settings the owner switches on (they are not created by any file in the repo), together with Dependabot alerts and security updates and secret scanning; see the owner checklist in [connections](../06-infrastructure/connections.md) (backlog item OPS-00). The `production` GitHub Environment used by `release.yml` is described in [environments-and-ci](../06-infrastructure/environments-and-ci.md).
 - Work branches: `<type>/<ID>-<slug>`, e.g. `feat/LANG-01-lexer`, `docs/adr-0008-redis`. Claude cloud sessions use their assigned `claude/*` branch and open a PR from it.
-- Short-lived. Merge within days, not weeks. Rebase onto `main` before opening the PR; after that, merge commits only (never rewrite a pushed shared branch).
+- Short-lived. Merge within days, not weeks. Bring a branch up to date with `git merge origin/main`; **never rebase**. Branches are pushed at every handoff, and force-push is denied in `.claude/settings.json`, so a rebase would be both a rewrite of pushed history and impossible to push. Merge commits keep the per-task history (see Pull requests).
 
 ## Commits
 
