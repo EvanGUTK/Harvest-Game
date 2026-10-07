@@ -19,6 +19,7 @@ export const LANGUAGE_VERSION = '0.1.0';
 // ---------- Source & diagnostics ----------
 
 export type SourceFile = { name: string; text: string };
+/** One file must be named `main.sprout`; it runs last, after every other file in tab order. */
 export type SourceFiles = readonly SourceFile[];
 
 export type Span = { file: string; line: number; col: number; endLine: number; endCol: number };
@@ -42,6 +43,7 @@ export type Feature =
   | 'repeat'
   | 'for'
   | 'if'
+  | 'comparison'
   | 'while'
   | 'boolean_ops'
   | 'variables'
@@ -63,6 +65,7 @@ export type Limits = {
   maxPrintLines: number; // 200
   maxIdentifierLength: number; // 32
   maxStringLength: number; // 256
+  maxFiles: number; // 10 (campaign) / 1 (showdown v1)
 };
 
 export const DEFAULT_LIMITS: Limits = {
@@ -75,6 +78,7 @@ export const DEFAULT_LIMITS: Limits = {
   maxPrintLines: 200,
   maxIdentifierLength: 32,
   maxStringLength: 256,
+  maxFiles: 10,
 };
 
 // ---------- Host functions and constants (injected by @harvest/sim) ----------
@@ -93,8 +97,8 @@ export type HostSignature = {
   cost: number;
   /** True if the call reads or mutates the world (forces a scheduler yield). */
   touchesWorld: boolean;
-  /** Campaign gating: a locked builtin produces E-LOCKED-FEATURE when referenced. */
-  locked?: boolean;
+  /** Campaign gating: chapter number or skill-node id that unlocks this builtin (editor 🔒 text). */
+  unlock?: string;
 };
 
 /** A game constant visible to programs, e.g. { name: 'RADISH', id: 10, group: 'crop' }. */
@@ -125,10 +129,17 @@ export type CompileOptions = {
   constants: readonly ConstantDef[];
   /** Campaign gating: language features not yet unlocked produce E-LOCKED-FEATURE. */
   lockedFeatures: ReadonlySet<Feature>;
+  /** Campaign gating: builtins and constants not yet unlocked. E-LOCKED-FEATURE wins over E-UNKNOWN-NAME. */
+  lockedNames: ReadonlySet<string>;
   limits: Limits;
 };
 
-export type BytecodeModule = { readonly __brand: 'BytecodeModule'; readonly languageVersion: string };
+export type BytecodeModule = {
+  readonly __brand: 'BytecodeModule';
+  readonly languageVersion: string;
+  /** countTokens() of the source this module was compiled from (tiebreak #3, Clean Code award). */
+  readonly tokenCount: number;
+};
 
 export type CompileResult =
   | { ok: true; module: BytecodeModule; tokenCount: number; warnings: Diagnostic[] }
@@ -152,14 +163,23 @@ export interface VM {
    * With `stopAtLine`, also yields `{ kind: 'line' }` at the next statement boundary (debugger Step).
    */
   run(maxCycles: number, opts?: { stopAtLine?: boolean }): VMYield;
-  /** Supply the pending host call's result and continue on the next run(). */
-  resume(value: Value): void;
+  /**
+   * Supply the pending host call's result and continue on the next run(). `cost` overrides the
+   * baked default when the actual cost differs (failed actions cost 5, wait(n) costs n, goto costs
+   * move × distance). See simulation-engine.md §Clock arithmetic.
+   */
+  resume(value: Value, cost?: number): void;
   readonly cycles: number;
   snapshot(): VMSnapshot;
 }
 
 export interface LangEngine {
   compile(source: SourceFiles, opts: CompileOptions): CompileResult;
+  /**
+   * Lexer tokens over all files, excluding NEWLINE, INDENT, DEDENT, EOF, comments and ERROR tokens;
+   * a literal is one token (scoring-and-judging.md §Token count). The one definition every surface uses.
+   */
+  countTokens(source: SourceFiles): number;
   createVM(module: BytecodeModule, limits: Limits): VM;
   restoreVM(snapshot: VMSnapshot): VM;
   readonly values: ValueOps;

@@ -1,6 +1,8 @@
 # Sprout Standard Library
 
-Costs are in cycles and are **in addition to** the 1-cycle `CALL_HOST` instruction that reaches every builtin (so `halt()` has cost 0, plus the 1-cycle call). The values are provisional and tuned in the balance harness. Campaign availability shows the chapter or skill-tree node that unlocks each builtin.
+Costs are in cycles and are **in addition to** the 1-cycle `CALL_HOST` instruction that reaches every builtin (so `halt()` has cost 0, plus the 1-cycle call). The values are provisional and tuned in the balance harness. Campaign availability shows the chapter or skill-tree node that unlocks each builtin. Builtins and constants are gated by name; see the Feature gating map in [curriculum](curriculum.md#feature-gating-map-normative).
+
+Action, sensor and host-helper costs and bounds live in `packages/content` (`ACTION_COSTS`, `SENSOR_COSTS`, `PURE_COSTS`, `WAIT_BOUNDS`); costs of language-intrinsic helpers (`range`, `len`, `abs`, `min`/`max`, list/dict methods, `str`, `int`, `print`) live in `packages/lang`.
 
 In multiplayer, everything is unlocked, with two exceptions:
 
@@ -32,9 +34,9 @@ Calling either where it is unavailable is the compile-time error `E-LOCKED-FEATU
 | `water()` | 25 | `bool` | +40 moisture (Sprayer: +60), capped at 100, uses 1 water unit. Works on any tile, with or without a crop, even at moisture 100. `False` (cost 5 instead) if out of water | Skill: Water |
 | `refill()` | 60 | `bool` | Only on the well tile `(0,0)`. Restores water to max. `False` (cost 5 instead) anywhere else | Skill: Water |
 | `goto(x, y)` | `move` cost × *d* | `None` | Flies to `(x, y)` by the shortest wrapped path. *d* is the wrapped Manhattan distance: `min(\|dx\|, N−\|dx\|) + min(\|dy\|, N−\|dy\|)` on an N×N grid (so `goto` to the current tile costs 0, plus the call). The travel costs exactly what the `move` calls it replaces would, Rotor upgrades included: no discount on the flight itself, the saving is the loop and the typing. Flies over rocks. `x` or `y` outside `0..N−1` is `R-BAD-ARG`. The drone is at `(x, y)` from the start of the call and emits a single `move` event; the client animates the flight along the wrapped x-then-y path (a half-grid tie goes east/north, which is visual only) | Ch 5 (after the player writes it), always (MP) |
-| `sell(crop, n)` | 10 | `int` | Sells up to `n` from the silo at current price. Returns credits gained | Ch 8 (SP), always (MP) |
+| `sell(crop, n)` | 10 | `int` | Sells up to `n` from the silo at current price. Returns credits gained | Ch 8 · Skill: Sell (SP), always (MP) |
 | `wait(n)` | `n` | `None` | Do nothing for `n` cycles. `n` must be an int in `1..5,000`; anything else is `R-BAD-ARG` (no clamping). Cheaper than a busy loop. It is a world-touching call, so other drones interleave normally, but it changes nothing and is not logged: the renderer simply idles the drone until its next event | Ch 4 |
-| `spawn(fn)` | 200 | `bool` | Starts a second drone at your position running `fn()`. Max 1 extra drone. See [Second drone](#second-drone-spawn) | Ch 10 (SP only in v1, D-24) |
+| `spawn(fn)` | 200 | `bool` | Starts a second drone (drone 1) at your position running `fn()`; it halts when `fn` returns. Max 1 extra drone: a second `spawn` returns `False` (cost 5). See [Second drone](#second-drone-spawn) | Ch 10 (SP only in v1, D-24) |
 | `halt()` | 0 (plus the 1-cycle call) | — | Stops this drone. With a second drone, only the calling drone stops | Ch 1 |
 
 ### Outcome matrix (normative)
@@ -65,11 +67,12 @@ The editor's Run log explains each `False` in words ("`till` at (3,2): that tile
 
 Single-player only in v1 (see above); the rules below are what the campaign's Chapter 10 uses.
 
-- **What is shared.** Credits, silo and market belong to the **player**. Position, facing, water tank and clock belong to each **drone**. Globals, lists and dicts are one heap per player, so the second drone can read the first drone's tracking lists, and the list/dict limits are per player.
-- **How it starts.** `spawn(fn)` costs 200, paid by the caller. The new drone appears at the caller's position with a full tank, and its clock starts at the cycle at which the caller's `spawn` call finishes (`atCycle + 200`). It runs the **same bytecode module** in its own call stack.
-- **`fn`** must be a user-defined function with 0 parameters, otherwise `R-BAD-ARG`. When `fn` returns, that drone stops.
+- **One farm, two drones.** The second drone works the same farm. Credits, silo and **water** are shared with drone 0 (one water tank, one set of water units), as is the market. Only position, facing and clock belong to each **drone**. Globals, lists and dicts are one heap per player, so the second drone can read the first drone's tracking lists, and the list/dict limits are per player.
+- **How it starts.** `spawn(fn)` costs 200, paid by the caller. The new drone (drone 1) appears at the parent drone's current position, and its clock starts at the cycle at which the caller's `spawn` call finishes (the parent's `atCycle + 200`, the spawn cost). It runs the **same bytecode module** in its own call stack.
+- **`fn`** must be a user-defined function with 0 parameters, otherwise `R-BAD-ARG`. The drone runs `fn()` to completion, then halts.
 - **Stopping.** `halt()` and runtime errors stop only the drone that called or raised them. The player's program is finished when both drones have stopped.
 - **Only one extra drone.** A second `spawn` (from either drone) returns `False` and costs 5.
+- **Campaign only in v1** (D-24): in a showdown `spawn` is `E-LOCKED-FEATURE` and every farm runs exactly one drone.
 - **No collisions.** Drones never block each other, and two may share a tile.
 - **Scheduling.** Each drone is its own agent with `agentIndex = slot × MAX_DRONES + droneNo` (0 for the original, 1 for the spawned drone); see [simulation-engine](../03-architecture/simulation-engine.md).
 
@@ -80,7 +83,7 @@ Single-player only in v1 (see above); the rules below are what the campaign's Ch
 | `pos_x()`, `pos_y()` | 1 | `int` | Ch 5 |
 | `world_size()` | 1 | `int` (grid is square) | Ch 2 |
 | `crop()` | 2 | crop constant or `None` | Ch 3 |
-| `is_ripe()` | 2 | `bool` | Ch 3 |
+| `is_ripe()` | 2 | `bool` | Ch 3 · Skill: is_ripe sensor |
 | `is_withered()` | 2 | `bool` | Ch 3 |
 | `growth()` | 2 | `int` 0–100 (% grown) | Ch 4 |
 | `soil()` | 2 | soil constant | Skill: Till |
@@ -88,11 +91,11 @@ Single-player only in v1 (see above); the rules below are what the campaign's Ch
 | `water_left()` | 1 | `int` | Skill: Water |
 | `credits()` | 1 | `int` | Ch 5 |
 | `inventory(crop)` | 1 | `int` | Ch 5 |
-| `price(crop)` | 3 | `int` current market price | Skill: Price sensor |
-| `seed_cost(crop)` | 1 | `int` | Skill: Price sensor |
-| `measure()` | 5 | `int` crop-specific (Sunroot yield, Gourd size) | Skill: Measure |
-| `cycles()` | 1 | `int` cycles elapsed | Ch 4 |
-| `cycles_left()` | 1 | `int` | Ch 4 |
+| `price(crop)` | 3 | `int` current market price | Ch 8 · Skill: Price sensor |
+| `seed_cost(crop)` | 1 | `int` | Ch 8 · Skill: Price sensor |
+| `measure()` | 5 | `int` crop-specific (Sunroot yield, Gourd size) | Ch 9 · Skill: Measure |
+| `cycles()` | 1 | `int`: the cycle at which this call starts (after its 1-cycle base) | Ch 4 |
+| `cycles_left()` | 1 | `int`: `max(0, budget − that cycle)` | Ch 4 |
 
 **What the crop sensors say** (a withered crop stays on the tile until it is cleared, so the sensors tell the truth about it):
 
@@ -109,10 +112,10 @@ Single-player only in v1 (see above); the rules below are what the campaign's Ch
 
 | Builtin | Cost | Notes |
 |---|---|---|
-| `range(n)`, `range(a, b)`, `range(a, b, step)` | 1 for the call, then 1 per iteration (the loop's `ITER_NEXT`) | Lazy iterator, so it doesn't allocate a list. Arguments must be ints (`R-BAD-ARG`). `step = 0` is `R-BAD-ARG` (*"range step can't be 0"*); a negative step counts down as in Python. `range(...)` is **only valid as the iterable of a `for` statement**. Using it anywhere else (`r = range(5)`, `len(range(5))`, `5 in range(10)`, passing it to a function) is the compile error `E-RANGE-ONLY-IN-FOR`: *"`range` can only be used in `for x in range(...)`."* |
-| `len(x)` | 1 | str/list/dict |
-| `abs(n)`, `min(a, b, …)`, `max(a, b, …)` | 1 | `min`/`max` also accept one list (cost +1 per element) |
-| `list.append(x)`, `list.pop([i])` | 1 (pop(i): +1 per shifted element) | |
+| `range(n)`, `range(a, b)`, `range(a, b, step)` | 1 for the call, then 1 per iteration (the loop's `ITER_NEXT`) | Lazy iterator, so it doesn't allocate a list. Arguments must be ints (`R-BAD-ARG`). `step = 0` is `R-BAD-ARG` (*"range step can't be 0"*); a negative step counts down as in Python. `range(...)` is not a storable value: it is **only valid as the iterable of a `for` statement**. Using it anywhere else (`r = range(5)`, `len(range(5))`, `5 in range(10)`, passing it to a function) is the compile error `E-RANGE-ONLY-IN-FOR`: *"`range` can only be used in `for x in range(...)`."* |
+| `len(x)` | 1 | str/list/dict. A str's length counts UTF-16 code units |
+| `abs(n)`, `min(a, b, …)`, `max(a, b, …)` | 1 | `min`/`max` also accept one list (cost +1 per element). Ordering follows the Type interactions rules in [language-spec](language-spec.md) (int/bool or str against str only, else `R-TYPE`). `min()`/`max()` with no values, or over an empty list, is `R-BAD-ARG` (*"`min` needs at least one value."*) |
+| `list.append(x)`, `list.pop([i])` | 1 (pop(i): +1 per shifted element) | `pop()` on an empty list and `pop(i)` out of range are `R-INDEX` |
 | `dict.get(k, d)` | 1 | |
 | `str(x)` | 1 + length of the result | Ints in decimal; `True`, `False`, `None` as in Python; constants by their name (`RADISH`); strings unchanged; lists as `[1, 'a', RADISH]` and dicts as `{1: 2}` using Python `repr` rules (strings single-quoted). A result longer than the 256-character string limit is `R-STR-TOO-LONG` |
 | `int(s)` | 1 + length of `s` | `int("12")` → 12. Accepts an optional sign and digits, with optional `_` separators as in literals, and surrounding spaces; leading zeros are fine here. Anything else is `R-BAD-ARG` (*"`int` can't read 'abc' as a whole number"*). `int(True)` is 1 and `int(5)` is 5 |

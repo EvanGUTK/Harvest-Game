@@ -9,3 +9,7 @@ packages:
 # wants a build script stays blocked until it is reviewed and added here.
 onlyBuiltDependencies:
   - esbuild
+
+# A version must be a week old before pnpm selects it (supply-chain worm defence);
+# see docs/09-engineering/standards.md §Dependencies.
+minimumReleaseAge: 10080

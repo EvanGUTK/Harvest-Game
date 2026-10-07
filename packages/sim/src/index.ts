@@ -14,6 +14,14 @@
 import type { CropId } from '@harvest/content';
 import type { BytecodeModule } from '@harvest/lang';
 
+/** Drones per farm. agentIndex = slot × MAX_DRONES + droneNo; N = nSlots × MAX_DRONES is constant per match. */
+export const MAX_DRONES = 2;
+
+export type DroneNo = 0 | 1;
+
+export type AwardId =
+  'top_earner' | 'most_efficient' | 'bumper_crop' | 'market_timer' | 'clean_code' | 'never_thirsty';
+
 export type Soil = 'grass' | 'tilled' | 'rock';
 
 export type Tile = {
@@ -35,13 +43,20 @@ export type Coord = readonly [x: number, y: number];
 export type SimConfig = {
   rulesVersion: string;
   languageVersion: string;
+  /** Unsigned 32-bit integer (0..4294967295). */
   seed: number;
   gridSize: number;
   cycleBudget: number;
   startCredits: number;
   startWater: number;
+  /** Inclusive range for seeded starting moisture per tile (showdown: 0–40; campaign before the Water node: 100–100). */
+  startMoisture: { min: number; max: number };
+  /** false until the campaign Water node is owned; always true in showdowns. */
+  moistureDecay: boolean;
   sharedMarket: boolean;
   randomEnabled: boolean;
+  /** false in showdowns v1 (D-24): the host table rejects spawn(). */
+  spawnEnabled: boolean;
   modifiers: { rocks: boolean; weather: boolean };
 };
 
@@ -56,28 +71,31 @@ export type PlayerInput = {
   slot: number;
   /** null = idle program (no valid submission). */
   module: BytecodeModule | null;
+  /** First compile diagnostic when the idle program is due to a compile error (surfaces in PlayerResult.error). */
+  compileError?: { code: string; line: number };
   upgrades?: DroneUpgrades;
 };
 
 /** Agents are drones: agentIndex = slot × MAX_DRONES + droneNo (see simulation-engine.md §Tie-break). */
 export type SimEvent =
-  | { t: number; slot: number; drone: number; k: 'move'; to: Coord }
-  | { t: number; slot: number; drone: number; k: 'plant'; at: Coord; crop: CropId; ok: boolean }
-  | { t: number; slot: number; drone: number; k: 'harvest'; at: Coord; crop: CropId | null; ok: boolean }
-  | { t: number; slot: number; drone: number; k: 'till' | 'water' | 'refill'; at: Coord; ok: boolean }
+  | { t: number; slot: number; drone: DroneNo; k: 'move'; to: Coord }
+  | { t: number; slot: number; drone: DroneNo; k: 'plant'; at: Coord; crop: CropId; ok: boolean }
+  | { t: number; slot: number; drone: DroneNo; k: 'harvest'; at: Coord; crop: CropId | null; ok: boolean }
+  | { t: number; slot: number; drone: DroneNo; k: 'till' | 'water' | 'refill'; at: Coord; ok: boolean }
   | {
       t: number;
       slot: number;
-      drone: number;
+      drone: DroneNo;
       k: 'sell';
       crop: CropId;
       n: number;
       price: number;
       credits: number;
     }
-  | { t: number; slot: number; drone: number; k: 'spawn'; at: Coord; ok: boolean }
-  | { t: number; slot: number; drone: number; k: 'halt' | 'error'; info?: string }
+  | { t: number; slot: number; drone: DroneNo; k: 'spawn'; at: Coord; ok: boolean }
+  | { t: number; slot: number; drone: DroneNo; k: 'halt' | 'error'; info?: string }
   | { t: number; k: 'weather'; kind: string; data: unknown }
+  /** uint32 FNV-1a over the canonical state, see simulation-engine.md §State hash. */
   | { t: number; k: 'hash'; h: number };
 
 export type PlayerResult = {
@@ -87,12 +105,15 @@ export type PlayerResult = {
   logicCycles: number;
   programTokens: number;
   cropsHarvested: number;
-  awards: string[];
+  awards: AwardId[];
+  /** First 200 print() lines (never shown to rivals). */
+  output: string[];
   error?: { code: string; line: number };
 };
 
 export type SimResult = {
   players: PlayerResult[];
+  /** uint32 FNV-1a, equal to the last hash event (t = cycleBudget, after liquidation). */
   finalStateHash: number;
   events: SimEvent[];
 };

@@ -63,18 +63,22 @@ export const CROPS: Readonly<Record<CropId, CropDef>> = {
 // ---------- Builtin cycle costs (on top of the 1-cycle CALL_HOST) ----------
 
 export const ACTION_COSTS = {
-  move: 20,
+  move: 20, // goto(x, y) costs move × wrapped Manhattan distance, derived at runtime from the drone's move cost
   plant: 30,
   plantFailed: 5,
   harvest: 30,
   harvestEmpty: 5,
   till: 30,
+  tillFailed: 5,
   water: 25,
+  waterFailed: 5,
   refill: 60,
+  refillFailed: 5,
   sell: 10,
   spawn: 200,
-  halt: 0,
-} as const;
+  spawnFailed: 5,
+  halt: 0, // plus the 1-cycle CALL_HOST, like every builtin
+} as const; // wait(n) costs n (argument-dependent); bounds in WAIT_BOUNDS
 
 export const SENSOR_COSTS = {
   pos_x: 1,
@@ -82,6 +86,7 @@ export const SENSOR_COSTS = {
   world_size: 1,
   crop: 2,
   is_ripe: 2,
+  is_withered: 2,
   growth: 2,
   soil: 2,
   moisture: 2,
@@ -114,7 +119,13 @@ export const WORLD = {
   waterAmount: 40,
   waterCapacity: 60,
   wellTile: [0, 0] as const,
+  /** Chance per tile of being rock when the `rocks` modifier is on (basis points). */
+  rockDensityBp: 800,
 } as const;
+
+/** Campaign drone upgrade tiers (sim's DroneUpgrades picks from these). */
+export const ROTOR_MOVE_COST = [20, 16, 12, 9] as const;
+export const SPRAYER_WATER_AMOUNT = 60;
 
 export const MARKET = {
   /** basis points (1% = 100) */
@@ -130,7 +141,11 @@ export const SHOWDOWN_DEFAULTS = {
   gridSize: 8,
   cycleBudget: 30_000,
   startCredits: 100,
+  startWater: 60,
+  startMoisture: { min: 0, max: 40 },
   codingSeconds: 600,
+  randomEnabled: false, // ranked; casual/custom may enable (D-18)
+  spawnEnabled: false, // D-24: campaign only in v1
 } as const;
 
 // ---------- Ranked ----------

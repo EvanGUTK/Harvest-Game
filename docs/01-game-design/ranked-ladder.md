@@ -45,10 +45,12 @@ The concept says matchmaking should not use hidden MMR. In this design:
 - **Expected drift (25 % chance of each placement, before streak and lobby adjustments):** Iron +4.75, Bronze +2.5, Silver +0.25, Gold −2.0, Diamond −4.25 RP per game (the table's row sums are +19, +10, +1, −8, −17, divided by 4). This is intended. Everyone leaves Iron and Bronze with average play, **Silver is the resting point for an average player**, Gold needs roughly a 30 % first-place rate and Diamond roughly 35 %. The win-streak bonus is always positive and adds a little inflation on top. One game's standard deviation is about 18 RP, so single-tier moves are noisy by design. `[SIM-BAL]` re-check these values with the matchmaking metrics after the first season.
 - **Mixed-division lobby adjustment:** for each opponent you beat who is 1+ tiers above you, +3 RP. For each opponent below you who beats you, −3 RP. This is visible arithmetic, shown in the results breakdown, so it still isn't hidden MMR.
 - **Abandon/leave:** treated as 4th and adds the leaver penalty (see matchmaking).
+- **Shared placement:** tied players each get the average of the RP values for every place the tie spans, rounded down with `floorDiv` (a tie for 2nd/3rd in Silver = (+8 − 12) / 2 = −2 RP each). See [scoring-and-judging](scoring-and-judging.md).
 
 ## Seasons
 
-- Seasons are about 3 months long, with names like "Season 1: Sowing". Season 1 is the first season.
+- Seasons are about 3 months long, with names like "Season 1: Sowing". Season 1 is the first public season.
+- **Season 0** is the internal pre-season used only for ranked testing (M5 onward, before open launch). It has no end-of-season rewards, and its rank state is discarded (not soft-reset) when the first public season starts at open launch; the soft-reset rule applies from Season 1 onward.
 - **Soft reset:** `newRank = max(rankIndex − 3, min(rankIndex, 2))`. Nobody is raised, and nobody drops below Iron I (Iron III and II players keep their tier). RP is set to 50, and the next **3 games are placements** that double gained RP like the initial 5.
 - **End-of-season rewards** are by highest division reached (`peak_rank_index`): a drone decal, a profile frame and a badge, all cosmetic and season-stamped. They are granted automatically at rollover.
 - Rules version can change between seasons. Mid-season balance patches bump the minor version only and are announced.

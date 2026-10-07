@@ -13,6 +13,38 @@ import type { SimEvent } from '@harvest/sim';
 
 export const PROTOCOL_VERSION = 1;
 
+/** Stable error codes carried by `error.d.code`. Always SCREAMING_CASE. */
+export const ERROR_CODES = [
+  'PROTOCOL_VERSION',
+  'RATE_LIMITED',
+  'ROOM_UNAVAILABLE',
+  'MAINTENANCE',
+  'SERVER_RESTARTING',
+  'BANNED',
+] as const;
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/** WebSocket close codes the server uses (4000–4999 are application-defined). */
+export const WS_CLOSE = {
+  invalidFrames: 4400,
+  authFailed: 4401,
+  slowReader: 4408,
+  rateLimitStrikes: 4429,
+} as const;
+
+/** Abuse limits, see realtime-protocol.md §Abuse limits. Provisional. */
+export const WS_LIMITS = {
+  maxFrameBytes: 32_768,
+  maxDraftBytes: 16_384,
+  invalidFramesPerMinuteBeforeClose: 20,
+  heartbeatIntervalMs: 20_000,
+  missedPongsBeforeDisconnect: 2,
+  ticketTtlMs: 30_000,
+  reconnectWindowMs: 120_000,
+  draftIntervalMs: 10_000,
+  emoteIntervalMs: 2_000,
+} as const;
+
 export type Envelope<T extends string, D> = { v: typeof PROTOCOL_VERSION; t: T; id?: string; d: D };
 
 export type Mode = 'casual' | 'ranked';
@@ -25,6 +57,7 @@ export type Loadout = {
   avatar?: { head?: string; hat?: string; outfit?: string; accessory?: string };
   backdrop?: string;
   siloSkin?: string;
+  profileFrame?: string;
   emoteSet?: string;
 };
 
@@ -85,7 +118,16 @@ export type ClientMessage =
 // ---------- Server → Client ----------
 
 export type ServerMessage =
-  | Envelope<'hello', { userId: string; serverNow: number; protocol: number; resume?: unknown }>
+  | Envelope<
+      'hello',
+      {
+        userId: string;
+        serverNow: number;
+        protocol: number;
+        resume?: unknown;
+        draining?: { until: number | null; message: string };
+      }
+    >
   | Envelope<
       'queue.status',
       { mode: Mode; searchingSince: number; estimatedWaitSec: number; playersInQueue: number }
@@ -112,5 +154,7 @@ export type ServerMessage =
   | Envelope<'match.results', unknown>
   | Envelope<'presence.update', { userId: string; status: string; activity?: string }>
   | Envelope<'emote', { fromSlot: number; emoteId: string }>
-  | Envelope<'error', { code: string; message: string; ref?: string }>
-  | Envelope<'session.replaced', Record<string, never>>;
+  | Envelope<'error', { code: ErrorCode; message: string; ref?: string; cooldownUntil?: number }>
+  | Envelope<'session.replaced', Record<string, never>>
+  | Envelope<'session.revoked', Record<string, never>>
+  | Envelope<'server.draining', { until: number | null; message: string }>;

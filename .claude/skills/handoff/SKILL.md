@@ -8,7 +8,7 @@ description: End-of-session handoff. Updates STATE.md (Now, Next steps, Known ga
 1. Run `git status --short` and `git log --oneline -15`. Note every commit since the last "Session N" entry in `STATE.md`.
 2. Run `pnpm check`. If red, fix or revert before continuing; never hand off red.
 3. Edit `STATE.md`:
-   - **Now:** phase, branch, blocking decisions, owner inputs needed. Keep it under 8 lines.
+   - **Now:** phase, branch, blocking decisions, owner inputs needed. Keep it under 8 lines. For owner inputs, summarise what is outstanding from [`docs/06-infrastructure/connections.md`](../../../docs/06-infrastructure/connections.md) rather than hand-maintaining a list in `STATE.md`.
    - **Next steps:** ordered backlog IDs with one line each. Remove finished ones.
    - **Known gaps / debt:** add anything you consciously deferred, with a backlog ID.
    - **Done:** add a `### Session N (date, machine)` block summarising this session's commits in 3–8 bullets.

@@ -21,7 +21,7 @@ sequenceDiagram
 
 UX details:
 - The search timer and estimated wait show in a persistent **queue pill** at the top of every screen, so players can browse the shop or edit cosmetics while searching.
-- When a match is found: an audio sting, a browser tab title flash (`⚑ MATCH FOUND`), and a Notification API ping if permitted and the tab is hidden.
+- When a match is found: an audio sting, a browser tab title flash (`⚑ MATCH FOUND`), and a Notification API ping if permitted and the tab is hidden. The browser notification permission is requested from Settings → Notifications or on the player's first queue join, with the line "Want a ping when your match is found while you're in another tab?"
 - The accept window is **20 s** (the concept said 30 s; 20 s keeps momentum, see D-08). Pips show how many have accepted, without names.
 
 ## Queue data structures (in-memory v1)

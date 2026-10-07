@@ -42,9 +42,10 @@ type Tile = {
 
 ## Growth rules
 
-- A crop gains **+1 growth per cycle** while its tile's `moisture > 0`. With moisture at 0, growth pauses. It doesn't die.
+- A crop gains **+1 growth per cycle** while the tile's `moisture >= crop.minMoisture` (1 for radish and corn, 30 for melon). Below that, growth pauses. It doesn't die. The moisture decrement at a multiple of 50 applies before that cycle's growth is counted. Exact rules: [simulation-engine](../03-architecture/simulation-engine.md) Lazy world advancement.
 - When `growth >= growCycles`, the crop is **ripe**.
-- A ripe crop left unharvested for `witherCycles` after `ripeAt` becomes **withered**. Harvesting a withered crop yields 0 and clears the tile. This punishes "plant everything, harvest once at the end".
+- A ripe crop that is not harvested within `witherCycles` becomes **withered**: wither is `t >= ripeAt + witherCycles` in world cycles and never pauses with moisture. This punishes "plant everything, harvest once at the end".
+- A withered crop **stays on the tile** until it is cleared. `crop()` still returns its kind, `is_ripe()` is `False`, `is_withered()` is `True` and `growth()` is 100. `harvest()` on a withered crop yields 0 and clears the tile; `plant()` on a withered tile clears it and plants (cost 30, returns `True`). Full sensor table: [standard-library](../02-language/standard-library.md).
 - **Wither pressure toward smaller plots is intended.** A naive full 8×8 sweep lets radishes wither. One lap that moves to, plants and waters all 64 tiles costs roughly 80 cycles per tile (about 5,000 cycles, from the costs in [standard-library](../02-language/standard-library.md)). That is longer than a radish needs to ripen (300) plus its `witherCycles` (3,000), so radishes planted early in the lap have withered by the time the drone returns to harvest them. The fast loop is a strip you can lap before its crops wither, and the showdown starter program deliberately farms a 2-row (16-tile) strip for that reason. Provisional; the balance harness (`SIM-BAL`) re-checks it.
 - Some crops need **tilled** soil (`till()` first). Tilling persists until harvest.
 
@@ -62,13 +63,14 @@ Each match or contract seed generates:
 - starting moisture per tile: seeded in `0–40` for showdowns, and for any campaign run once the player owns the Water node. **Until the Water node is owned, campaign runs (contracts and Free Farm) start every tile at moisture 100 and moisture does not decay.** Otherwise dry soil would make early contracts unwinnable with no tool to fix it: a radish needs about 6 moisture to ripen unwatered, so roughly 1 tile in 7 could never grow one. The range and the no-decay switch are part of the sim config, so the server re-simulates the same rule (see [simulation-engine](../03-architecture/simulation-engine.md)).
 - crow events (later; see [crops-and-economy](crops-and-economy.md) "Interference")
 
-Generation uses the deterministic PRNG described in [simulation-engine](../03-architecture/simulation-engine.md).
+The layout is generated once per match and every player gets a copy. Rock density is 8 % (provisional); ranked has none. Generation uses the deterministic PRNG described in [simulation-engine](../03-architecture/simulation-engine.md).
 
 ## Drone
 
 - Position, facing (cosmetic only), carried water.
 - No carrying capacity limit in v1. Harvest goes straight to the silo.
-- Upgrades (campaign only): **Rotor I/II/III** reduces `move` cost 20, 16, 12, 9. **Sprayer** gives `water()` +60 instead of +40. **Twin drone** lets you call `spawn(fn)` to run a second drone with its own VM (late game; see curriculum).
+- Upgrades (campaign only): **Rotor I/II/III** reduces `move` cost 20, 16, 12, 9. **Sprayer** gives `water()` +60 instead of +40. **Twin drone** lets you call `spawn(fn)` to run a second drone (same program, its own call stack; late game, see [curriculum](../02-language/curriculum.md)).
+- Single-player only in v1. Credits, silo, water tank and market belong to the player (one farm, two drones); position, facing and clock belong to each drone. Full rules: [standard-library](../02-language/standard-library.md#second-drone-spawn).
 
 In multiplayer every drone has the same stats. Drone *cosmetics* are visual only.
 

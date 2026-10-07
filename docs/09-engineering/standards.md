@@ -38,7 +38,7 @@ The point of these rules: code that a stranger (or Claude on another machine, ne
 
 - Comment **why**, not what. Every module starts with a 2–5 line header: purpose, design doc link, invariants.
 - Public functions get a JSDoc line. Internal helpers usually don't need one.
-- `TODO(ID):` only with a backlog ID. Lint rejects bare TODO/FIXME.
+- No `TODO`/`FIXME`/`HACK` comments in code (lint rejects them, whether or not they carry an ID). Deferred work gets a backlog ID in [backlog](../07-roadmap/backlog.md) and a line under `STATE.md` → Known gaps / debt.
 
 ## Dependencies
 
@@ -60,7 +60,7 @@ The point of these rules: code that a stranger (or Claude on another machine, ne
 
 | Rule | Enforced by |
 |---|---|
-| Engine purity bans (§Purity), dependency direction, no `any`, `@ts-expect-error` needs a description, no default exports, no `TODO`/`FIXME`/`HACK` comments, no inline lint disables, no focused/skipped/placeholder tests, exhaustive `switch`, type-only imports | ESLint (`pnpm lint`, part of `pnpm check` and CI) |
+| Engine purity bans (§Purity), dependency direction, no `any`, no `@ts-ignore`, `@ts-expect-error` needs a description, no default exports, no `TODO`/`FIXME`/`HACK` comments, no inline lint disables, no focused/skipped/placeholder tests, exhaustive `switch`, type-only imports | ESLint (`pnpm lint`, part of `pnpm check` and CI) |
 | `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` | `tsc` (`pnpm typecheck`) |
 | Formatting | Prettier (`pnpm format:check`) |
 | Dependency policy (§Dependencies) | CI and pnpm config, as listed there |

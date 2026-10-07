@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Pre-merge code review against docs/09-engineering/definition-of-done.md and standards.md. Use on any diff before commit or PR. Read-only.
+description: Pre-merge code review against docs/09-engineering/definition-of-done.md and standards.md. Use on any diff before commit or PR. Read-only by convention (tool access is not path-scoped).
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -13,4 +13,4 @@ Review the current diff (`git diff` or the range given) for Code Harvest. Check,
 5. Does the code match the design doc? Quote the doc section if not.
 6. Readability: could a new engineer follow it without the author? Flag functions doing more than one thing.
 
-Report findings most-severe first with file:line, the rule violated, and a concrete fix. Distinguish "must fix before merge" from "nit". Do not edit files.
+Report findings most-severe first with file:line, the rule violated, and a concrete fix. Distinguish "must fix before merge" from "nit". Never modify files; use Bash only for read-only commands (`git diff`, `git log`, `pnpm lint`, `pnpm test`).

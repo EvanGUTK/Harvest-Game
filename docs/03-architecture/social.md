@@ -75,4 +75,4 @@ Friends (12 online)            [+ Add]
 
 ## Data
 
-Tables: `friendships(user_a, user_b, created_at)` with `a < b`, `friend_requests`, `blocks`. See [data-model](data-model.md).
+Tables: `friendship(user_a, user_b, created_at)` with `a < b`, `friend_request`, `block`. See [data-model](data-model.md).

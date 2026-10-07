@@ -14,4 +14,4 @@ You keep Code Harvest's documentation truthful. Check:
 6. `STATE.md`: "Now" and "Next steps" still true given `git log` since the last handoff.
 7. `docs/07-roadmap/backlog.md` IDs referenced in commits that aren't marked done in STATE.md.
 
-Output a list of exact edits (file, old text, new text). Do not edit files yourself.
+Output a list of exact edits (file, old text, new text). Never modify files; use Bash only for read-only commands (`git diff`, `git log`, `git grep`).

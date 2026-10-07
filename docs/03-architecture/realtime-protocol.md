@@ -94,12 +94,12 @@ The server includes `serverNow` in `hello` and in every `phase` message. The cli
 | `error` | `{ code, message, ref?: id }` |
 | `session.replaced` | `{}` another connection for this user took over; this socket is then closed |
 | `session.revoked` | `{}` this session was signed out, revoked or banned; this socket is then closed and the client returns to sign-in |
-| `server.draining` | `{ until: number; message: string }` broadcast to every connection at `SIGTERM` (see Server drain) |
+| `server.draining` | `{ until: number \| null; message: string }` broadcast to every connection when a drain starts (`until` set) or is cancelled (`until: null`); see Server drain |
 
 **Notes on the added messages.**
 
-- `room.left` goes only to the removed player; the remaining members receive an ordinary `room.patch`. Reasons: `kicked` (the host removed you; kicks are Lobby-only), `host_closed` (the host closed the room), `room_expired` (idle expiry, see [rooms-and-lobbies](rooms-and-lobbies.md) §Lifecycle), `blocked` (a block between you and another member, see [social](social.md)). The client returns to the Multiplayer hub with a toast for the reason. A kicked player's later `room.join` for that room, by code or by `roomId`, gets `error{code:'ROOM_UNAVAILABLE'}` for the rest of the room's lifetime. It is the same reply as for a room that does not exist.
-- `error.code` values defined in this document: `PROTOCOL_VERSION`, `RATE_LIMITED`, `SERVER_DRAINING`, `ROOM_UNAVAILABLE`.
+- `room.left` goes only to the removed player; the remaining members receive an ordinary `room.patch`. Reasons: `kicked` (the host removed you; kicks are Lobby-only), `host_closed` (the host closed the room), `room_expired` (the server closed the room: idle expiry, see [rooms-and-lobbies](rooms-and-lobbies.md) §Lifecycle, or a drain closing Lobby rooms), `blocked` (a block between you and another member, see [social](social.md)). The client returns to the Multiplayer hub with a toast for the reason. A kicked player's later `room.join` for that room, by code or by `roomId`, gets `error{code:'ROOM_UNAVAILABLE'}` for the rest of the room's lifetime. It is the same reply as for a room that does not exist.
+- `error.code` values defined in this document: `PROTOCOL_VERSION`, `RATE_LIMITED`, `ROOM_UNAVAILABLE`, `MAINTENANCE` and `SERVER_RESTARTING` (the last two: see Server drain).
 
 ## Reconnect
 
@@ -109,13 +109,12 @@ The server includes `serverNow` in `hello` and in every `phase` message. The cli
 
 ## Server drain
 
-On `SIGTERM` (see [hosting](../06-infrastructure/hosting.md)) the server broadcasts `server.draining` to every connection, and connections that arrive during the drain get the same payload as `hello.draining`. `until` is a server-clock timestamp (the same clock as `serverNow`): the server's best estimate of when new rooms and queue entries are accepted again. It is informational. The client clears the banner when a reconnect returns a `hello` without `draining`, and shows the reload prompt if `hello.protocol` has a new major.
+Deploys drain the server *before* the process is stopped; the sequence (admin `drain`, wait for `roomsActive == 0`, deploy, `SIGTERM`) is in [hosting](../06-infrastructure/hosting.md) §Render specifics. The protocol side is:
 
-While draining:
-
-- `queue.join`, `room.create`, `room.join` and `rematch.vote` are refused with `error{code:'SERVER_DRAINING'}`. The client disables the matching buttons up front (see [screen-flow](../05-ux/screen-flow.md)).
-- Rooms already running continue through Results, which omits the rematch vote, and then close as usual.
-- Reconnect and resume work normally. Campaign and Free Farm use REST and are unaffected.
+- **Drain starts.** The server broadcasts `server.draining { until, message }` to every connection, and connections that arrive during the drain get the same payload as `hello.draining`. `until` is a server-clock timestamp (the same clock as `serverNow`): the latest time the server will wait for running matches before it restarts. It is informational. `message` is display text for the maintenance banner.
+- **While draining**, `queue.join`, `room.create`, `room.join` and `rematch.vote` are refused with `error{code:'MAINTENANCE'}`; the client disables the matching buttons up front (see [screen-flow](../05-ux/screen-flow.md)). Rooms still in **Lobby** are closed at once, and their players receive `room.left{reason:'room_expired'}`. Rooms already in coding, locking, executing or finale run through Results, which omits the rematch vote, and then close as usual. Reconnect and resume work normally, and Campaign and Free Farm use REST and are unaffected.
+- **Drain cancelled** (`undrain`). The server broadcasts `server.draining { until: null, message: '' }` and the client clears the banner.
+- **`SIGTERM`.** The server sends every socket `error{code:'SERVER_RESTARTING'}` and closes it. The client treats this as a disconnect: it reconnects with the normal backoff and keeps the banner up until a `hello` arrives without `draining`. If that `hello.protocol` has a new major, the client shows the reload prompt instead.
 
 ## Versioning rules
 

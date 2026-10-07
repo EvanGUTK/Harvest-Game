@@ -39,10 +39,11 @@ profile (
   wallet_credits int not null default 0 check (wallet_credits >= 0),  -- cache of ledger sum
   loadout jsonb not null default '{}',       -- zod: Loadout
   equipped_badges text[] not null default '{}',
-  settings jsonb not null default '{}',      -- editor theme, audio, accessibility
-  birth_year_confirmed_13plus boolean not null default false,  -- the ONLY age data we store; the birth year is never received or stored
-  terms_version text,                        -- Terms + Privacy Policy accepted together (versioned); null until onboarding step 2 is done
-  terms_accepted_at timestamptz,
+  settings jsonb not null default '{}',      -- audio, display (scale, colorblind preset, reduce motion, fonts, graphics tier), editor (theme, font size, code font, keymap, input mode), notifications, appear-invisible; see screen-flow §Settings
+  birth_year_confirmed_13plus boolean not null default false,  -- 13+ self-declaration passed on the landing screen; set true at the onboarding handle claim. The ONLY age data we store: the birth year is never received or stored
+  terms_version text,                        -- Terms accepted (dated string, e.g. '2026-10-07'); null until the Terms step of onboarding is done
+  privacy_version text,                      -- Privacy Policy accepted (same step); null until accepted
+  terms_accepted_at timestamptz,             -- time of the latest acceptance
   role text not null default 'player',       -- 'player' | 'moderator' | 'admin'
   banned_until timestamptz,                  -- null = not banned; 'infinity' = permanent
   ban_reason text,
@@ -50,10 +51,18 @@ profile (
   hard_delete_after timestamptz,             -- deleted_at + 30 days
   created_at timestamptz not null default now()
 )
+consent_event (                                  -- append-only acceptance history; profile.terms_version / privacy_version hold the latest
+  id bigserial pk, user_id uuid not null references "user"(id) on delete cascade,
+  doc text not null check (doc in ('terms','privacy')), version text not null, accepted_at timestamptz not null default now()
+)
+email_suppression (                              -- written by the Resend bounce/complaint webhook (see auth); not linked to a user
+  email_hash bytea pk,                           -- sha256 of the lowercased address, so no address is kept in the clear
+  reason text not null check (reason in ('bounced','complained')), created_at timestamptz not null default now()
+)
 ```
 
-- **Age gate.** The 13+ gate runs on the landing screen **before sign-in** (see [auth](auth.md) and [privacy-and-age](../08-legal-safety/privacy-and-age.md)), so an under-13 visitor never creates an account and the server never receives an email, a Google id or a birth year for them. `birth_year_confirmed_13plus` is set to `true` when the profile is created and nothing else about age is persisted. Onboarding after the first sign-in is: handle, then Terms/Privacy acceptance (`terms_version`, `terms_accepted_at`). There is no "abandon account" endpoint.
-- **Server-owned columns.** `role`, `wallet_credits`, `level`, `xp`, `birth_year_confirmed_13plus`, `terms_*`, `banned_until`, `ban_reason`, `handle_change_required`, `deleted_at` and `hard_delete_after` are written only by server code paths. Client-facing `PUT` bodies are zod allowlists (`loadout`, `settings`, `equipped_badges`, campaign files) that reject unknown keys, so these columns can never arrive from a client.
+- **Age gate.** The 13+ gate runs on the landing screen **before sign-in** (see [auth](auth.md) and [privacy-and-age](../08-legal-safety/privacy-and-age.md)), so an under-13 visitor never creates an account and the server never receives an email, a Google id or a birth year for them. `birth_year_confirmed_13plus` is set to `true` when the profile is created and nothing else about age is persisted. Onboarding after the first sign-in is: handle, then Terms/Privacy acceptance (`terms_version`, `privacy_version`, `terms_accepted_at`, plus one `consent_event` row per document). There is no "abandon account" endpoint: a `user` that is unverified, or has no `profile` row because onboarding never finished, is deleted by a DB-06 job 24 h after creation.
+- **Server-owned columns.** `role`, `wallet_credits`, `level`, `xp`, `birth_year_confirmed_13plus`, `terms_*`, `privacy_version`, `banned_until`, `ban_reason`, `handle_change_required`, `deleted_at` and `hard_delete_after` are written only by server code paths. Client-facing `PUT` bodies are zod allowlists (`loadout`, `settings`, `equipped_badges`, campaign files) that reject unknown keys, so these columns can never arrive from a client.
 - **First admin.** `role` changes only through an owner-run SQL statement over the direct Neon connection (for example `update profile set role = 'admin' where handle = '…'`) or through `POST /api/admin/users/:id/role` by an existing admin, which writes a `moderation_action` row.
 
 ### Campaign
@@ -68,23 +77,32 @@ campaign_save (
   updated_at timestamptz not null,
   unique (user_id, slot)
 )
-contract_attempt (
-  id uuid pk, user_id uuid fk, contract_id text, started_at, ended_at,
+contract_attempt (                              -- inserted by POST /api/campaign/contracts/:contractId/start → { attemptId, seed }
+  id uuid pk, user_id uuid fk, contract_id text,
+  seed bigint not null check (seed between 0 and 4294967295),   -- issued by the server, never chosen by the client
+  started_at, ended_at,
   succeeded boolean, cycles_used int, program_tokens int, error_codes text[]
 )
 run_receipt (
   id uuid pk, user_id uuid fk, kind text,      -- 'contract' | 'free_farm'
-  contract_id text null, session_id uuid null references free_farm_session(id),  -- required for 'free_farm'
-  seed bigint check (seed between 0 and 4294967295), rules_version text, language_version text,
+  contract_id text null, attempt_id uuid null unique references contract_attempt(id),  -- required for 'contract'; one receipt per attempt
+  session_id uuid null references free_farm_session(id),  -- required for 'free_farm'
+  sequence int null,                           -- Free Farm only: strictly greater than the session's last accepted sequence
+  seed bigint check (seed between 0 and 4294967295),  -- copied from the attempt or session, never taken from the client
+  rules_version text, language_version text,
   source_hash bytea, source text, start_state_hash bytea,
-  cycles int, claimed_credits int, verified_credits int, status text,  -- 'granted' | 'mismatch' | 'rejected'
-  created_at timestamptz
+  cycles int, claimed_credits int, verified_credits int,
+  status text,                                 -- 'granted' | 'mismatch' | 'rejected'; a mismatch grants the server's result and logs the anomaly
+  created_at timestamptz,
+  unique (session_id, sequence)
 )
 free_farm_session (                              -- issued by POST /api/campaign/free-farm/start → { sessionId, seed, startedAt }
   id uuid pk, user_id uuid fk not null,
   seed bigint not null check (seed between 0 and 4294967295),
   started_at timestamptz not null default now(),
-  ended_at timestamptz null                      -- set when the session is closed or superseded by a newer one
+  ended_at timestamptz null,                     -- set when the session is closed or superseded by a newer one
+  last_receipt_at timestamptz null, last_sequence int null,   -- the last accepted receipt (sequence check)
+  cycles_claimed bigint not null default 0       -- total cycles of the session's accepted receipts (speed-cap check)
   -- partial unique index on (user_id) where ended_at is null: one active session per user
 )
 ```
@@ -107,7 +125,7 @@ economy_daily ( day date pk, minted bigint, spent bigint )                      
 
 **Wallet invariants.** Every wallet change is `INSERT INTO credit_ledger … ON CONFLICT (idempotency_key) DO NOTHING` followed, in the same transaction, by `UPDATE profile SET wallet_credits = wallet_credits + $delta WHERE user_id = $1 AND wallet_credits + $delta >= 0 RETURNING wallet_credits`. Zero rows updated: roll back and return `409 INSUFFICIENT_CREDITS`. Zero rows inserted (duplicate key): roll back and return the original result (idempotent replay). The `UPDATE` row lock serialises concurrent spends; a `SELECT` of the balance is never used to decide anything.
 
-**Idempotency keys:** `match:<matchId>:<userId>` (match reward), `daily-win:<userId>:<utcDate>`, `contract:<contractId>:<userId>` (first-completion bonus), `shop:<purchaseId>` and `admin:<actionId>`. `purchaseId` is a client-generated UUID sent as the `Idempotency-Key` header of `POST /api/shop/purchase`. Owning the item already returns `409 ALREADY_OWNED` and writes nothing (no ledger row, no `user_cosmetic` row). Cosmetics granted without a price (season rewards, campaign badges) are inserted into `user_cosmetic` with `ON CONFLICT DO NOTHING` and a non-shop `source`, and touch no ledger row.
+**Idempotency keys:** `match:<matchId>:<userId>` (match reward), `daily-win:<userId>:<utcDate>`, `contract:<contractId>:<userId>` (first-completion bonus), `contract-star:<contractId>:<userId>` (★★★ reward), `shop:<purchaseId>` and `admin:<actionId>`. `purchaseId` is a client-generated UUID sent as the `Idempotency-Key` header of `POST /api/shop/purchase`. Owning the item already returns `409 ALREADY_OWNED` and writes nothing (no ledger row, no `user_cosmetic` row). Cosmetics granted without a price (season rewards, campaign badges) are inserted into `user_cosmetic` with `ON CONFLICT DO NOTHING` and a non-shop `source`, and touch no ledger row.
 
 **Farm credits** live only in `campaign_save.farm_credits` and change only through receipt grants and `POST /api/campaign/unlock`. Each of those increments `version`, so a concurrent `PUT /api/campaign` with a stale `If-Match` gets `409`.
 
@@ -119,12 +137,12 @@ match (
   id uuid pk, mode text,                        -- 'casual' | 'ranked' | 'custom' | 'practice'
   season_id int null, seed bigint check (seed between 0 and 4294967295),   -- uint32; same Drizzle mode as run_receipt.seed
   rules_version text, language_version text,
-  settings jsonb, started_at, ended_at, event_log_url text null   -- cached log in object storage (optional)
+  settings jsonb, started_at, ended_at   -- no stored event log: logs are regenerated from the inputs (see saves-and-persistence)
 )
 match_player (
   match_id uuid fk, slot smallint, user_id uuid null,   -- null for bots / deleted users
   bot_id text null, placement smallint, score int,
-  cycles_last_change int, logic_cycles int, program_tokens int,
+  cycles_last_change int, logic_cycles int, program_tokens int,   -- tiebreaker inputs, defined in scoring-and-judging (last sell of >= 1 unit, else the budget; 1-cycle instructions; countTokens). Idle players store 0 / budget / 0
   crops_harvested int,
   awards text[], credits_awarded int, xp_awarded int,
   rp_before int null, rp_after int null, rank_before smallint null, rank_after smallint null,
@@ -145,11 +163,14 @@ rank_state (
   rp int not null, placements_played smallint default 0,
   win_streak smallint default 0, shield_games smallint default 0,
   peak_rank_index smallint, games int, wins int,
+  demotion_warning boolean not null default false,   -- set when a non-shielded loss is clamped at 0 RP; cleared on any RP gain, promotion or demotion
+  summary_seen boolean not null default false,       -- the season-end modal has been shown
   primary key (user_id, season_id)
 )
 queue_penalty ( user_id uuid, mode text, day date, offences smallint, cooldown_until timestamptz,
                 primary key (user_id, mode, day) )
 ```
+A new season creates a new `rank_state` row per player, seeded with `rank_index = max(prev_rank − 3, min(prev_rank, 2))`, `rp = 50` and `placements_played = 0`; the placement target is 5 for a user's first row and 3 afterwards (see [ranked-ladder](../01-game-design/ranked-ladder.md)). Season rewards are granted from `peak_rank_index` at rollover.
 
 ### Social & safety
 ```sql
@@ -157,7 +178,8 @@ friendship ( user_a uuid, user_b uuid, created_at, primary key (user_a, user_b),
 friend_request ( from_user uuid, to_user uuid, created_at, primary key (from_user, to_user) )
 block ( blocker uuid, blocked uuid, created_at, primary key (blocker, blocked) )
 report ( id uuid pk, reporter uuid, target_user uuid null, match_id uuid null,
-         category text, note text check (length(note) <= 500), status text, created_at )
+         category text,   -- offensive_handle | offensive_room_name | offensive_code_text | cheating_or_collusion | harassment | other
+         note text check (length(note) <= 500), status text, created_at )
 moderation_action (                              -- every moderator/admin action, append-only; the admin page is read-only on this table
   id uuid pk, actor_user_id uuid fk, target_user_id uuid null fk, report_id uuid null fk,
   action text not null,     -- 'warn' | 'force_handle_change' | 'temp_ban' | 'perm_ban' | 'unban' | 'credit_adjust' | 'role_change'
@@ -165,6 +187,8 @@ moderation_action (                              -- every moderator/admin action
   note text check (length(note) <= 1000), created_at timestamptz not null default now()
 )
 ```
+`target_user` is the host for `offensive_room_name` reports; `match_id` is set when the report starts from Results or Replay; one report per (reporter, target_user) per 24 h is enforced in the API.
+
 Bans are state on `profile` (`banned_until`, `ban_reason`; a permanent ban sets `banned_until = 'infinity'`), enforced at socket `hello`, at `queue.join` / `room.join`, and by deleting the user's sessions when the ban is applied (see [auth](auth.md)). A temp ban expires by comparing `banned_until` to `now()`, so no job is needed.
 
 ## Transactions that must be atomic
@@ -187,7 +211,7 @@ Columns: `profile.deleted_at` and `profile.hard_delete_after` (`= deleted_at + 3
 | Table | Action |
 |---|---|
 | `user`, `account`, `session`, `verification` (Better Auth) | delete (`account` holds the Google id) |
-| `profile` | delete; insert `reserved_handle(handle, released_at = now() + 90 days)`. A handle in `reserved_handle` cannot be registered until released, so nobody can impersonate a deleted player |
+| `profile`, `consent_event` | delete; insert `reserved_handle(handle, released_at = now() + 90 days)`. A handle in `reserved_handle` cannot be registered until released, so nobody can impersonate a deleted player |
 | `campaign_save`, `contract_attempt`, `run_receipt`, `free_farm_session` | delete (the receipt `source` goes with them) |
 | `credit_ledger`, `user_cosmetic`, `rank_state`, `queue_penalty` | delete. The reconciliation job and the economy metrics read the `economy_daily` snapshot written before deletion, so totals do not drift |
 | `friendship`, `block` | delete, both directions |
@@ -203,5 +227,6 @@ The job also appends the opaque user id and the deletion time to the deletion lo
 - Use the **pooled** connection string (PgBouncer) from the server (`DATABASE_URL`). Use the direct, non-PgBouncer string (`DATABASE_URL_UNPOOLED`) for migrations, seeds and CI branch setup. Where each variable is stored is listed in [connections](../06-infrastructure/connections.md).
 - **Driver.** The server is a long-lived Node process, so use plain TCP, not the HTTP/WebSocket serverless driver: `drizzle-orm/postgres-js` with `postgres(process.env.DATABASE_URL, { prepare: false, max: 10, idle_timeout: 20 })`. Neon's pooled endpoint is PgBouncer in transaction mode, where named prepared statements are not guaranteed to survive across pooled connections, and postgres.js prepares by default. `prepare: false` keeps us independent of the pooler's handling and is cheap insurance at our query volume. `idle_timeout` of about 20 s lets Neon autosuspend in dev and preview instead of idle sockets holding compute awake. An alternative with identical semantics is `drizzle-orm/node-postgres` with a `pg.Pool`. Better Auth's Drizzle adapter receives this same `db` instance.
 - **Migrations and seeds** (`drizzle-kit migrate`, CI branch setup) use a second client built from `DATABASE_URL_UNPOOLED`, never the pooled URL.
-- **Branch per PR** for preview environments (Neon branching), with migrations applied on branch creation.
-- Autosuspend is fine for dev and preview. For prod, set a minimum compute or accept a cold-start of under a second on first query after idle.
+- **Branch per PR** for preview environments: `preview/<branch-slug>`, forked from the synthetic `dev` branch (never from `main`; see [hosting](../06-infrastructure/hosting.md)), created, migrated and seeded by `preview-db.yml` ([environments-and-ci](../06-infrastructure/environments-and-ci.md)).
+- **Seed data.** Seed scripts create synthetic users (completed onboarding, `birth_year_confirmed_13plus` true, current Terms accepted) and finished matches and ledger rows. Contracts, crops, the skill tree and bot programs are not seeded: they live in `packages/content` and are referenced by id.
+- Autosuspend is fine for dev and preview. Health checks must not query the DB (see [hosting](../06-infrastructure/hosting.md)) or autosuspend never happens. For prod, set a minimum compute or accept a cold-start of under a second on first query after idle.

@@ -15,7 +15,7 @@ assets/
 └── fonts/                  OFL fonts + license files
 ```
 
-Build outputs go to `apps/web/public/assets/` (git-ignored, produced in CI).
+Build outputs go to `apps/web/public/assets/` (git-ignored). They are produced by the build step (`pnpm build`), in CI (`assets.yml`) and in Render's build.
 
 ## Voxel pipeline
 

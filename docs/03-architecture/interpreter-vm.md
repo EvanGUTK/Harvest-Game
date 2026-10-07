@@ -51,6 +51,7 @@ type VMYield =
 
 ## Lexer
 
+- Hand-written, with no regular expressions (lint-enforced), so tokenisation is deterministic and exactly meterable.
 - Produces `INDENT`/`DEDENT`/`NEWLINE` tokens Python-style, using an indentation stack.
 - Implicit line joining inside `()`, `[]`, `{}`.
 - Every token carries `{line, col, offset, length}` for diagnostics.

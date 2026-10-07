@@ -1,6 +1,6 @@
 ---
 name: determinism-auditor
-description: Read-only audit of packages/lang and packages/sim for nondeterminism, impurity, float math, unstable iteration, hidden host capabilities, or limit bypasses. Use before merging any LANG-*/SIM-* PR and after any change to content values.
+description: Read-only (by convention; tool access is not path-scoped) audit of packages/lang and packages/sim for nondeterminism, impurity, float math, unstable iteration, hidden host capabilities, or limit bypasses. Use before merging any LANG-*/SIM-* PR and after any change to content values.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -17,4 +17,4 @@ Checklist (report each with file:line):
 7. Limits: source size, AST nodes, nesting, call depth, collection size, heap cells, print lines, cycle budget: each enforced and tested.
 8. Snapshot/restore round-trips to identical state hash.
 
-Output: a table of findings (severity, location, why it's a problem, suggested fix). If clean, say so and list what you checked. Never modify files.
+Output: a table of findings (severity, location, why it's a problem, suggested fix). If clean, say so and list what you checked. Never modify files; use Bash only for read-only commands (`git diff`, `git log`, `pnpm lint`, `pnpm test`).

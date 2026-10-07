@@ -8,9 +8,11 @@ All values are provisional and get tuned in M0/M1 with the balance harness (`[SI
 
 | Crop | Seed cost | Base price | Grow cycles | Wither after | Needs | Design role |
 |---|---|---|---|---|---|---|
-| **Radish** | ₵2 | ₵5 | 300 | 3,000 | — | Fast and cheap. Teaches the basic plant → harvest loop. |
-| **Corn** | ₵6 | ₵18 | 900 | 1,500 | tilled soil | Mid tier. Teaches `till()` and conditionals. |
+| **Radish** | ₵2 | ₵5 | 300 | 3,000 | moisture > 0 | Fast and cheap. Teaches the basic plant → harvest loop. |
+| **Corn** | ₵6 | ₵18 | 900 | 1,500 | tilled soil, moisture > 0 | Mid tier. Teaches `till()` and conditionals. |
 | **Melon** | ₵15 | ₵60 | 2,400 | 2,400 | tilled soil, moisture ≥ 30 to grow | High value, slow. Teaches watering and planning. |
+
+Growth pauses while the tile's moisture is below the crop's minimum (it never kills the crop); wither is measured in world cycles from the moment the crop is ripe and does not pause. See [farm-simulation](farm-simulation.md) Growth rules.
 
 ### Post-MVP (campaign unlocks, then added to showdown rotation)
 
@@ -37,6 +39,7 @@ Why split them? If showdown winnings could buy skill-tree nodes, strong players 
 
 - **Single-player market:** fixed prices per chapter, with an occasional "market day" contract with a price multiplier.
 - **Selling:** `sell(crop, n)` in code, or the "Sell all" button in the Free Farm.
+- **Contract runs are sandboxed.** `credits()` starts at the contract's `startCredits` and seeds are bought from that sandbox balance. Farm credits are never touched by a run; the server adds the contract reward (to the wallet) and Free Farm sale proceeds (to farm credits) only after re-simulating the receipt (see [saves-and-persistence](../03-architecture/saves-and-persistence.md)).
 
 ## Multiplayer economy (shared market)
 
@@ -57,7 +60,7 @@ sell(crop, n):                                // n must be an int, else R-TYPE
   inventory[crop] −= k;  credits += gained;  pressure(crop) += k   // pressure counts units sold by anyone
   emit { t, slot, k:'sell', crop, n: k, price, credits };  return gained
 
-every 500 cycles (global multiples of 500): pressure(crop) = floorDiv(pressure(crop) × 80, 100)   // recovers over time
+every 500 cycles (global multiples of 500): pressure(crop) = floorDiv(pressure(crop) × 80, 100)   // recovers over time; applied before any sale or price read at that cycle
 ```
 
 - If all eight players spam radishes, radish prices collapse, and the player who planted melons wins.

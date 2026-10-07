@@ -53,7 +53,7 @@ Techniques: instancing for crops (one set of instanced meshes shared by every fa
 3. **55–65 s:** Simulation ends. Towers settle. The camera sweeps from last place to first.
 4. **65–75 s:** Podium. Winners' farmer avatars and drones stand on a podium, confetti made of crop voxels, awards fly in.
 
-Players can press **Skip** to jump to results after 5 s. The server proceeds when all clients ack or 120 s pass.
+Players can press **Skip** to jump to results after 5 s. The server proceeds when all clients ack or 120 s pass. A player who skips goes straight to the results screen in a waiting state: the standings table shows at once with the header "Waiting for other players to finish watching… (m:ss)" counting down to the 120 s cap. Rewards, RP and the rematch vote animate in when `match.results` arrives.
 
 ## Accessibility hooks
 

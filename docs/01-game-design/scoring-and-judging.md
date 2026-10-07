@@ -56,14 +56,14 @@ Awards never affect placement. They give non-winners something to chase. `Player
 
 ## Multiplayer rewards (wallet credits)
 
-| Placement in a 4-player match | Casual ₵ | Ranked ₵ |
-|---|---|---|
-| 1st | 60 | 90 |
-| 2nd | 40 | 60 |
-| 3rd | 25 | 40 |
-| 4th | 15 | 25 |
+| Placement in a 4-player match | Casual ₵ | Casual with bots ₵ | Ranked ₵ |
+|---|---|---|---|
+| 1st | 60 | 30 | 90 |
+| 2nd | 40 | 20 | 60 |
+| 3rd | 25 | 12 | 40 |
+| 4th | 15 | 7 | 25 |
 
-For other lobby sizes, interpolate linearly by percentile. There's also a daily first-win bonus of ₵50. Custom rooms pay XP only.
+For other lobby sizes, interpolate linearly by percentile. There's also a daily first-win bonus of ₵50. Custom rooms pay XP only. "Casual with bots" is 50 % of Casual, rounded down with `floorDiv`. No daily first-win bonus from bot matches.
 
 ## Results screen contents
 

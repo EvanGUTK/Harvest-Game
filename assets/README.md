@@ -1,6 +1,6 @@
 # assets/
 
-Source art and audio. Build outputs go to `apps/web/public/assets/` (git-ignored).
+Source art and audio. Build outputs go to `apps/web/public/assets/` (git-ignored), produced by the build step (`pnpm build`), in CI (`assets.yml`) and in Render's build.
 
 **Every shipped file needs a row in [`MANIFEST.csv`](MANIFEST.csv)** with its license. CI (`tools/asset-check`) fails otherwise.
 

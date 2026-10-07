@@ -30,7 +30,7 @@ pick contract → read brief → write/edit program → Run (watch drone) → tw
 ```
 
 - **Session target:** 5–15 min per contract. You can quit at any point because saves happen automatically.
-- **Run controls:** Run, Pause, Step (one statement), Speed (1×, 4×, 16×, Max), Reset farm.
+- **Run controls:** Run, Pause, Step (one statement), Speed (1×, 4×, 16×; `Max` in contracts and showdown test runs only), Reset farm. Free Farm sessions are server-issued and limited to 16× (see [saves-and-persistence](../03-architecture/saves-and-persistence.md)).
 - **Persistent farm:** Between contracts there is a **Free Farm** sandbox. Your farm keeps running your last program while you watch, and you can sell harvests for credits. This is the "idle satisfaction" layer.
 - **What the player spends credits on:** skill-tree nodes (language features, commands, crops, farm size, drone speed) and cosmetics.
 - **Why learn more:** later contracts can't be finished in the cycle budget with naive code, so each unlock is a real upgrade.
@@ -50,7 +50,7 @@ See [campaign-and-skill-tree.md](campaign-and-skill-tree.md).
 
 **Total showdown time:** about 13–14 minutes.
 
-"All code is unlocked" in multiplayer, so every language feature and command is available regardless of campaign progress. That is fair because nobody plays with more tools than anyone else. Players who haven't reached a feature in the campaign see a **"New to you"** tag on it in the command reference.
+"All code is unlocked" in multiplayer: every language feature and every command the campaign can unlock is available regardless of progress, with two deliberate exceptions: `random()` is disabled in ranked (D-18) and `spawn()` (second drone) is single-player only in v1 (D-24); see [standard-library](../02-language/standard-library.md). That is fair because nobody plays with more tools than anyone else. Players who haven't reached a feature in the campaign see a **"New to you"** tag on it in the command reference.
 
 ## Why both modes share one engine
 

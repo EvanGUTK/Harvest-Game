@@ -21,7 +21,8 @@ If replay or finale load ever becomes measurable, the first option is a `match_e
   - `POST /api/campaign/contracts/:contractId/start`: issues a contract attempt (`{ attemptId, seed }`).
   - `POST /api/campaign/free-farm/start`: issues a Free Farm session (`{ sessionId, seed, startedAt }`).
   - `POST /api/campaign/runs`: a run receipt for one of those attempts or sessions. The server re-simulates, then credits farm credits and records contract completion.
-  - `POST /api/campaign/unlock { nodeId }`: checks prerequisites and cost, then deducts farm credits.
+  - `POST /api/campaign/unlock { nodeId }`: checks prerequisites and cost, then deducts farm credits. It rejects with `409 { code: 'UNLOCK_REJECTED', reason }` (`reason` is `chapter_locked`, `prereq_missing` or `insufficient_credits`) when the server-side check fails, for example because another tab or device changed the save. The client shows "That didn't work: your save changed on another device. Reloading..." and refetches `GET /api/campaign`.
+- Every run-receipt grant and every `POST /api/campaign/unlock` increments `campaign_save.version` (see [data-model](data-model.md)). Responses that change the save (`granted`, `mismatch`, unlock) return the new `version`, so the client's next `PUT` does not conflict with its own grant.
 - A version conflict (two tabs) returns 409, and the client offers "Load newer save" or "Keep mine (overwrite files only)".
 
 ## Run receipts (anti-cheat for single-player)
@@ -31,21 +32,32 @@ If replay or finale load ever becomes measurable, the first option is a `match_e
 The client never chooses the seed.
 
 - **Contracts:** `POST /api/campaign/contracts/:contractId/start` inserts a `contract_attempt` row and returns `{ attemptId, seed }`. The seed is derived on the server from `(contractId, rulesVersion, attemptId)` with `splitmix32`, or is fixed per contract where the design wants identical layouts.
-- **Free Farm:** `POST /api/campaign/free-farm/start` returns `{ sessionId, seed, startedAt }`. There is **one active session per user**. Starting a new one invalidates the old, and the old tab shows "Free Farm is running in another tab". A receipt for an unknown or superseded session is rejected with `409 FREE_FARM_SESSION_STALE`.
+- **Free Farm:** `POST /api/campaign/free-farm/start` returns `{ sessionId, seed, startedAt }` and inserts a `free_farm_session` row (see [data-model](data-model.md)). There is **one active session per user**.
+  - A session starts from an **empty farm** at the unlocked size on the issued seed. Crops don't carry over between sessions, credits do.
+  - A session runs **one program**. Changing the program or pressing Reset ends the session and starts a new one.
+  - Starting a session in a second tab supersedes the first. The first tab shows "Free Farm is running in another tab" with a **Use this tab** button, which starts a new session there. A receipt for an unknown or superseded session is rejected with `409 FREE_FARM_SESSION_STALE`.
 
-A receipt contains `{ attemptId | sessionId, source, startStateHash, cycles, claimedResult }`. Free Farm receipts also carry a `sequence` that must be strictly greater than the last accepted one for that session. The server looks up the contract and seed from the attempt or session.
+A receipt contains `{ contractId | 'free_farm', attemptId | sessionId, source, seed, startStateHash, cycles, claimedResult }`. The server looks up the contract and seed from the attempt or session and uses its own seed, not the echoed one.
+
+Free Farm receipts are **cumulative for their session** and also carry:
+- `sequence`, strictly greater than the last accepted one for that session.
+- `cycles`, counted from the session's cycle 0 (not from the previous receipt), so the server can replay the whole session from the issued seed. A farm is one continuous state, so a segment can't be verified on its own.
+- `sellAllAt: number[]`, the cycle count (cycles simulated so far) at which each **Sell all** press happened, since the session began. A press is an out-of-band, zero-cycle action: it sells the whole silo at the chapter prices. The re-simulation applies each press after every program event with time ≤ that cycle and before any later one. Without this list, one press would make every receipt of the session mismatch.
 
 ### Server verification
 
 1. Loads the attempt or session (it must belong to the caller and be unused or active) and the authoritative save, then checks `startStateHash` against the save (farm size, unlocks, drone upgrades). A contract `attemptId` that already has a `run_receipt` row, or a Free Farm `sequence` that is not greater than the last accepted one, is rejected with `409 RECEIPT_ALREADY_USED`.
-2. Compiles with the player's unlocked features (`lockedFeatures`). A locked feature means the receipt is rejected.
+2. Compiles with the player's unlocked features (`lockedFeatures` and `lockedNames`). A locked feature or name means the receipt is rejected.
 3. Applies the caps.
    - **Contracts:** the contract's cycle budget bounds the claim. `Max` speed exists only here (and in showdown test runs).
-   - **Free Farm:** the speed selector offers 1×, 4× and 16× only (`FREE_FARM_MAX_SPEED = 16` in `content`, so at `CYCLES_PER_SECOND = 100` that is 1,600 cycles/s). Cycles are counted per session: the total of the session's accepted receipts plus this one must satisfy `cycles ≤ (now − startedAt) × 1_600 + 5 % slack` (`now − startedAt` in seconds), so a client can't claim a week of farming from a 5-minute session. Each receipt is also capped at `FREE_FARM_RECEIPT_MAX_CYCLES = 200_000`.
+   - **Free Farm:** the speed selector offers 1×, 4× and 16× only (`FREE_FARM_MAX_SPEED = 16` in `content`, so at `CYCLES_PER_SECOND = 100` that is 1,600 cycles/s). The receipt's cumulative `cycles` must satisfy `cycles ≤ (now − startedAt) × 1_600 + 5 % slack` (`now − startedAt` in seconds, from the `free_farm_session` row), so a client can't claim a week of farming from a 5-minute session. `cycles` must also exceed the last accepted receipt's. Because the server replays from cycle 0, `cycles` is capped at `FREE_FARM_RECEIPT_MAX_CYCLES = 200_000`; at that point the client ends the session and starts a new one.
+   - The farm keeps running in a hidden tab and never catches up lost time, so the wall-clock cap is only ever under-run, never exceeded.
    - A receipt over any cap is rejected, not clamped.
-4. Simulates `cycles` from the server-issued seed and compares results. On a match it grants. On a mismatch it grants the *server's* result and logs the anomaly.
+4. Simulates `cycles` from the server-issued seed and compares results. On a match it grants. On a mismatch it grants the *server's* result and logs the anomaly with ids only (`userId`, `receiptId`, a hash of `sessionId`), never the source (see [observability](../06-infrastructure/observability.md#what-may-be-logged-pii-policy)).
 
-Cost: a Free Farm receipt is at most one VM run of ≤ 200k cycles, which is about 10 ms of CPU (at the 16× cap and one receipt per 60 s it is about 100k cycles). Receipts are sent at most once per 60 s per user.
+For Free Farm, **credits already granted in the session** are the sum of `verified_credits` over that session's accepted `run_receipt` rows, so no extra column is needed. The grant is the server's total for the replayed session minus that sum.
+
+Cost: a Free Farm receipt replays its session from the seed, so it is at most one VM run of ≤ 200k cycles, which is about 10 ms of CPU. Receipts are sent at most once per 60 s per user.
 
 ### Payout rules
 

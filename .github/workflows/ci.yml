@@ -27,6 +27,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Supply chain: fail on known high/critical advisories in production dependencies.
+      - run: pnpm audit --prod --audit-level=high
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check

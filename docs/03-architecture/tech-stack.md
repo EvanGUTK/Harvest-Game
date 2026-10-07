@@ -22,9 +22,9 @@
 | Email | **Resend** | Already in your toolbox. Good DX for OTP and magic-link emails |
 | DB | **Neon Postgres** | Already in your toolbox. Branching gives a DB per PR preview |
 | ORM / migrations | **Drizzle** | SQL-first, light, great with Neon |
-| Hosting | **Render** (static site + web service) | Already in your toolbox. Supports long-lived WebSockets |
+| Hosting | **Render** (one web service serving client + API + WS; static site split later) | Already in your toolbox. Supports long-lived WebSockets |
 | Tests | **Vitest** (unit), **Playwright** (e2e + cross-engine determinism) | |
-| Errors / telemetry | Sentry (free tier) + structured logs (pino) | |
+| Errors / telemetry | Sentry (free tier) + structured logs (pino); **Plausible Cloud** for cookieless product analytics; **Grafana Cloud** free tier for metrics (scrapes the bearer-protected `/metrics`) | See [observability](../06-infrastructure/observability.md) |
 
 ## "JS/TS might be a hurdle — should we use Wasm?"
 

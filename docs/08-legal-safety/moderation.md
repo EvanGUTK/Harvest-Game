@@ -42,7 +42,7 @@ Behaviour:
 
 ## Report flow
 
-Report → `report` row → moderator queue (simple admin page, M8) → action: warn, force handle change, temp ban (queue + rooms), or permanent ban. Every action is logged.
+Report → `report` row → moderator queue (simple admin page, M8) → action: warn, force handle change, temp ban (queue + rooms), or permanent ban. Every action is logged in the `moderation_action` table ([data-model](../03-architecture/data-model.md)); bans are `profile.banned_until` / `ban_reason`; force handle change sets `handle_change_required`.
 
 ## Automated signals
 

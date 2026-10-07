@@ -26,6 +26,7 @@
       "Bash(git push -u origin:*)",
       "Bash(git checkout -b:*)",
       "Bash(git switch:*)",
+      "Bash(git merge origin/main)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(grep:*)",
