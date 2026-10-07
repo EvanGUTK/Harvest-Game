@@ -4,6 +4,7 @@
 
 ## Now
 
+- **Resuming at home?** Read [`HANDOFF.md`](HANDOFF.md) first (one-off note for the 2026-10-07 cloud session).
 - **Phase:** M0 (Foundations) in progress. LANG-01 (lexer, `countTokens`) is done; LANG-02 (parser) is next.
 - **Branch:** `claude/sleepy-gauss-gxgilk`, PR [EvanGUTK/Harvest-Game#1](https://github.com/EvanGUTK/Harvest-Game/pull/1) to `main` is open. New M0 work lands on this branch until the PR merges; after that, `feat/LANG-xx-*` branches from `main`.
 - **Blocking decisions:** none for the design. All 28 rows in `docs/00-overview/decisions-needed.md` have assumed defaults and the docs are written against them. D-22 defaults to "Start M0 now". Before M0 code, Evan ticks D-02, D-03, D-04, D-06, D-07, D-17, D-18, D-20 and D-24 (the rows M0 content values depend on) and accepts ADR-0001, 0002 and 0003; all seven ADRs are still `proposed`.
