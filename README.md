@@ -9,7 +9,8 @@ A browser game where you program a farm drone in **Sprout**, a small Python-styl
 1. `git clone`, `pnpm install`, `pnpm check`.
 2. Read [`CLAUDE.md`](CLAUDE.md) (roles, hard rules, workflow), then [`STATE.md`](STATE.md) (where we are), then [`ARCHITECTURE.md`](ARCHITECTURE.md) (one-page map).
 3. Standards live in [`docs/09-engineering/`](docs/09-engineering/). CI enforces typecheck, lint (including engine purity rules), formatting and tests on every PR.
-4. Claude Code users: `.claude/` ships project agents (`architect`, `engine-engineer`, `determinism-auditor`, `reviewer`, `docs-keeper`) and skills (`/task`, `/adr`, `/handoff`). Run `/handoff` before ending a session.
+4. Owner setup: [`docs/06-infrastructure/connections.md`](docs/06-infrastructure/connections.md) is the checklist of every external account, credential, DNS record, OAuth setting, CI secret and repo setting to create, with the milestone each is needed by.
+5. Claude Code users: `.claude/` ships project agents (`architect`, `engine-engineer`, `determinism-auditor`, `reviewer`, `docs-keeper`) and skills (`/task`, `/adr`, `/handoff`). Run `/handoff` before ending a session.
 
 ## Read in this order
 
@@ -75,6 +76,8 @@ docs/
 │   ├── hosting.md                Render + Neon (+ why not ChatGPT Sites)
 │   ├── environments-and-ci.md    dev/staging/prod, GitHub Actions
 │   ├── observability.md          logs, metrics, error tracking
+│   ├── connections.md            every external account, credential, DNS record, OAuth setting,
+│   │                             CI secret and repo setting, with owner and milestone
 │   └── cost-estimate.md
 ├── 07-roadmap/
 │   ├── milestones.md             M0 … M8 with exit criteria
@@ -103,6 +106,9 @@ packages/content Crops, commands, skill tree, cosmetics as data
 packages/db      Drizzle schema + migrations for Neon Postgres
 assets/          Source art & audio + MANIFEST (every file has a license row)
 tools/           Build scripts (voxel baking, asset manifest check)
+docker-compose.yml   Local Postgres for development
+render.yaml      Render Blueprint (services, env groups)
+.env.example     Every environment variable, documented
 ```
 
 `pnpm check` runs typecheck, lint, format check and tests. There is no runnable game yet.

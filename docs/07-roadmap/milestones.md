@@ -32,6 +32,7 @@ flowchart LR
 - CodeMirror + Lezer Sprout mode, diagnostics, autocomplete, cost lens
 - Worker-based run/pause/step/speed/reset, event-driven animation
 - 3 hand-made contracts (Ch1) hard-coded
+- Root `pnpm build` script (`pnpm -r build`: the web app and the asset-bake tools), run by `ci.yml` and later by Render
 
 **Exit:** A non-programmer friend completes Ch1 contracts without help in 10 minutes. 60 fps on a mid laptop.
 
@@ -40,9 +41,12 @@ flowchart LR
 - Drizzle schema v1 on Neon, migrations, preview branches
 - Campaign save/load, run receipts with server re-simulation, farm credits, skill tree v1 (Ch1–5 nodes)
 - Chapters 1–5 content, lesson cards
-- Deploy to Render (option A single service)
+- Deploy to Render (option A single service), `smoke.yml` and `release.yml` promotion (see [environments-and-ci](../06-infrastructure/environments-and-ci.md))
+- Static privacy policy and terms pages (draft, LEG-02a); Google consent screen in Testing
+- Nightly backups running (`backup.yml`)
+- Uptime monitor and runbooks skeleton
 
-**Exit:** A new user can sign up on a phone or laptop, finish Ch1–5, and buy skill nodes. Credits survive reloads and devices. A tampered receipt is rejected.
+**Exit:** A new user can sign up on a laptop or tablet, finish Ch1–5, and buy skill nodes. (Phone play of the campaign arrives with Blocks mode in M7.) Credits survive reloads and devices. A tampered receipt is rejected.
 
 ## M3: Private-room Showdown (L)
 - WebSocket layer (tickets, heartbeat, clock sync, reconnect)
@@ -64,27 +68,28 @@ flowchart LR
 ## M5: Matchmaking & Ranked (L)
 - Casual queue (solo + party), bots fallback
 - Ranked queue (solo, 4 FFA), ready check with accept UI, cooldowns
-- Season 0 (internal/closed-beta test season, no end-of-season rewards; rank state is wiped at open launch in M8, when the first public season, e.g. "Season 1: Sowing", begins), RP rules, placements, shields, rank emblems, leaderboard
+- Seasons: "Season 0" is the internal pre-season used only for M5 testing (no end-of-season rewards; its rank state is wiped at open launch in M8, when the first ranked season, "Season 1: Sowing", begins). RP rules, placements, shields, season-end modal, rank emblems, leaderboard
 - Queue pill, match-found modal, notifications
 
-**Exit:** With 12 test accounts, queues form matches within the window rules. Declines requeue the others at original priority. RP math matches the docs in unit tests.
+**Exit:** With the 12 e2e seed accounts (`pnpm db:seed:e2e`), queues form matches within the window rules. Declines requeue the others at original priority. RP math matches the docs in unit tests: the table row sums (+19, +10, +1, −8, −17), five placement wins from Bronze III 0 ending at Silver III 25 RP, clamp-at-0 and the demotion warning, a shield after every promotion, and the soft-reset formula.
 
 ## M6: Cosmetics, Shop & Spectate (M)
 - Cosmetics catalogue + Locker + equip, shown in lobby, finale and profile
 - Shop (weekly rotation), purchase transactions
-- Profile page, badges, awards, match history
+- Profile page, badges, awards, match history with Replay links (until then Replay is reached from Results only)
 - Spectate live matches (finale and replay only, since code stays hidden until results)
 
 ## M7: Art, Audio & Finale Polish (L)
 - Commissioned or hand-authored hero models, backdrops, farmer avatars
 - Adaptive music, full SFX set
 - Finale choreography v2 (money towers, podium, confetti), home farmhouse diorama
-- Chapters 6–10, Blocks mode for tablets, accessibility pass
+- Chapters 6–10, Blocks mode (tablets, and phone play of the campaign), accessibility pass
 
 ## M8: Launch Hardening (M)
 - Load test: 500 concurrent sockets, 50 simultaneous showdowns on staging
-- Observability, alerts, graceful drain deploys
-- Privacy policy, terms, data export and deletion, moderation tools (reports queue)
+- Observability, alert routing, status page, completed runbooks, `security.txt`, graceful drain deploys
+- Backups verified: restore drill into staging completed, reconciliation clean
+- Lawyer-reviewed privacy policy and terms, Google consent screen published, data export and deletion, moderation tools (reports queue)
 - Closed beta, then open launch
 
 ## Explicitly after launch

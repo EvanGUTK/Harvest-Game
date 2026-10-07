@@ -60,7 +60,7 @@ Every signed-out visitor sees the **age gate before any sign-in button, email fi
 A 3D diorama of the player's farmhouse, their equipped drone hovering, and the backdrop cosmetic. Large cards: **Campaign** (shows current chapter), **Multiplayer** (shows rank emblem), **Locker**, **Shop**. A top bar holds wallet credits, level, the friends button and settings. The daily first-win bonus indicator is also here.
 
 ### Campaign map
-Chapters as fields on a hillside path. Each contract is a fence-post marker with ★ ratings. The skill-tree button shows available farm credits. After the last Chapter 10 contract is cleared, the map also shows a **Graduation** card.
+Chapters as fields on a hillside path. Each contract is a fence-post marker with ★ ratings. Each chapter header lists its unlocked lesson cards for re-reading. The skill-tree button shows available farm credits. The tree screen shows node states (Owned, Available, Unaffordable, Needs prerequisite, Chapter-gated), a side panel with an inline unlock confirm, and the lesson card on language-node unlock (see [campaign-and-skill-tree](../01-game-design/campaign-and-skill-tree.md#skill-tree-ui)). After the last Chapter 10 contract is cleared, the map also shows a **Graduation** card.
 
 ### Contract editor (the core screen)
 
@@ -75,11 +75,12 @@ Chapters as fields on a hillside path. Each contract is a fence-post marker with
 │ 4  ...                        │  ⏵ Run  ⏸  ⏭ Step  ⟲ Reset  1× 4× 16×│
 │                               │  cycles 2,340 / 6,000 ███░░░          │
 ├───────────────────────────────┼──────────────────────────────────────┤
-│ Problems (1) │ Output │ Run log│ Commands ▸ (reference, searchable)   │
+│ Problems (1) │ Output │ Run log│ Commands ▸ Reference | Lessons       │
 └───────────────────────────────┴──────────────────────────────────────┘
 ```
 
 - Contracts that have an optional ★★★ challenge show a header toggle **Standard | ★★★ Challenge**. The challenge shows its tighter target next to the goal (for example "≤ 4,000 cycles" or "≤ 40 tokens"). The ★ earned per contract appears on the campaign map marker.
+- The bottom-right panel has two tabs: **Reference** (searchable) and **Lessons** (every unlocked lesson card, see [curriculum](../02-language/curriculum.md)). Lesson cards open as a modal over this screen.
 - Layouts for tablet and phone are in [Responsive rules](#responsive-rules).
 
 ### Free Farm

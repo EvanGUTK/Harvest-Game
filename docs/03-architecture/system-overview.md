@@ -94,17 +94,19 @@ sequenceDiagram
   participant W as Browser Worker
   participant S as Server
   participant DB as Neon
-  opt Free Farm only
-    W->>S: POST /api/campaign/free-farm/start
-    S-->>W: {sessionId, seed, startedAt} (one active session per user)
-  end
-  W->>W: run program on the contract or session seed (local, instant feedback)
-  W->>S: POST /api/campaign/runs {contractId | 'free_farm', sessionId?, source, seed, startStateHash, cycles, claimedResult}
+  W->>S: POST /api/campaign/contracts/:id/start
+  S-->>W: {attemptId, seed}
+  Note over W,S: Free Farm instead: POST /api/campaign/free-farm/start returns {sessionId, seed, startedAt} (one active session per user)
+  W->>W: run program on the issued seed (local, instant feedback)
+  W->>S: POST /api/campaign/runs {attemptId | sessionId, source, startStateHash, cycles, claimedResult}
   S->>S: recompile + re-simulate (same packages)
   alt results match
     S->>DB: ledger += credits, save progress
     S-->>W: 200 {granted}
   else mismatch
-    S-->>W: 409 {serverResult}  (client shows server result; logs anomaly)
+    S->>DB: grant the server's result, log anomaly (ids only)
+    S-->>W: 200 {granted: serverCredits, mismatch: true}
+  else rejected
+    S-->>W: 409 {code, reason}
   end
 ```

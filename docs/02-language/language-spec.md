@@ -15,14 +15,14 @@ Sprout is a **small, Python-shaped language** for programming a farm drone. If y
 - Source is UTF-8, max **16 KB** per file, max **10 files** per program (campaign) or **1 file** (showdown v1). How several files combine is defined under [Files](#files).
 - Comments: `#` to end of line.
 - **Indentation** defines blocks, as in Python. A tab counts as 4 spaces. Mixing indentation widths within one block is an error with a fix-it hint. Blank lines and comment-only lines are ignored for indentation: they never produce `INDENT`, `DEDENT` or `NEWLINE` tokens, whatever their own indentation.
-- Identifiers: `[A-Za-z_][A-Za-z0-9_]*`, case-sensitive, max 32 chars.
+- Identifiers: `[A-Za-z_][A-Za-z0-9_]*`, case-sensitive, max 32 chars (longer is `E-IDENT-TOO-LONG`).
 - Keywords: `if elif else while for in repeat def return break continue pass and or not True False None global`
 - Literals: integers (`0`, `42`, `1_000`), strings (`"…"` or `'…'`, no f-strings in v0.1), `True`, `False`, `None`.
-  - Integer literals may not have leading zeros (`0` alone is fine, `007` is not): `E-LEADING-ZERO`, with a fix-it that removes the zeros.
-  - A string literal may not span lines. A quote with no closing quote on the same line is `E-UNTERMINATED-STRING`.
+  - Integer literals may not have leading zeros (`0` alone is fine, `007` is not): `E-LEADING-ZERO`, with a fix-it that removes the zeros. A literal above 9,007,199,254,740,991 is `E-INT-TOO-BIG`.
+  - A string literal may not span lines. A quote with no closing quote on the same line is `E-UNTERMINATED-STRING`. A literal longer than 256 characters is `E-STRING-TOO-LONG`.
   - Escapes inside strings are `\\`, `\'`, `\"`, `\n` and `\t`. Any other backslash sequence is `E-BAD-ESCAPE`.
 - Operators: `+ - * // % == != < <= > >= = += -= *= //= %= ( ) [ ] { } , : .`
-- `/` is recognised only to give a helpful error: *"Sprout uses whole numbers. Use `//` for division."*
+- `/` is recognised only to give a helpful error: *"Sprout uses whole numbers. Use `//` for division."* Any other character that is not part of the language (such as `$` or `?` outside a string or comment) is `E-UNEXPECTED-CHAR`.
 
 ## Grammar (EBNF)
 
@@ -59,6 +59,8 @@ kv           = expr ":" expr ;
 
 Chained comparisons (`0 <= x < 8`) behave as in Python.
 
+`break` and `continue` outside a loop are `E-BREAK-OUTSIDE` and `E-CONTINUE-OUTSIDE`, and `return` outside a `def` is `E-RETURN-OUTSIDE`.
+
 ### `repeat`
 
 `repeat n:` runs its block `n` times. It is introduced in Chapter 2 before `for`, and the lesson then shows that `repeat 5:` is the same as `for _ in range(5):`. It is the only non-Python keyword, and it can be removed from a player's toolbox later in the campaign (the "graduate" contract asks you to rewrite `repeat` as `for`).
@@ -89,7 +91,8 @@ Tuples, sets, floats, classes, exceptions, imports, comprehensions, lambdas, f-s
 - **`bool` is a subtype of `int`**: `True < 2` is valid, and as a dict key `True` and `1` are the same key.
 - **`==` and `!=` never raise.** Values of different types are unequal (the only cross-type equalities are `bool` with `int`). `None` equals only `None`; constants and functions equal only themselves; `str` compares by content. `list` and `dict` compare **structurally** (element by element, recursively; dicts ignore insertion order). Structure nested deeper than the call-depth limit (for example a list that contains itself) raises `R-STACK-OVERFLOW`.
 - **`<  <=  >  >=` are defined only for `int`/`bool` against `int`/`bool`, and `str` against `str`** (strings compare by UTF-16 code unit, like JS). Every other pair, including constants, `None`, lists and dicts, is `R-TYPE` (*"Can't compare `RADISH` and `5`."*).
-- **`x in y` (and `not in`)**: if `y` is a `str`, `x` must also be a `str` (else `R-TYPE`) and the result is a substring test; if `y` is a `list`, whether any element `== x`; if `y` is a `dict`, whether the key is present. Any other right-hand type (`int`, `None`, constant, function, `range`) is `R-TYPE`: *"`in` needs a list, dict or text on the right."*
+- **`x in y` (and `not in`)**: if `y` is a `str`, `x` must also be a `str` (else `R-TYPE`) and the result is a substring test; if `y` is a `list`, whether any element `== x`; if `y` is a `dict`, whether the key is present. Any other right-hand type (`int`, `None`, constant, function) is `R-TYPE`: *"`in` needs a list, dict or text on the right."*
+- **Calling.** Calling a value that is not a function (`x = 5` then `x()`) is `R-NOT-CALLABLE`. Calling a function value (a variable that holds a `def`) with the wrong number of arguments is `R-WRONG-ARG-COUNT`; a direct call by name is checked earlier, at compile time, as `E-WRONG-ARG-COUNT`.
 - **Dict keys** are `int`, `bool`, `str`, `None` and constants. A list or dict used as a key is `R-TYPE`. Reading a missing key is `R-KEY`.
 - **Indexing** `x[i]`: `list` and `str` take an `int` (negative allowed, out of range is `R-INDEX`; a `str` index returns a 1-unit string), `dict` takes a key. Assigning into a `str` is `R-TYPE`. Any other indexed type is `R-TYPE`.
 
@@ -111,7 +114,7 @@ Per-element cycle costs (concatenation, repetition, structural `==`, `in`, `pop(
 
 ### Iteration
 
-- `for x in range(…)` is lazy (see [stdlib](standard-library.md)).
+- `for x in range(…)` is lazy (see [stdlib](standard-library.md)). `range` is only valid as the iterable of a `for`; anywhere else (`r = range(5)`) it is `E-RANGE-ONLY-IN-FOR`.
 - `for x in s` over a `str` yields 1-character strings.
 - `for x in lst` iterates a `list` **by index**, as in Python: elements appended during the loop are visited, and elements popped shrink the loop.
 - `for k in d` iterates a **snapshot of the keys taken when the loop starts**. Adding keys inside the loop is allowed and does not affect the iteration (stricter than Python, which raises). Values are read live.
@@ -122,6 +125,7 @@ Per-element cycle costs (concatenation, repetition, structural `==`, `in`, `pop(
 Python rules, simplified:
 - Module-level names are **globals**.
 - A name that is assigned anywhere in a `def` body (including `for` targets and augmented assignment such as `total += 1`) and not declared `global` in that function is **local for the whole body**. Reading it before its first assignment is `R-UNBOUND-LOCAL`: *"`total` is used before it gets a value in this function. Did you mean `global total`?"*
+- `global x` must appear before any use of `x` in the same `def`; otherwise `E-GLOBAL-AFTER-USE`.
 - A name that is never assigned in the body is looked up as a global (read-only).
 - `def` is a statement: the function's name is bound when its `def` line executes. A function body may mention a global or another function that is defined further down the file, provided it is bound by the time the call actually runs. Calling a function above its `def` is `R-UNBOUND-GLOBAL`: *"`tend` isn't defined yet at this line. Move the `def` above."* The checker raises `W-USE-BEFORE-DEF` statically for the obvious top-level case. A name that is defined nowhere in the program is the compile-time `E-UNKNOWN-NAME`.
 - No closures over enclosing function locals in v0.1. A nested `def` is a compile error: *"Define functions at the top level."*
@@ -130,7 +134,7 @@ Python rules, simplified:
 
 The program compiles to bytecode for a stack VM (see [interpreter-vm](../03-architecture/interpreter-vm.md)).
 
-- **Every bytecode instruction costs 1 cycle.** That includes loads, stores, arithmetic, compares, jumps, calls and returns.
+- **Every bytecode instruction costs 1 cycle, except `LINE` (0, a debug marker), plus the surcharges listed in the op-cost table in [interpreter-vm](../03-architecture/interpreter-vm.md#bytecode).** That includes loads, stores, arithmetic, compares, jumps, calls and returns.
 - **Builtins** cost `1 (CALL_HOST) + builtin.cost`. Action builtins also advance world time by their cost (see [stdlib](standard-library.md)).
 - **Size-dependent operations** (string and list concatenation or repetition, structural `==`, `in`, `pop(i)`, iteration set-up) cost extra per element. The single source of truth for those costs is the op-cost table in [interpreter-vm](../03-architecture/interpreter-vm.md#bytecode); this spec only says *which* operations are legal.
 - The editor's **cost lens** shows the estimated cycle cost next to each line after a test run (measured, not guessed).
@@ -140,6 +144,8 @@ The program compiles to bytecode for a stack VM (see [interpreter-vm](../03-arch
 | Limit | Value | When | Error |
 |---|---|---|---|
 | Source size | 16 KB / file | compile | `E-SRC-TOO-BIG` |
+| Identifier length | 32 chars | compile | `E-IDENT-TOO-LONG` |
+| String length | 256 UTF-16 code units | compile (literal) / runtime (`+`, `*`, `str()`) | `E-STRING-TOO-LONG` / `R-STR-TOO-LONG` |
 | Files per program | 10 (campaign), 1 (showdown v1) | compile | `E-TOO-MANY-FILES` |
 | AST nodes | 5,000 per program (all files together) | compile | `E-PROGRAM-TOO-BIG` |
 | Nesting depth (blocks) | 12 | compile | `E-TOO-DEEP` |
@@ -198,4 +204,4 @@ while True:
 ## Versioning
 
 - `language_version` is semver. Breaking syntax changes need a major bump.
-- Every saved program and every match stores the `language_version` and `rules_version` it ran under. Old replays run on archived VM builds (`packages/lang` is versioned and old majors are kept importable).
+- Every saved program and every match stores the `language_version` and `rules_version` it ran under. Old replays run on archived VM builds (`packages/lang` is versioned and old majors are kept importable as committed bundles under `apps/web/public/engines/`, see [saves-and-persistence](../03-architecture/saves-and-persistence.md) §Replays).

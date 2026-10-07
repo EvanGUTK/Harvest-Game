@@ -21,7 +21,9 @@ Each chapter contains:
 - **One "aha" lesson.** An interactive explanation shown when the chapter's concept unlocks, with an editable example.
 - **An optional ★★★ challenge.** The same contract with a tighter budget or a shorter-code target, for wallet credits and a badge.
 
-Contract rewards: wallet credits plus XP. First completion also unlocks the next contract.
+Contract rewards: XP plus a one-time wallet bonus of ₵30 per contract (₵80 for its ★★★ challenge) `[SIM-BAL]`, paid once per contract on first completion (the ★★★ reward once, on first earning). Repeat completions pay neither wallet credits nor XP. First completion also unlocks the next contract.
+
+After Chapter 10 a **Graduation** screen shows your best program as plain Python; see [screen-flow](../05-ux/screen-flow.md#graduation-after-chapter-10) and [curriculum](../02-language/curriculum.md).
 
 ## Skill tree
 
@@ -72,9 +74,11 @@ flowchart LR
 ### Node design rules
 
 - **Language nodes are gated by chapter**, not just credits, so the curriculum order is preserved. You can't buy `while` before Chapter 4.
+- **Command nodes cost farm credits and, where the curriculum lists the builtin under a chapter, are also gated by that chapter**: the chapter teaches the builtin, buying the node makes it callable. Command nodes the curriculum does not teach (`till`, water/refill, the moisture sensor) are prerequisites + credits only. The root Commands node (`move` / `plant` / `harvest`) is available from the start ([curriculum](../02-language/curriculum.md)).
 - **Farm, drone and crop nodes are credits-only.** This is the "upgrade your farm" fantasy.
+- **Dry soil never blocks early contracts.** Until the Water node is owned, contracts and Free Farm start every tile at moisture 100 with no decay (see [farm-simulation](farm-simulation.md) §Rocks and seeds).
 - Every language node unlock opens a **lesson card** with the new syntax and a runnable example that edits the player's current program, not a blank one.
-- Before a builtin that "does work for you" unlocks (e.g. `goto(x, y)`), the player first writes it themselves in a contract. Then it unlocks as a cheaper native builtin. *You earn the shortcut by understanding it.*
+- Before a builtin that "does work for you" unlocks (e.g. `goto(x, y)`), the player first writes it themselves in a contract. Then it unlocks as a native builtin whose travel costs the same as the `move` calls it replaces (you save the loop and the typing). *You earn the shortcut by understanding it.*
 
 ### Skill tree UI
 
@@ -94,7 +98,7 @@ If several gates apply, show the first unmet one in this order: chapter, prerequ
 
 1. Tap any node to open the **side panel**: name, what it unlocks (builtins or syntax, with cycle costs), a 3-line example, and the **[Unlock for ₵300]** button (disabled with the reason if the node is not Available).
 2. Confirm inline: "Unlock `while` for ₵300? You'll have ₵140 left." **[Unlock]**.
-3. On success the node fills, the farm credits counter ticks down, and the **lesson card** opens (language nodes only).
+3. On success the node fills, the farm credits counter ticks down, and the **lesson card** opens (language nodes only). The card opens over the contract editor: buying a language node navigates to the last-open contract (or Free Farm), so **Try it** edits a real program. Unlocked lessons stay listed under Commands ▸ Lessons in the editor and on the Campaign map chapter header.
 4. If the server rejects the request (it re-checks prerequisites, chapter and cost; for example the save changed in another tab or device), show "That didn't work: your save changed on another device. Reloading…", then refetch `GET /api/campaign` and redraw the tree.
 
 Farm, drone and crop nodes show their effect in the side panel instead of a lesson, e.g. "Rotor II: move costs 12 cycles (was 16)".
@@ -102,10 +106,10 @@ Farm, drone and crop nodes show their effect in the side panel instead of a less
 ## Saves
 
 - Autosave on every run end, every contract completion, every purchase, and every 30 s while editing.
-- Multiple program "files" per save (tabs in the editor), max 10 files of 16 KB each.
+- Multiple program "files" per save (tabs in the editor), max 10 files of 16 KB each. One file is always `main.sprout` (the entry file); see [language-spec](../02-language/language-spec.md#files).
 - One campaign save slot per account in v1. Three slots are possible later.
 - Details: [saves-and-persistence](../03-architecture/saves-and-persistence.md).
 
 ## Free Farm (idle layer)
 
-Outside contracts, the player's farm (size from the skill tree) runs their chosen program **while the tab is open**. Sales earn farm credits at the real simulation rate. There are no offline earnings in v1, because that needs a server-side simulation per user and costs real compute. Every Free Farm session submits a **run receipt** (program, seed, start state, cycles run) that the server re-simulates before crediting. See [security-anti-cheat](../03-architecture/security-anti-cheat.md).
+Outside contracts, the player's farm (size from the skill tree) runs their chosen program **while the tab is open** (it keeps running in a hidden tab, slowed by the browser; each session starts from an empty farm on a server-issued seed). Sales earn farm credits at the real simulation rate. There are no offline earnings in v1, because that needs a server-side simulation per user and costs real compute. Every Free Farm session submits **run receipts** against a server-issued Free Farm session (one active per user, speed capped at 16×) that the server re-simulates before crediting. See [security-anti-cheat](../03-architecture/security-anti-cheat.md).

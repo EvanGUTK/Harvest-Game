@@ -6,7 +6,7 @@ One definition per term. Docs, code and UI copy must use these words consistentl
 |---|---|
 | **Sprout** | The Python-style programming language players write. File extension `.sprout`. |
 | **Program** | One player's Sprout source plus its compiled bytecode. |
-| **Drone** | The flying farm robot a program controls. One per farm in v1; multi-drone is a late campaign unlock. |
+| **Drone** | The flying farm robot a program controls. One per farm in v1 (always in multiplayer, D-24); a second drone is a late campaign unlock. |
 | **Farm** | A rectangular grid of tiles owned by one player in one simulation. |
 | **Tile** | One grid cell. It has a soil state, moisture and an optional crop. |
 | **Crop** | A plant on a tile with growth progress. Ripe crops can be harvested. |
@@ -17,7 +17,7 @@ One definition per term. Docs, code and UI copy must use these words consistentl
 | **Silo** | The player's crop inventory. |
 | **Market** | Where crops are sold for credits. Single-player has a fixed market per chapter. Multiplayer has a **shared market** whose prices react to every player's sales. |
 | **Credits (₵)** | Soft currency. In a match it is the score. In your profile it is spending money. *These are separate balances* (see economy doc). |
-| **XP / Level** | Account progression from playing. Unlocks badges and profile frames. |
+| **XP / Level** | Account progression from playing. Unlocks profile frames every 10 levels (badges come from achievements, not level). |
 | **Contract** | A single-player objective, e.g. "Deliver 40 radishes in 6,000 cycles". |
 | **Chapter** | A group of contracts that introduces one concept. |
 | **Skill tree** | Single-player unlock graph for language features, commands, crops and farm upgrades. |
@@ -26,7 +26,7 @@ One definition per term. Docs, code and UI copy must use these words consistentl
 | **Lock** | The moment the coding phase ends and the server freezes every program. |
 | **Execution** | The server runs all locked programs in one deterministic lockstep simulation. |
 | **Finale** | The animated replay and reveal shown to all players after execution. |
-| **Seed** | The integer that determines a match's farm layout and random events. |
+| **Seed** | The unsigned 32-bit integer that determines a match's farm layout and random events. |
 | **Rules version** | Semver of simulation + stdlib rules. Stored with every match for replay. |
 | **Room** | A server-side container for 2–8 players going through a showdown. |
 | **Room code** | 6-character code (no ambiguous chars) to join a private room. |
@@ -35,6 +35,7 @@ One definition per term. Docs, code and UI copy must use these words consistentl
 | **Party** | 1–4 friends queuing together. |
 | **Division** | Ranked band: Iron, Bronze, Silver, Gold, Diamond. |
 | **Tier** | Sub-band within a division: III (lowest), II, I (highest). |
+| **rankIndex** | Integer 0–14 for the 15 ranked steps (0 = Iron III, 14 = Diamond I). Used in matchmaking and lobby payloads. |
 | **RP** | Rank Points, the visible number that moves you between tiers. There is no hidden MMR. |
 | **Run receipt** | Single-player claim the server re-simulates before granting credits. |
 | **Replay** | Locked programs + seed + rules version. Enough to deterministically re-run any match. |
