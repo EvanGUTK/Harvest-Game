@@ -5,9 +5,20 @@ on:
   push:
     branches: [main]
 
+# Least privilege: the job only reads the repo.
+permissions:
+  contents: read
+
+# A new push to a PR cancels that PR's older run. Runs on main are never cancelled,
+# so every commit on main keeps its own status.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

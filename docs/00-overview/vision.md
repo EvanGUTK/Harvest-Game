@@ -54,4 +54,4 @@ Other inspirations for specific systems:
 - Real-money purchases. Every cosmetic is earned with in-game credits. Monetisation is a post-launch decision (see decisions-needed).
 - Free-text chat. v1 has quick-chat and emotes only.
 - Player-made levels or command packs.
-- Native mobile apps. Phones get a spectate and replay experience. Coding is designed for keyboards, with tablets supported through blocks mode.
+- Native mobile apps. Phones get spectate, replays, profile, shop and the Blocks-mode campaign (D-21). Text coding is designed for keyboards and tablets.

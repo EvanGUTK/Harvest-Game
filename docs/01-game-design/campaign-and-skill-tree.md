@@ -76,6 +76,29 @@ flowchart LR
 - Every language node unlock opens a **lesson card** with the new syntax and a runnable example that edits the player's current program, not a blank one.
 - Before a builtin that "does work for you" unlocks (e.g. `goto(x, y)`), the player first writes it themselves in a contract. Then it unlocks as a cheaper native builtin. *You earn the shortcut by understanding it.*
 
+### Skill tree UI
+
+**Node states.** Each state has an icon and a text label as well as a color, so none relies on color alone ([accessibility](../05-ux/accessibility.md)).
+
+| State | Look | Label |
+|---|---|---|
+| **Owned** | Filled | (none) |
+| **Available** | Glowing, price shown | "₵300" |
+| **Unaffordable** | Price in red | "Need ₵120 more" |
+| **Needs prerequisite** | Dimmed | "Requires: for i in range" |
+| **Chapter-gated** | Padlock | "Unlocks after Chapter 4" |
+
+If several gates apply, show the first unmet one in this order: chapter, prerequisite, price. Prices here are examples. Real node prices live in `content`.
+
+**Buying a node.**
+
+1. Tap any node to open the **side panel**: name, what it unlocks (builtins or syntax, with cycle costs), a 3-line example, and the **[Unlock for ₵300]** button (disabled with the reason if the node is not Available).
+2. Confirm inline: "Unlock `while` for ₵300? You'll have ₵140 left." **[Unlock]**.
+3. On success the node fills, the farm credits counter ticks down, and the **lesson card** opens (language nodes only).
+4. If the server rejects the request (it re-checks prerequisites, chapter and cost; for example the save changed in another tab or device), show "That didn't work: your save changed on another device. Reloading…", then refetch `GET /api/campaign` and redraw the tree.
+
+Farm, drone and crop nodes show their effect in the side panel instead of a lesson, e.g. "Rotor II: move costs 12 cycles (was 16)".
+
 ## Saves
 
 - Autosave on every run end, every contract completion, every purchase, and every 30 s while editing.

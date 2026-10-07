@@ -1,10 +1,11 @@
 import { defineConfig } from 'vitest/config';
 
-// Every workspace package is a Vitest project. Matching on package.json keeps
-// stray files (READMEs) in apps/, packages/ and tools/ from being treated as projects.
+// Every workspace package directory is a Vitest project. `tools/*` is added when the first tool
+// package exists (a bare README there would otherwise be mistaken for a project config).
+// `passWithNoTests` exists only for the empty skeleton and is removed in LANG-01.
 export default defineConfig({
   test: {
-    projects: ['packages/*/package.json', 'apps/*/package.json', 'tools/*/package.json'],
+    projects: ['packages/*', 'apps/*'],
     passWithNoTests: true,
   },
 });

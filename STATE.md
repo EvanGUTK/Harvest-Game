@@ -7,7 +7,7 @@
 - **Phase:** Architecture complete. Engineering scaffolding complete. **M0 (Foundations) is ready to start.**
 - **Branch:** `claude/sleepy-gauss-gxgilk` (all work so far). Main is empty apart from the initial commit. Merge to `main` when Evan has reviewed the docs.
 - **Blocking decisions:** none. All 22 items in `docs/00-overview/decisions-needed.md` have assumed defaults; the docs are written against those defaults.
-- **Owner inputs still needed (not blocking M0):** domain name; Google OAuth app; Resend account verified domain; Neon project; Render workspace. All needed by M2.
+- **Owner inputs:** the single checklist of accounts, credentials, DNS records, OAuth settings, CI secrets and repo settings is [`docs/06-infrastructure/connections.md`](docs/06-infrastructure/connections.md). Nothing blocks M0 code, but set the GitHub repo settings (branch protection on `main` with the `ci` workflow's `check` job required, secret scanning, Dependabot) before the first merge to `main`. The rest is needed by M2, or later where the checklist says so.
 
 ## Next steps (in order)
 
@@ -31,6 +31,6 @@
 
 ### Session 1 (2026-10-07, cloud)
 - Research: prior art (The Farmer Was Replaced), hosting (Render free-tier spin-down, ChatGPT Sites runtime), Neon pricing, Better Auth + Resend, CC0 asset sources.
-- 55 docs under `docs/` covering design, language, architecture, art/audio, UX, infra, roadmap, legal, 7 ADRs, archived original concept.
+- 51 design docs under `docs/00`–`09` (design, language, architecture, art/audio, UX, infra including the owner connections inventory, roadmap, legal, engineering, plus the archived original concept) and 7 ADRs under `docs/adr/` (with template and index).
 - pnpm workspace, strict TS project references, typed stubs for `lang`, `sim`, `content`, `protocol`, `db`.
 - Engineering scaffolding: ESLint (purity + boundary rules), Prettier, Vitest, `pnpm check`, CI, `.claude/` agents, skills, settings, `docs/09-engineering/`.

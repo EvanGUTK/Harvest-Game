@@ -39,7 +39,7 @@ No, because players never see it. Players write **Sprout**, which our TypeScript
 
 | Concern | TypeScript | Rust → Wasm |
 |---|---|---|
-| Performance needed | Our sim is integer ops on ≤ 12×12 grids. A full 8-player 30k-cycle showdown is roughly 2–3M VM instructions, which is tens of milliseconds in V8. **TS is fast enough by a wide margin.** | Faster, but solving a problem we don't have |
+| Performance needed | Our sim is integer ops on ≤ 12×12 grids. Every costed VM instruction takes at least 1 cycle, so a full 8-player 30k-cycle showdown executes at most ~240,000 costed instructions (8 players × 30,000 cycles; zero-cost `LINE` markers add at most as many again). Realistically it is far fewer, because each action costs 20–30 cycles on its own. Add O(actions) lazy world updates and the total is a few milliseconds in V8 at the VM's 30M ops/s target. **TS is fast enough by a wide margin.** | Faster, but solving a problem we don't have |
 | Determinism | Integer-only TS is deterministic across V8, SpiderMonkey and JSC. We verify this with cross-browser golden tests | Also deterministic |
 | Shared client/server code | Trivial: the same package is imported in both | Possible, but adds a build toolchain plus JS↔Wasm glue for every sensor and action call |
 | Debuggability | Source maps, browser devtools, one stack trace | Two languages, two debuggers |

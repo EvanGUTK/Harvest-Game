@@ -12,9 +12,8 @@ flowchart LR
     AU[Audio engine]
   end
 
-  subgraph Render["Render"]
-    STATIC[Static site<br/>CDN: JS, assets]
-    API[Game server<br/>apps/server<br/>Fastify + ws]
+  subgraph Render["Render: one web service"]
+    API[Game server<br/>apps/server<br/>Fastify static + REST + ws]
   end
 
   subgraph Neon["Neon Postgres"]
@@ -24,8 +23,7 @@ flowchart LR
   RESEND[Resend<br/>email codes]
   GOOGLE[Google OAuth]
 
-  UI -- HTTPS --> STATIC
-  UI -- HTTPS REST /api --> API
+  UI -- "HTTPS: client bundle + REST /api" --> API
   UI <-- WSS /ws --> API
   ED --> LW
   LW --> R3F
@@ -33,6 +31,8 @@ flowchart LR
   API --> RESEND
   UI -- OAuth redirect --> GOOGLE --> API
 ```
+
+The diagram shows hosting **Option A**: one Render web service serves the client bundle, REST and WebSockets from one origin. A separate static site on the CDN is hosting Option B, used later (see [hosting](../06-infrastructure/hosting.md)).
 
 ## Responsibilities
 
@@ -52,7 +52,7 @@ v1 runs **one game-server process** on one Render instance. Rooms, queues and pr
 **Scale-out path** (only when needed; see [hosting](../06-infrastructure/hosting.md)):
 1. Move queue, presence and room directory to **Redis** (Render Key Value).
 2. Run N server instances. A room is pinned to the instance that created it, and the room directory in Redis maps `roomId → instance`.
-3. Move official simulation to a worker pool (`worker_threads`) if executions start to block the event loop.
+3. Grow the execution worker pool (`worker_threads`). From M3 official executions already run in a `worker_thread` with a 2 s kill switch (see [security](security-anti-cheat.md), SRV-06). Scale from one worker to N if executions queue up.
 
 ## Request types
 
@@ -70,19 +70,21 @@ sequenceDiagram
   participant S as Server
   participant DB as Neon
   C->>S: queue.join {mode: ranked}
-  S-->>C: queue.found {matchId, acceptBy}
-  C->>S: ready.accept
-  S-->>C: room.state {phase: lobby, seed, rules}
+  S-->>C: ready.check {readyCheckId, acceptBy, players}
+  C->>S: ready.accept {readyCheckId}
+  S-->>C: room.state {phase: lobby, rulesVersion}
   S-->>C: phase {coding, deadline}
+  S-->>C: match.preview {seed, rulesVersion, languageVersion, grid, startCredits}
   loop every 10 s while coding
     C->>S: program.draft {source}
   end
   Note over C: Test runs happen locally in the Worker
-  S->>S: deadline → lock, compile all, run lockstep sim
+  S->>S: deadline → lock, compile all, run lockstep sim (execution worker_thread)
   S->>DB: insert match, programs, results, ledger, rank changes (one transaction)
-  S-->>C: phase {finale} + eventLog (chunked)
+  S-->>C: phase {finale}
+  S-->>C: match.events {chunk, of, events} (chunked)
   C->>S: finale.ack
-  S-->>C: results {...}
+  S-->>C: match.results {...}
 ```
 
 ## Core data flow: single-player credit claim
@@ -92,8 +94,12 @@ sequenceDiagram
   participant W as Browser Worker
   participant S as Server
   participant DB as Neon
-  W->>W: run program on contract seed (local, instant feedback)
-  W->>S: POST /api/runs {contractId, programHash, source, seed, cycles, claimed}
+  opt Free Farm only
+    W->>S: POST /api/campaign/free-farm/start
+    S-->>W: {sessionId, seed, startedAt} (one active session per user)
+  end
+  W->>W: run program on the contract or session seed (local, instant feedback)
+  W->>S: POST /api/campaign/runs {contractId | 'free_farm', sessionId?, source, seed, startStateHash, cycles, claimedResult}
   S->>S: recompile + re-simulate (same packages)
   alt results match
     S->>DB: ledger += credits, save progress

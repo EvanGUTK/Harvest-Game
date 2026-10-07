@@ -34,7 +34,7 @@ export const CROPS: Readonly<Record<CropId, CropDef>> = {
     seedCost: 2,
     basePrice: 5,
     growCycles: 300,
-    witherCycles: 900,
+    witherCycles: 3_000,
     needsTilled: false,
     minMoisture: 1,
   },
@@ -94,6 +94,18 @@ export const SENSOR_COSTS = {
   cycles: 1,
   cycles_left: 1,
 } as const;
+
+/** Host-provided pure helpers (not language intrinsics, which cost 1 cycle inside lang). */
+export const PURE_COSTS = {
+  random: 2,
+} as const;
+
+/** `wait(n)` costs n cycles; n outside these bounds is a runtime error (R-BAD-ARG). */
+export const WAIT_BOUNDS = { min: 1, max: 5_000 } as const;
+
+/** Real-time pacing of the editor's 1× speed. Free Farm receipts are capped from this. */
+export const CYCLES_PER_SECOND = 100;
+export const FREE_FARM_MAX_SPEED = 16;
 
 // ---------- World rules ----------
 

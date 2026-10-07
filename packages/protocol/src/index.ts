@@ -3,6 +3,10 @@
  *
  * Status: types only. zod schemas (runtime validation) arrive in M3 (SRV-04).
  * Spec: docs/03-architecture/realtime-protocol.md
+ *
+ * Coverage: the M3 (SRV-04/05) subset of the v1 catalogue. The room-browser (rooms.list/delta),
+ * party and friend envelopes are added with SRV-08/SRV-09; queue and ready-check envelopes are
+ * kept here because SRV-10 reuses them.
  */
 
 import type { SimEvent } from '@harvest/sim';
@@ -98,6 +102,7 @@ export type ServerMessage =
     >
   | Envelope<'room.state', RoomState>
   | Envelope<'room.patch', Partial<RoomState>>
+  | Envelope<'room.left', { reason: 'kicked' | 'host_closed' | 'room_expired' | 'blocked' }>
   | Envelope<'phase', { phase: Phase; deadline?: number; serverNow: number }>
   | Envelope<
       'match.preview',

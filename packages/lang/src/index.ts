@@ -5,7 +5,13 @@
  * Spec: docs/02-language/language-spec.md, docs/03-architecture/interpreter-vm.md
  *
  * Purity rule: this package must not use DOM, Node APIs, Date, Math.random,
- * performance, crypto, or floating-point arithmetic.
+ * performance, crypto, or floating-point arithmetic. It depends on nothing.
+ *
+ * Host contract: `lang` knows nothing about farming. The host (@harvest/sim) supplies builtin
+ * signatures and game constants at COMPILE time; the compiler bakes each builtin's cycle cost and
+ * world-touching flag into its CALL_HOST operands, so a VM snapshot is self-contained and the VM
+ * needs no second table. Per-player cost differences (campaign drone upgrades) are expressed by
+ * compiling each player's program with that player's host signatures.
  */
 
 export const LANGUAGE_VERSION = '0.1.0';
@@ -55,6 +61,8 @@ export type Limits = {
   maxCollectionSize: number; // 1_024
   maxHeapCells: number; // 16_384
   maxPrintLines: number; // 200
+  maxIdentifierLength: number; // 32
+  maxStringLength: number; // 256
 };
 
 export const DEFAULT_LIMITS: Limits = {
@@ -65,9 +73,11 @@ export const DEFAULT_LIMITS: Limits = {
   maxCollectionSize: 1_024,
   maxHeapCells: 16_384,
   maxPrintLines: 200,
+  maxIdentifierLength: 32,
+  maxStringLength: 256,
 };
 
-// ---------- Host functions (injected by @harvest/sim) ----------
+// ---------- Host functions and constants (injected by @harvest/sim) ----------
 
 export type HostId = number;
 
@@ -79,21 +89,41 @@ export type HostSignature = {
   params: readonly ValueKind[];
   optionalParams?: number;
   returns: ValueKind | 'any';
-  /** Extra cycles on top of the 1-cycle CALL_HOST instruction. */
+  /** Extra cycles on top of the 1-cycle CALL_HOST instruction. Baked into bytecode at compile time. */
   cost: number;
   /** True if the call reads or mutates the world (forces a scheduler yield). */
   touchesWorld: boolean;
+  /** Campaign gating: a locked builtin produces E-LOCKED-FEATURE when referenced. */
+  locked?: boolean;
 };
+
+/** A game constant visible to programs, e.g. { name: 'RADISH', id: 10, group: 'crop' }. */
+export type ConstantDef = { name: string; id: number; group: string };
 
 /** Opaque runtime value. The concrete representation is internal to the VM. */
 export type Value = { readonly __brand: 'SproutValue' };
+
+/** The only way hosts build and inspect Values. Implemented in M0 (LANG-05). */
+export interface ValueOps {
+  int(n: number): Value;
+  bool(b: boolean): Value;
+  str(s: string): Value;
+  constant(id: number): Value;
+  readonly none: Value;
+  kindOf(v: Value): ValueKind;
+  asInt(v: Value): number;
+  asBool(v: Value): boolean;
+  asStr(v: Value): string;
+  asConstantId(v: Value): number;
+}
 
 // ---------- Compile ----------
 
 export type CompileOptions = {
   languageVersion: string;
   hostSignatures: readonly HostSignature[];
-  /** Campaign gating: features not yet unlocked produce E-LOCKED-FEATURE. */
+  constants: readonly ConstantDef[];
+  /** Campaign gating: language features not yet unlocked produce E-LOCKED-FEATURE. */
   lockedFeatures: ReadonlySet<Feature>;
   limits: Limits;
 };
@@ -101,26 +131,36 @@ export type CompileOptions = {
 export type BytecodeModule = { readonly __brand: 'BytecodeModule'; readonly languageVersion: string };
 
 export type CompileResult =
-  { ok: true; module: BytecodeModule; warnings: Diagnostic[] } | { ok: false; diagnostics: Diagnostic[] };
+  | { ok: true; module: BytecodeModule; tokenCount: number; warnings: Diagnostic[] }
+  | { ok: false; diagnostics: Diagnostic[] };
 
 // ---------- VM ----------
 
 export type VMYield =
   | { kind: 'host'; fn: HostId; args: readonly Value[]; cost: number; atCycle: number }
+  | { kind: 'line'; line: number; atCycle: number }
   | { kind: 'halt'; atCycle: number }
   | { kind: 'error'; error: Diagnostic; atCycle: number }
   | { kind: 'budget'; atCycle: number };
 
+/** Serializable VM state (frames, heap, globals, ip, cycles). Opaque outside lang. */
+export type VMSnapshot = { readonly __brand: 'VMSnapshot'; readonly languageVersion: string };
+
 export interface VM {
-  /** Run pure instructions until a world-touching host call, halt, error, or maxCycles. */
-  run(maxCycles: number): VMYield;
+  /**
+   * Run pure instructions until a world-touching host call, halt, error, or maxCycles.
+   * With `stopAtLine`, also yields `{ kind: 'line' }` at the next statement boundary (debugger Step).
+   */
+  run(maxCycles: number, opts?: { stopAtLine?: boolean }): VMYield;
   /** Supply the pending host call's result and continue on the next run(). */
   resume(value: Value): void;
   readonly cycles: number;
-  snapshot(): unknown;
+  snapshot(): VMSnapshot;
 }
 
 export interface LangEngine {
   compile(source: SourceFiles, opts: CompileOptions): CompileResult;
   createVM(module: BytecodeModule, limits: Limits): VM;
+  restoreVM(snapshot: VMSnapshot): VM;
+  readonly values: ValueOps;
 }

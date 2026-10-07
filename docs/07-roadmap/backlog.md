@@ -72,7 +72,7 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - WEB-13 Accessibility pass, reduce motion, colorblind modes [M7]
 
 ## SRV: Server
-- SRV-01 Fastify app, health, config, logging [M2]
+- SRV-01 Fastify app, health (`/healthz` liveness only, `/readyz` DB check; see hosting.md), config, logging [M2]
 - SRV-02 Better Auth integration (Google, email OTP, password), rate limits [M2]
 - SRV-03 Campaign API, run-receipt verification, unlock endpoint [M2]
 - SRV-04 WS gateway: tickets, heartbeat, routing, validation, rate limits [M3]
@@ -85,7 +85,7 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - SRV-11 Ranked: RP engine, seasons, leaderboard [M5]
 - SRV-12 Shop + cosmetics endpoints [M6]
 - SRV-13 Spectate stream [M6]
-- SRV-14 Graceful drain, admin/moderation endpoints [M8]
+- SRV-14 Graceful drain (`POST /api/admin/drain` and `/undrain`, `roomsActive` on `/healthz`, `MAINTENANCE` refusals, `SIGTERM` handler with `SERVER_RESTARTING`, release-workflow drain step), admin/moderation endpoints [M8]
 
 ## DB [M2→]
 - DB-01 Drizzle setup, Better Auth tables, profile
@@ -93,7 +93,8 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - DB-03 Match tables, ledger, cosmetics
 - DB-04 Ranked tables, penalties
 - DB-05 Social + reports
-- DB-06 Reconciliation job, retention jobs (account deletion)
+- DB-06 Reconciliation job, retention jobs (account deletion, incl. the deletion log used by restores; see hosting.md)
+- DB-07 Anonymisation script for short-lived prod clones (load tests) [M8]
 
 ## ART [M1→M7]
 - ART-01 Procedural crop generators (3 crops × 4 stages + withered)
@@ -102,7 +103,7 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - ART-04 Commission hero drone set (4 bodies)
 - ART-05 Farmhouse hub, market stall, silo skins
 - ART-06 Farmer avatar base + cosmetics
-- ART-07 Backdrops (Valley, Mesa, Pine ridge, Terraces)
+- ART-07 Backdrops: Valley (MVP default, see art-direction asset list) [M1]; Mesa, Pine ridge, Rice terraces, Autumn orchard, Night market [M7]
 - ART-08 Particle set, finale props (money tower, podium, confetti)
 
 ## AUD [M3→M7]
@@ -114,13 +115,18 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 
 ## OPS
 - OPS-01 CI workflows (ci, determinism, assets, bench, e2e) [M0→M3]
-- OPS-02 Render services + Neon branches + preview envs [M2]
-- OPS-03 Domain, Resend DNS, Google OAuth app [M2]
+  - OPS-01.1 Root `build` script (`pnpm -r build`): web + tools in M1, server + db in M2; add a build step to `ci.yml`
+- OPS-02 Render services + Neon branches (`dev` is the parent of preview and staging, synthetic seed data only) + preview envs [M2]
+  - OPS-02.1 `render.yaml` Blueprint (staging + prod services, previews) + env groups; see hosting.md [M2]
+- OPS-03 Domain, Resend DNS, Google OAuth app (consent screen in Testing mode); see hosting.md and connections.md [M2]
 - OPS-04 Sentry, metrics, alerts [M3→M8]
 - OPS-05 Load tests [M8]
+- OPS-06 Backups (`backup.yml`, R2 bucket, Launch plan + 7-day PITR) [M2], restore drill [M8]; see hosting.md
+- OPS-07 Keep `.env.example` in sync with every variable in connections.md, with comments on which env sets each [M2]
 
 ## LEGAL / SAFETY [M2→M8]
 - LEG-01 Age gate + terms acceptance [M2]
-- LEG-02 Privacy policy, data export/deletion [M8]
+- LEG-02a Draft `/privacy` and `/terms` pages (text from privacy-and-age.md, marked draft pending lawyer review; linked from the sign-in screen and set as the Google consent-screen URLs) [M2]
+- LEG-02b Lawyer-reviewed policies, data export/deletion endpoints, publish the Google consent screen [M8]
 - LEG-03 Handle profanity filter, report flow, moderator tools [M4/M8]
 - LEG-04 Asset license manifest + credits screen [M1→]

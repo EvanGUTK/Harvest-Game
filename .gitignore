@@ -12,3 +12,13 @@ apps/web/public/assets/
 *.log
 .claude/settings.local.json
 .vitest-reports/
+
+# test runners and linters
+playwright-report/
+test-results/
+blob-report/
+.eslintcache
+
+# local overrides
+*.local
+.pnpm-store/

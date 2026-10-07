@@ -12,11 +12,12 @@ three.js (WebGL2, with the WebGPU renderer as an opt-in later) through **React T
   <Backdrop id=… />      distant terrain/skybox per cosmetic backdrop (low-poly voxel, fog-faded)
   <Farm grid=… >         one per player (1 in SP, up to 8 in finale)
     <Ground />           single greedy-meshed chunk; tilled/grass/rock via vertex colors
-    <Crops />            InstancedMesh per crop kind × growth stage
     <Moisture />         darkening decal per tile (shader uniform array)
     <Well />, <Silo />
     <Drone />            animated model + trail + shadow blob
   </Farm>
+  <Crops />              InstancedMesh per crop kind × stage (4 growth + withered), shared by all farms;
+                         each instance carries its farm's offset
   <Effects />            SSAO, mild bloom, tone mapping (ACES/AgX), optional tilt-shift DOF
   <CameraRig />          orbit (SP), scripted (finale)
 </Canvas>
@@ -37,12 +38,12 @@ three.js (WebGL2, with the WebGPU renderer as an opt-in later) through **React T
 | Initial JS (gzip) | ≤ 350 KB before 3D; 3D chunk lazy-loaded |
 | Initial assets to first farm | ≤ 4 MB |
 
-Techniques: instancing for crops, one merged mesh for ground per farm, shadow map only for the active farm in the finale (others use blob shadows), and `frameloop="demand"` when nothing animates (editor idle). A device-tier detector reduces SSAO and shadows on low-end GPUs.
+Techniques: instancing for crops (one set of instanced meshes shared by every farm, so crop draw calls are 5 × crop kinds regardless of player count: 15 with the three launch crops, 40 with all eight), one merged mesh for ground per farm (ground, silo and well draw once per farm, 3 × 8 = 24 in the finale), shadow map only for the active farm in the finale (others use blob shadows), and `frameloop="demand"` when nothing animates (editor idle). A device-tier detector reduces SSAO and shadows on low-end GPUs.
 
 ## Animation sources
 
 - **Live test runs (SP and coding phase):** the Worker streams `SimEvent`s, and the renderer interpolates drone position over each action's cycle duration at the chosen speed.
-- **Finale/replay:** the full event log plays at about 300–500 cycles per second of real time, with camera choreography (see audio-design and screen-flow).
+- **Finale/replay:** the full event log plays at about 600 cycles per second of real time (the 30,000-cycle budget fits the 50 s simulation segment below; the rate is always `cycleBudget / 50`), with camera choreography (see audio-design and screen-flow).
 - **Drone action animations:** move (tilt toward direction), plant (seed drop + dust puff), water (droplet particles), harvest (crop pops up and arcs into the drone, +₵ floater), sell (coins fly toward the silo), error (red spark + stutter).
 
 ## Finale sequence (target ~75 s)

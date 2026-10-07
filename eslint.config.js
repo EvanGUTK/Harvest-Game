@@ -1,4 +1,8 @@
-// ESLint flat config. Enforces CLAUDE.md "Hard rules" 1, 4 and 6 mechanically.
+// ESLint flat config. Mechanically enforces CLAUDE.md Hard rules:
+//   1 (engine purity), 4 (dependency direction, every edge), and the lint-able parts of
+//   6 (no `any`, no `@ts-ignore`, no TODO/FIXME comments, no default exports, no focused or
+//   skipped tests, no inline lint disables). Everything else in the standards is reviewed by humans
+//   and the `reviewer` agent; see docs/09-engineering/standards.md "What is enforced where".
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
@@ -23,6 +27,33 @@ const impureGlobals = [
   'globalThis',
 ];
 
+const noDefaultExport = {
+  selector: 'ExportDefaultDeclaration',
+  message: 'No default exports (standards.md).',
+};
+
+/** Syntax that is banned in engine source because it breaks determinism or the sandbox. */
+const enginePuritySyntax = [
+  {
+    selector: "BinaryExpression[operator='/']",
+    message: 'Integers only: use floorDiv (standards.md §Purity).',
+  },
+  { selector: "AssignmentExpression[operator='/=']", message: 'Integers only: use floorDiv.' },
+  { selector: "BinaryExpression[operator='**']", message: 'No exponentiation in the engine.' },
+  { selector: 'ForInStatement', message: 'Unstable iteration order; use arrays or Map.' },
+  { selector: 'Literal[regex]', message: 'No regex in the engine (hand-written lexer only).' },
+];
+
+/** Syntax that is banned everywhere in engine packages, tests included: player code is never JavaScript. */
+const sandboxSyntax = [
+  { selector: "CallExpression[callee.name='eval']", message: 'Player code is never JavaScript.' },
+  { selector: "NewExpression[callee.name='Function']", message: 'Player code is never JavaScript.' },
+  { selector: 'ImportExpression', message: 'No dynamic import in the engine.' },
+];
+
+const ENGINE_SRC = ['packages/lang/src/**/*.ts', 'packages/sim/src/**/*.ts', 'packages/content/src/**/*.ts'];
+const ENGINE_TESTS = ['packages/lang/src/**/*.{test,bench}.ts', 'packages/sim/src/**/*.{test,bench}.ts'];
+
 export default defineConfig(
   // Root tool configs are not part of any tsconfig project and carry no logic worth type-linting.
   {
@@ -42,6 +73,8 @@ export default defineConfig(
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
+    // Rule 6: no inline lint disables, anywhere.
+    linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: 'error' },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       // standards.md: `type` for data, `interface` for behaviour contracts; the lint rule can't express that.
@@ -54,16 +87,14 @@ export default defineConfig(
       ],
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      // Rule 6: deferred work is tracked in backlog.md + STATE.md, never in code comments.
       'no-warning-comments': ['error', { terms: ['todo', 'fixme', 'hack', 'xxx'], location: 'anywhere' }],
-      'no-restricted-syntax': [
-        'error',
-        { selector: 'ExportDefaultDeclaration', message: 'No default exports (standards.md).' },
-      ],
+      'no-restricted-syntax': ['error', noDefaultExport],
     },
   },
   {
     // Rule 1: purity of the engine. Never disable these.
-    files: ['packages/lang/src/**/*.ts', 'packages/sim/src/**/*.ts', 'packages/content/src/**/*.ts'],
+    files: ENGINE_SRC,
     rules: {
       'no-restricted-globals': ['error', ...impureGlobals],
       'no-restricted-properties': [
@@ -73,25 +104,19 @@ export default defineConfig(
         { object: 'Object', property: 'values', message: 'Unstable for results; use arrays or Map.' },
         { object: 'Object', property: 'entries', message: 'Unstable for results; use arrays or Map.' },
       ],
-      'no-restricted-syntax': [
-        'error',
-        { selector: 'ExportDefaultDeclaration', message: 'No default exports (standards.md).' },
-        {
-          selector: "BinaryExpression[operator='/']",
-          message: 'Integers only: use floorDiv (standards.md §Purity).',
-        },
-        { selector: "AssignmentExpression[operator='/=']", message: 'Integers only: use floorDiv.' },
-        { selector: "BinaryExpression[operator='**']", message: 'No exponentiation in the engine.' },
-        { selector: 'ForInStatement', message: 'Unstable iteration order; use arrays or Map.' },
-        { selector: "CallExpression[callee.name='eval']", message: 'Player code is never JavaScript.' },
-        { selector: "NewExpression[callee.name='Function']", message: 'Player code is never JavaScript.' },
-        { selector: 'ImportExpression', message: 'No dynamic import in the engine.' },
-        { selector: 'Literal[regex]', message: 'No regex in the engine (hand-written lexer only).' },
-      ],
+      'no-restricted-syntax': ['error', noDefaultExport, ...enginePuritySyntax, ...sandboxSyntax],
     },
   },
   {
-    // Rule 4: dependency direction.
+    // Engine tests must run unchanged in Node and all three browser engines (SIM-08), so they keep the
+    // global and property bans. They may use regex, `/` and `**` in assertions (testing.md §Rules).
+    files: ENGINE_TESTS,
+    rules: {
+      'no-restricted-syntax': ['error', noDefaultExport, ...sandboxSyntax],
+    },
+  },
+  {
+    // Rule 4: dependency direction. lang and content depend on nothing.
     files: ['packages/lang/src/**/*.ts', 'packages/content/src/**/*.ts'],
     rules: {
       'no-restricted-imports': [
@@ -114,6 +139,17 @@ export default defineConfig(
     },
   },
   {
+    files: ['packages/protocol/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [{ group: ['@harvest/db'], message: 'protocol may only import lang, content and sim.' }],
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/web/**/*.ts', 'apps/web/**/*.tsx'],
     rules: {
       'no-restricted-imports': [
@@ -123,7 +159,20 @@ export default defineConfig(
     },
   },
   {
+    // Rule 6 / testing.md: no focused, skipped or placeholder tests.
     files: ['**/*.test.ts', '**/*.bench.ts'],
-    rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
+    rules: {
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      'no-restricted-properties': [
+        'error',
+        ...['it', 'test', 'describe', 'bench'].flatMap((object) =>
+          ['only', 'skip', 'todo'].map((property) => ({
+            object,
+            property,
+            message: 'No focused/skipped/placeholder tests (testing.md §Rules).',
+          })),
+        ),
+      ],
+    },
   },
 );

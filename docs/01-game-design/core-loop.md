@@ -41,8 +41,8 @@ See [campaign-and-skill-tree.md](campaign-and-skill-tree.md).
 
 | Phase | Duration | What happens |
 |---|---|---|
-| Lobby | until all ready (max 60 s in matchmade) | See rivals' cosmetics, rules card and the farm preview |
-| Coding | **10:00** (casual: 5 / 10 / 15 selectable; ranked: 10 fixed) | Everyone codes against the **same seed**. "Test run" simulates privately in your browser on your own farm, with a market model that assumes no rivals. Draft autosaves to the server every 10 s. |
+| Lobby | until all ready (max 60 s in matchmade) | See rivals' cosmetics and the rules card (grid size, coding time, modifiers). The seeded farm layout stays hidden until `match.preview` arrives at the start of coding |
+| Coding | **10:00** (casual queue and ranked: fixed; custom rooms: host picks 5 / 10 / 15) | Everyone codes against the **same seed**. "Test run" simulates privately in your browser on your own farm, with a market model that assumes no rivals. Draft autosaves to the server every 10 s. |
 | Lock | instant | Server freezes the last submitted draft. If you have no valid program, you get an idle program. |
 | Execution | < 1 s server time | All farms run in lockstep against the shared market for the cycle budget |
 | Finale | ~60–90 s | Animated replay: all farms side by side and money towers rising, then the podium |

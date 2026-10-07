@@ -9,11 +9,26 @@
 
 | Action | Rules |
 |---|---|
-| Send request | By handle search (exact or prefix ≥ 3 chars), from a results screen, or from a room player list. Max 20 pending outgoing |
+| Send request | By handle search (exact or prefix ≥ 3 chars), or from the [player card](#player-card) (results screen, lobby or room player list). Max 20 pending outgoing |
 | Accept / decline | Declines are silent (the sender sees "pending" until it expires after 30 days) |
 | Remove | Silent, mutual |
-| Block | Hides each other everywhere: no requests, no invites, no shared custom rooms (blocked players can't join your room). Matchmaking avoids pairing blocked players when possible |
+| Block | Hides each other everywhere: no requests, no invites, no shared custom rooms (blocked players can't join your room). Blocking also removes any friendship and cancels pending requests in both directions. Matchmaking avoids pairing blocked players when possible. Unblock from the blocked-players list in Settings |
 | Limit | 200 friends |
+
+## Player card
+
+Tapping any handle (lobby card, results table, replay, room browser host, friends panel, leaderboard) opens a **player card** overlay on any screen. It shows the handle, level, rank emblem, equipped badges and equipped drone. Actions:
+
+- **Add friend** (becomes **Pending**, then **Friends ✓**)
+- **Invite to party** (friends only, when your party has space)
+- **Block**
+- **Report**, which opens the shared report sheet in [moderation](../08-legal-safety/moderation.md)
+
+Your own card shows no actions. Match history is never shown on another player's card.
+
+**Block** asks for confirmation: *"Block maple_rows? You won't see each other's rooms, invites or requests. This also removes them from your friends."* Blocking a party member removes them from the party. Blocking someone who is in your current room or match takes effect from the next room: it never removes anyone from a match in progress.
+
+A blocked player who joins a room you host by code or link sees *"This room isn't available."* The server never says "you are blocked".
 
 ## Presence
 
@@ -27,6 +42,15 @@
 - 1–4 players. The leader invites friends, and invites expire in 60 s.
 - The party sees each other's status. The leader queues for **casual**, and the party is matched together. Ranked parties are disabled in v1 (D-12).
 - The leader can also create a custom room, and the whole party joins automatically.
+
+**Party UI states**
+
+- **Incoming invite:** a toast on any screen: *"maple_rows invited you to a party"* with [Join] and [Ignore]. It dismisses itself at 60 s, when the invite expires. Accepting while you are in a queue leaves the queue ("Left queue to join party").
+- **Leader, Find Match:** the Casual button reads *"Search as a party of 3"* (the actual party size).
+- **Member, Find Match:** the Casual button is disabled and reads *"Only the party leader can start the search"*. Every member sees the queue pill while the party is searching.
+- **Ranked card, in a party of 2 or more (leader or member):** *"Ranked is solo-only for now. Leave the party to queue ranked."* (D-12).
+- **Member goes offline:** `party.state` arrives with that member marked offline, and the party's queue ticket is cancelled (see [matchmaking](matchmaking.md)). The remaining members see the toast *"Search stopped: sproutling went offline."*
+- **Party full:** the Invite button is disabled and reads *"Party is full (4/4)"*.
 
 ## Friends panel (UI)
 

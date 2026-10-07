@@ -2,3 +2,10 @@ packages:
   - 'apps/*'
   - 'packages/*'
   - 'tools/*'
+
+# pnpm 10 skips dependency install scripts unless approved. esbuild (pulled in by Vitest/Vite)
+# is the only one that has one; its postinstall just validates the platform binary, which
+# arrives via the @esbuild/* optional dependency, so allowing it is safe. Any new package that
+# wants a build script stays blocked until it is reviewed and added here.
+onlyBuiltDependencies:
+  - esbuild

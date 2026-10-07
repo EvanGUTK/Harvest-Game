@@ -38,13 +38,13 @@ Read this fully, then `STATE.md`, before doing anything. Together they are the h
 1. Read `CLAUDE.md`, `STATE.md`. Check `git status` and the branch.
 2. Pick the next item from `STATE.md` → "Next steps" (backlog IDs). One task per commit where possible.
 3. Before coding a package feature, re-read its design doc section. If the doc and the code must diverge, update the doc in the same commit.
-4. Run `pnpm check` (typecheck + lint + test) before every commit. Red is never committed.
+4. Run `pnpm check` (typecheck + lint + format check + test) before every commit. Red is never committed.
 5. Commit format: `type(ID): summary`, e.g. `feat(LANG-02.1): parse chained comparisons`. Types: feat, fix, refactor, test, docs, chore, perf.
 6. End of session: run `/handoff` (updates `STATE.md`, verifies clean tree, commits, pushes).
 
 ## Commands
 
-`pnpm install` · `pnpm check` · `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm format`
+`pnpm install` · `pnpm check` · `pnpm typecheck` · `pnpm lint` · `pnpm format` / `pnpm format:check` · `pnpm test` / `pnpm test:watch` · `pnpm sprout …` (from M0, `tools/run`)
 
 ## Agents and skills (`.claude/`)
 
