@@ -48,7 +48,7 @@ Awards never affect placement. They give non-winners something to chase. `Player
 | Award | Id | Criterion |
 |---|---|---|
 | 🏆 **Top Earner** | `top_earner` | Highest score |
-| ⚡ **Most Efficient** | `most_efficient` | Highest `floorDiv((score − startCredits) × 1000, max(1, cyclesUsed))`, where `cyclesUsed` is the cycle at which the player's last drone halted or errored, capped at the cycle budget. Players with score ≤ `startCredits` are not eligible |
+| ⚡ **Most Efficient** | `most_efficient` | Highest `floorDiv((score − startCredits) × 1000, max(1, cyclesUsed))`, where `cyclesUsed` is the player's value from [simulation-engine](../03-architecture/simulation-engine.md) (the maximum over their drones of `min(agent.clock, budget)`). Players with score ≤ `startCredits` are not eligible |
 | 🌾 **Bumper Crop** | `bumper_crop` | Most crops harvested into the silo (`cropsHarvested`, at least 1) |
 | 📈 **Market Timer** | `market_timer` | Highest unit-weighted average sale price as basis points of base price: `floorDiv(Σ over sell lots of (units × floorDiv(price × 10_000, basePrice)), Σ units)`. Needs ≥ 1 unit sold |
 | ✂️ **Clean Code** | `clean_code` | Fewest `programTokens` among players placed in the top half (places 1 to ⌈n ÷ 2⌉ of n players) |
@@ -72,7 +72,7 @@ For other lobby sizes, interpolate linearly by percentile. There's also a daily 
 3. Per-player **credit-over-time chart** (sparkline from the event log)
 4. **View code** for each player (read-only, syntax highlighted, with a **Save to my files** button; idle players have no code, so their row has no button). **Save to my files** adds a new file to your campaign programs. If you already have 10 files it shows "Your files are full (10/10). Delete one first."
 5. **Watch replay** (re-runs the deterministic event log at selectable speed)
-6. Rewards earned, RP change (ranked), rematch vote (casual/custom)
+6. Rewards earned, RP change (ranked), rematch vote (casual/custom, see item 8)
 7. **Row labels** in the table: "Left early" (`left_early`), "No program (idle)" (no draft, or `compiled_ok = false`), "Runtime error at line 7" (D-17), "[BOT] Scarecrow" and "deleted player". Shared placements show "=2nd".
 8. **Rematch vote** (casual and custom only): "Rematch? 2 of 4 yes · 0:14" with [Yes] and [No]. Players who have not voted when the 20 s window ends count as no. If at least 50 % say yes, the screen reads "Rematch starting with a new seed" and everyone who voted yes goes to the Lobby. Everyone else returns to the Multiplayer hub.
 9. **Skip** (finale): after a player skips, the results screen opens at once in a waiting state. The standings table shows immediately, under the header "Waiting for other players to finish watching… (0:48)", counting down to the server's 120 s cap. Rewards, RP and the rematch vote animate in when `match.results` arrives.
