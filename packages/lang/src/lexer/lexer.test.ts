@@ -338,8 +338,8 @@ describe('tokenize: review cases (LANG-01 reviewer)', () => {
     expect(lex('x'.repeat(16), limits).diagnostics).toHaveLength(0);
     expect(codes('x'.repeat(17))).toEqual([]);
     expect(lex('x'.repeat(17), limits).diagnostics.map((d) => d.code)).toEqual(['E-SRC-TOO-BIG']);
-    expect(lex('€'.repeat(5) + 'x', limits).diagnostics).toHaveLength(0); // 15 + 1 = 16 bytes
-    expect(lex('€'.repeat(5) + 'xx', limits).diagnostics.map((d) => d.code)).toEqual(['E-SRC-TOO-BIG']);
+    expect(lex(`"${'€'.repeat(4)}xx"`, limits).diagnostics).toHaveLength(0); // 2 + 12 + 2 = 16 bytes
+    expect(lex(`"${'€'.repeat(4)}xxx"`, limits).diagnostics.map((d) => d.code)).toEqual(['E-SRC-TOO-BIG']);
     expect(countTokens([{ name: 'main.sprout', text: 'x '.repeat(10_000) }])).toBe(0);
   });
 

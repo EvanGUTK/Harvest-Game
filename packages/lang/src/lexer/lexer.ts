@@ -35,6 +35,8 @@ class Lexer {
   private readonly tokens: Token[] = [];
   private readonly diagnostics: Diagnostic[] = [];
   private readonly indentStack: number[] = [0];
+  /** Odd widths already reported as E-MIXED-INDENT → the level they stand for, so one mistake is one diagnostic. */
+  private readonly indentAlias = new Map<number, number>();
   private bracketDepth = 0;
   private atLineStart = true;
   private lineHasTokens = false;
@@ -107,6 +109,7 @@ class Lexer {
       return;
     }
 
+    width = this.indentAlias.get(width) ?? width;
     const top = this.indentStack[this.indentStack.length - 1] ?? 0;
     if (width > top) {
       this.indentStack.push(width);
@@ -137,8 +140,7 @@ class Lexer {
         edits: [{ span, newText: ' '.repeat(level) }],
       },
     });
-    // Treat the odd width as its own level so following lines at that width don't cascade errors.
-    this.indentStack.push(width);
+    this.indentAlias.set(width, level);
   }
 
   private handleNewline(): void {
