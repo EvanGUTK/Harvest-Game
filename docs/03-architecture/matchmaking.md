@@ -47,20 +47,23 @@ The matcher runs every **1 s** per mode.
 
    | Waited | Allowed rank spread (tiers) |
    |---|---|
-   | 0–30 s | ±1 |
-   | 30–60 s | ±2 |
-   | 60–120 s | ±3 (one full division) |
-   | 120–240 s | ±5 |
-   | 240 s+ | ±8 |
+   | [0, 30) s | ±1 |
+   | [30, 60) s | ±2 |
+   | [60, 120) s | ±3 (one full division) |
+   | [120, 240) s | ±5 |
+   | ≥ 240 s | ±8 |
+
+   "Waited" is `now − enqueuedAt` (the original time, so requeues keep their window), and the intervals are half-open: a ticket that has waited exactly 30 s uses ±2. ±N means `|rankIndex_A − rankIndex_B| ≤ N` (inclusive). `rankIndex` is 0..14, so even ±8 never pairs Iron III with Diamond I.
 
 3. Collect candidates whose own window also includes `A` (mutual acceptance). Take the 3 oldest.
 4. If 4 players are found, create a **ready check**. Otherwise move on to the next oldest.
 5. Diamond players never match below Gold III, regardless of wait. In that case they see "Low population at your rank: expect longer waits."
 
 ### Casual (target 4, allow 2–8)
-- Same widening, keyed on **account level band** (1–9, 10–29, 30–59, 60+), and parties count as their size.
-- Prefer filling to 4. After 45 s, accept 3. After 75 s, accept 2. After 90 s alone, offer **"Play with bots now?"** (see multiplayer-modes).
-- A party is never split.
+- Same widening (half-open intervals, inclusive ±N), keyed on the **account level band** index 0..3 (1–9, 10–29, 30–59, 60+), and parties count as their size.
+- Prefer filling to 4. After 45 s, accept 3. After 75 s, accept 2.
+- After 90 s with fewer than 2 humans, the server sends `queue.botsOffer { expiresAt }`. The queue pill expands into a card: "Still searching. **Play now with bots?** You'll keep your place in the queue if you say no." with [Play with bots] and [Keep searching]. Accepting sends `queue.acceptBots {}` and creates a matchmade casual room labelled **Casual (with bots)**, which fills the remaining slots up to 4 with Grower bots (see [multiplayer-modes](../01-game-design/multiplayer-modes.md) Bots). Declining, or 30 s of silence, leaves the ticket unchanged, and the offer repeats every 60 s. The match pays 50 % of the Casual credits and no daily first-win bonus (see [scoring-and-judging](../01-game-design/scoring-and-judging.md)).
+- A party is never split. A party counts as its size, so only a ticket with fewer than 2 humans in total gets the bots offer.
 
 ## Ready check
 
@@ -84,13 +87,30 @@ on decline or timeout:
 
 Leaving a ranked match after accepting counts as an offence **and** a 4th-place result.
 
+### Copy
+
+The `reason` and `cooldownUntil` of `ready.failed` pick the text.
+
+| Case | Text |
+|---|---|
+| `other_declined` (requeued) | "A player didn't accept. Back in queue, keeping your place." |
+| `you_declined`, no cooldown | "You declined. You've left the queue." |
+| `you_timed_out`, no cooldown | "You didn't accept in time. You've left the queue." |
+| `you_declined`, with `cooldownUntil` | "You declined. {Mode} queue available again in 4:59." |
+| `you_timed_out`, with `cooldownUntil` | "You didn't accept in time. {Mode} queue available again in 4:59." |
+
+- While a cooldown runs, that mode's Find Match button reads "Available in 4:59" (live countdown, disabled) until `cooldownUntil`. The other mode stays enabled unless it has its own cooldown.
+- Leaving a ranked match: the results line reads "Left early: 4th place {rpDelta} RP · queue cooldown {mm:ss}".
+- Joining a room while queued: toast "Left the queue to join this room."
+- Ranked queue pill after a wait of more than twice the estimate: "Still searching… try Casual or [Practice vs bots]".
+
 ## Edge cases
 
 | Case | Behaviour |
 |---|---|
 | Player disconnects while queued | Ticket kept 30 s, then removed |
 | Player disconnects during ready check | Treated as no response at timeout |
-| Player joins a custom room while queued | Auto-leave queue (one activity at a time) |
+| Player joins a custom room while queued | Auto-leave queue (one activity at a time), with the toast above |
 | Party member goes offline | Party ticket cancelled, party notified |
 | Server restart | Queues lost. Clients get `queue.status` absent after reconnect and show "Search was interrupted", with one-click requeue. Acceptable for v1 |
 
