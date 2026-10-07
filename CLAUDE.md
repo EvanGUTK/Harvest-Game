@@ -29,9 +29,9 @@ Read this fully, then `STATE.md`, before doing anything. Together they are the h
 3. The server is authoritative for scores, credits, ranks, deadlines. Clients send source text and intents only.
 4. Dependency direction: `lang`, `content` → `sim` → `protocol` → `db`; `web` never imports `db`. Public API is `src/index.ts` only.
 5. Every asset in `assets/` has a `MANIFEST.csv` row with an allowed license.
-6. No shortcuts for speed: no `any`, no `@ts-ignore`, no skipped/disabled tests, no TODO without a backlog ID, no copy-paste of logic that belongs in a shared function, no magic numbers (they live in `content`).
+6. No shortcuts for speed: no `any`, no `@ts-ignore`, no skipped/disabled tests, no TODO/FIXME comments (deferred work goes in `backlog.md` + `STATE.md` Known gaps), no copy-paste of logic that belongs in a shared function, no magic numbers (they live in `content`).
 7. Work follows the milestone order. Don't build M3 features while M0 exit criteria are unmet.
-8. Secrets never enter the repo. `.env.example` documents names only.
+8. Secrets never enter the repo. `.env.example` documents names only. Real values live only in `.env`, `.env.local` and `.env.<env>(.local)`: git-ignored and denied to Claude, so `.env.example` is the only env file Claude reads. The `.claude/settings.json` deny list is a guard rail, not a sandbox.
 
 ## Workflow (every session)
 

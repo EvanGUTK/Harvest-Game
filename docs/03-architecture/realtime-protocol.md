@@ -41,7 +41,7 @@ Enforced per connection unless the Limit column says otherwise. A message over i
 3. **Session revocation closes sockets.** Sign-out, "sign out everywhere", password reset, account deletion and moderator bans delete `session` rows and emit an in-process `session.revoked(sessionId | userId)` event. The connection manager sends matching sockets `session.revoked {}` and closes them, and the client returns to sign-in without auto-reconnecting. As a backstop for revocations made on another instance later, every connection re-checks every 5 min that its `sessionId` is still valid (a primary-key lookup).
 4. The server enforces **one active game connection per user**. A new connection with the same user supersedes the old one, and the old one gets `session.replaced`.
 
-Why tickets: browsers can't set headers on WebSocket upgrades, and putting a long-lived session token in a URL leaks it into logs. A ticket is useless once used or after 30 s, so a logged URL leaks nothing.
+Why tickets: browsers can't set headers on WebSocket upgrades, and putting a long-lived session token in a URL leaks it into logs. A ticket is useless once used or after 30 s, so a logged URL leaks nothing. The ticket query string is also stripped from our logs (see [observability](../06-infrastructure/observability.md#what-may-be-logged-pii-policy)).
 
 ## Clock sync
 
@@ -55,20 +55,27 @@ The server includes `serverNow` in `hello` and in every `phase` message. The cli
 |---|---|---|
 | `queue.join` | `{ mode: 'casual' \| 'ranked' }` | Party leader only for casual parties |
 | `queue.leave` | `{}` | |
+| `queue.acceptBots` | `{}` | Answers `queue.botsOffer`. Solo ticket only (see [matchmaking](matchmaking.md)) |
 | `ready.accept` / `ready.decline` | `{ readyCheckId }` | |
 | `room.create` | `{ settings: RoomSettings; visibility: 'public' \| 'private' }` | Custom rooms |
-| `room.join` | `{ code } \| { roomId }` | |
+| `room.join` | `{ code } \| { roomId }` | `roomId` only for `custom-public` rooms or with a pending party or friend invite. Every failure returns `error{code:'ROOM_UNAVAILABLE'}`, so codes and ids cannot be probed |
 | `room.leave` | `{}` | |
 | `room.ready` | `{ ready: boolean }` | |
 | `room.start` | `{}` | Host only, custom rooms |
-| `room.kick` | `{ userId }` | Host only, custom rooms |
+| `room.kick` | `{ userId }` | Host only, custom rooms, Lobby only |
+| `room.close` | `{}` | Host only, custom rooms, Lobby only (the **Close room** action). Everyone else in the room receives `room.left { reason: 'host_closed' }` |
 | `rooms.subscribe` / `rooms.unsubscribe` | `{ filter }` | Live room browser |
+| `spectate.join` | `{ roomId }` | Only `custom-public` and `matchmade-ranked` rooms past Lobby; any other room answers `error{code:'ROOM_UNAVAILABLE'}`. A room with 50 spectators answers `error{code:'SPECTATOR_LIMIT'}` *(cap provisional)*. Ships with spectating in M6 |
+| `spectate.leave` | `{}` | |
 | `program.draft` | `{ source; rev }` | Every 10 s during coding plus on Lock-in. Max 16 KB. Rate and `rev` rules: see Abuse limits |
 | `program.lockIn` | `{ source; rev }` | Early lock |
 | `finale.ack` | `{}` | Client finished the animation |
 | `rematch.vote` | `{ yes: boolean }` | |
 | `emote` | `{ emoteId }` | Rate-limited to 1 per 2 s |
-| `party.invite` / `party.respond` / `party.leave` / `party.kick` | … | |
+| `party.invite` | `{ userId }` | Leader only, friends only. Rate limit: see Abuse limits |
+| `party.respond` | `{ partyId: string; accept: boolean }` | Answers a `party.invite` before it expires (60 s) |
+| `party.leave` | `{}` | |
+| `party.kick` | `{ userId }` | Leader only |
 | `presence.set` | `{ status: 'online' \| 'away' \| 'invisible' }` | |
 
 ### Server → Client
@@ -81,30 +88,40 @@ The server includes `serverNow` in `hello` and in every `phase` message. The cli
 | `ready.update` | `{ accepted: n, total: n }` (no names until all accept) |
 | `ready.failed` | `{ reason: 'you_declined' \| 'you_timed_out' \| 'other_declined'; requeued: boolean; cooldownUntil? }` |
 | `room.state` | full `RoomState` snapshot (on join/reconnect) |
-| `room.patch` | partial updates (player joined/left/ready, settings) |
+| `room.patch` | partial updates (player joined/left, `ready` and `connected` changes in Lobby, settings, and `hostUserId` when the host role migrates) |
 | `room.left` | `{ reason: 'kicked' \| 'host_closed' \| 'room_expired' \| 'blocked' }` sent to a player who is no longer in a room through no action of their own (see notes below) |
 | `phase` | `{ phase, deadline?, serverNow }` |
-| `match.preview` | `{ seed, rulesVersion, languageVersion, grid, startCredits }` (sent at coding start) |
-| `match.events` | `{ chunk: n, of: n, events: SimEvent[] }` |
-| `match.results` | `MatchResults` (scores, awards, programs, rewards, rank change) |
+| `match.preview` | `{ seed, rulesVersion, languageVersion, grid, startCredits }` (sent at coding start; `seed` is a uint32) |
+| `match.events` | `{ chunk: n, of: n, events: SimEvent[], standings?: [{ slot, score }] }` (`standings` on the last chunk only) |
+| `match.results` | `MatchResults` (scores, awards, programs, rewards, rank change). Each player's own entry also carries `output: string[]` (the first 200 `print` lines of the official run), sent only to that player and never to rivals or spectators |
 | `rooms.list` / `rooms.delta` | room browser data |
 | `presence.update` | `{ userId, status, activity? }` (friends only) |
-| `friend.request` / `party.invite` / `party.state` | social |
+| `friend.request` | `{ fromUserId, fromHandle }` |
+| `party.invite` | `{ partyId, fromHandle, expiresAt }` |
+| `party.state` | `{ partyId, leaderId, members: [{ userId, handle, status: 'online' \| 'offline' }], inviteExpiresAt? }` (a member going offline arrives here; see [social](social.md)) |
+| `queue.botsOffer` | `{ expiresAt }` solo ticket only, after 90 s with fewer than 2 humans (see [matchmaking](matchmaking.md)) |
+| `spectate.state` | the `RoomState` without drafts, sent once on `spectate.join` |
+| `spectators` | `{ count }` sent to players and spectators, throttled to 1 per s |
 | `emote` | `{ fromSlot, emoteId }` |
-| `error` | `{ code, message, ref?: id }` |
+| `error` | `{ code, message, ref?: id, cooldownUntil?: number, until?: string \| null }` (`cooldownUntil`: join cooldown, `until`: `BANNED` only, `null` = permanent) |
 | `session.replaced` | `{}` another connection for this user took over; this socket is then closed |
 | `session.revoked` | `{}` this session was signed out, revoked or banned; this socket is then closed and the client returns to sign-in |
 | `server.draining` | `{ until: number \| null; message: string }` broadcast to every connection when a drain starts (`until` set) or is cancelled (`until: null`); see Server drain |
 
 **Notes on the added messages.**
 
-- `room.left` goes only to the removed player; the remaining members receive an ordinary `room.patch`. Reasons: `kicked` (the host removed you; kicks are Lobby-only), `host_closed` (the host closed the room), `room_expired` (the server closed the room: idle expiry, see [rooms-and-lobbies](rooms-and-lobbies.md) §Lifecycle, or a drain closing Lobby rooms), `blocked` (a block between you and another member, see [social](social.md)). The client returns to the Multiplayer hub with a toast for the reason. A kicked player's later `room.join` for that room, by code or by `roomId`, gets `error{code:'ROOM_UNAVAILABLE'}` for the rest of the room's lifetime. It is the same reply as for a room that does not exist.
-- `error.code` values defined in this document: `PROTOCOL_VERSION`, `RATE_LIMITED`, `ROOM_UNAVAILABLE`, `MAINTENANCE` and `SERVER_RESTARTING` (the last two: see Server drain).
+- `room.left` goes to each player who is no longer in a room through no action of their own. For `kicked` and `blocked` that is only the removed player, and the remaining members receive an ordinary `room.patch`; for `host_closed` and `room_expired` the room is gone and every member receives it (except the host who closed it). Reasons: `kicked` (the host removed you; kicks are Lobby-only), `host_closed` (the host used **Close room**, Lobby only; the client shows "The host closed this room."), `room_expired` (the server closed the room: idle expiry, see [rooms-and-lobbies](rooms-and-lobbies.md) §Lifecycle, or a drain closing Lobby rooms), `blocked` (a block between you and another member, see [social](social.md)). The client returns to the Multiplayer hub with a toast for the reason. A kicked player's later `room.join` for that room, by code or by `roomId`, gets `error{code:'ROOM_UNAVAILABLE'}` for the rest of the room's lifetime. It is the same reply as for a room that does not exist.
+- `error.code` values defined in this document are always SCREAMING_CASE: `PROTOCOL_VERSION`, `RATE_LIMITED`, `ROOM_UNAVAILABLE`, `SPECTATOR_LIMIT`, `BANNED`, `MAINTENANCE` and `SERVER_RESTARTING` (the last two: see Server drain).
+  - `ROOM_UNAVAILABLE` is the single answer to every refused join or spectate (unknown code, room full, match started, kicked earlier, a block, or a private room joined by id) and the client renders it as "This room isn't available." It never reveals that a block caused it. During a join cooldown (see Abuse limits) the same code carries `cooldownUntil`.
+  - `BANNED` is `error { code: 'BANNED', until: string | null }` (`null` = permanent), sent on `hello`, `queue.join`, `room.join` and `spectate.join` for a banned user (see [auth](auth.md)).
+- **Spectators.** After `spectate.join` a spectator receives `spectate.state`, then `phase`, `match.preview`, `match.events` and `match.results` exactly as players do. `match.events` is sent from chunk 1, so a spectator who joins mid-finale can catch up. Spectators receive `room.left { reason: 'room_expired' }` when the room closes and cannot send `emote` or `rematch.vote`. The cap is 50 per room *(provisional)*.
+- **Final standings.** The last `match.events` chunk (`chunk == of`) carries `standings: [{ slot, score }]`, the final credits per slot after liquidation. A client that skips the finale shows the standings table from it immediately and waits for `match.results` for rewards and awards (see [scoring-and-judging](../01-game-design/scoring-and-judging.md)).
 
 ## Reconnect
 
-- On reconnect within **2 minutes**, `hello.resume` contains: current room snapshot, phase and deadline, **your last accepted draft source** (so you can keep coding), and any results you missed.
-- Draft autosave also writes to `localStorage` every 3 s, so a crashed tab never loses more than a few seconds of typing. On resume, the client offers whichever copy is newer, local or server.
+- On reconnect within **2 minutes**, `hello.resume` contains: current room snapshot, phase and deadline, **your last accepted draft source** (`resume.draft`, so you can keep coding), and any results you missed.
+- After 2 minutes the slot is still held until the match ends. The reconnecting client then receives `room.state` and `phase` (with the last accepted draft while the phase is coding), and `match.results` if the match has already ended.
+- Draft autosave also writes to `localStorage` every 3 s, so a crashed tab never loses more than a few seconds of typing. On resume the client compares its `localStorage` draft with `resume.draft`. If the server has the player locked, the server copy wins. Otherwise the newer copy is loaded and the editor shows an undo toast offering the other copy (see [screen-flow](../05-ux/screen-flow.md) §Connection states).
 - Server-side, a disconnected player's room slot is held until the match ends.
 
 ## Server drain

@@ -7,6 +7,7 @@ Conventions: `snake_case`, `uuid` PKs (`gen_random_uuid()`), `created_at timesta
 ```mermaid
 erDiagram
   user ||--|| profile : has
+  user ||--o{ consent_event : accepts
   user ||--o{ campaign_save : owns
   user ||--o{ credit_ledger : has
   user ||--o{ user_cosmetic : owns
@@ -55,7 +56,7 @@ consent_event (                                  -- append-only acceptance histo
   id bigserial pk, user_id uuid not null references "user"(id) on delete cascade,
   doc text not null check (doc in ('terms','privacy')), version text not null, accepted_at timestamptz not null default now()
 )
-email_suppression (                              -- written by the Resend bounce/complaint webhook (see auth); not linked to a user
+email_suppression (                              -- written by the Resend bounce/complaint webhook (see auth); not linked to a user; purged after 12 months (provisional, see privacy-and-age)
   email_hash bytea pk,                           -- sha256 of the lowercased address, so no address is kept in the clear
   reason text not null check (reason in ('bounced','complained')), created_at timestamptz not null default now()
 )
@@ -204,7 +205,7 @@ Bans are state on `profile` (`banned_until`, `ban_reason`; a permanent ban sets 
 
 Columns: `profile.deleted_at` and `profile.hard_delete_after` (`= deleted_at + 30 days`). New table `reserved_handle ( handle citext pk, released_at timestamptz )`.
 
-**Soft delete (immediate, one transaction):** set `deleted_at` and `hard_delete_after`, delete all `session` rows (signs out everywhere and closes the user's WebSocket), delete `verification` rows, remove the user from live rooms, queues and parties, delete `friend_request` rows in both directions, and hide the profile and presence (every profile, friends and leaderboard read filters on `deleted_at is null`). Everything else is kept. Signing in again within the 30 days offers "Cancel deletion?", which clears both columns. Data export stays available during the grace period.
+**Soft delete (immediate, one transaction):** set `deleted_at` and `hard_delete_after`, delete all `session` rows (signs out everywhere and closes the user's WebSocket), delete `verification` rows, remove the user from live rooms, queues and parties, delete `friend_request` rows in both directions, and hide the profile and presence (every profile, friends and leaderboard read filters on `deleted_at is null`). Everything else is kept. Signing in again within the 30 days cancels the deletion by clearing both columns, and the sign-in says so (see [privacy-and-age](../08-legal-safety/privacy-and-age.md) Delete flow). Data export stays available during the grace period.
 
 **Hard delete (job, once `hard_delete_after` has passed):**
 

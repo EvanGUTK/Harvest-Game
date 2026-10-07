@@ -32,18 +32,19 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - **LANG-06 Tests**
   - LANG-06.1 Corpus + AST snapshots
   - LANG-06.2 Fuzzing (no throws)
-  - LANG-06.3 Differential vs CPython (nightly)
-  - LANG-06.4 Benchmarks
+  - LANG-06.3 Differential vs CPython (nightly); adds `differential.yml` with pinned CPython 3.12
+  - LANG-06.4 Benchmarks; adds the root `bench` script + `bench.yml`
+- **LANG-07** `toPython()` AST pretty-printer for the Chapter 10 Graduation screen [M7, post-MVP]
 
 ## SIM: Farm simulation [M0]
 - SIM-01 World/tile model, lazy advancement (moisture, growth, wither)
-- SIM-02 Host table: actions + sensors with costs from `content`
+- SIM-02 Host table: actions + sensors with costs from `content`, including `goto` (derived cost), `wait` (cost = n via `costOf`) and `is_withered`; the outcome matrix in [standard-library](../02-language/standard-library.md) is the acceptance test
 - SIM-03 Discrete-event scheduler (multi-agent, tie-break rotation)
 - SIM-04 Shared market (pressure, decay, liquidation)
 - SIM-05 PRNG (sfc32 + splitmix32), seed streams, layout generator
 - SIM-06 Event log + state hash every 1,000 cycles
 - SIM-07 Scoring, tiebreakers, awards
-- SIM-08 Golden tests + cross-engine determinism (Playwright)
+- SIM-08 Golden tests + cross-engine determinism (Playwright); adds the `test:determinism` script (`playwright test -c packages/sim/playwright.config.ts`) + `determinism.yml`
 - **SIM-BAL** Balance harness CLI + report
 
 ## CONTENT [M0→M7]
@@ -62,7 +63,7 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - WEB-03 Worker runner, run controls, debugger (step, breakpoints, variables, timeline) [M1]
 - WEB-04 Renderer: farm, crops (instanced), drone, moisture, lighting, effects [M1]
 - WEB-05 Auth screens, onboarding [M2]
-- WEB-06 Campaign map, contract screen, skill tree UI, Free Farm [M2]
+- WEB-06 Campaign map, contract screen, skill tree UI, Free Farm incl. session handling (server-issued session, one active per user, receipts with `sequence`) [M2]
 - WEB-07 Net layer: WS client, reconnect, clock sync [M3]
 - WEB-08 Lobby, coding phase, finale v1, results, replay viewer [M3]
 - WEB-09 Friends panel, parties, room browser, share links [M4]
@@ -70,11 +71,18 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - WEB-11 Locker, shop, profile [M6]
 - WEB-12 Blocks mode (Blockly) [M7]
 - WEB-13 Accessibility pass, reduce motion, colorblind modes [M7]
+- WEB-14 Settings screen [M2, grows with each system]
+- WEB-15 Spectate screen [M6, with SRV-13]
+- WEB-16 Ranked hub and leaderboard route [M5, part of WEB-10]
+- WEB-17 Graduation screen (uses LANG-07) and What's new modal [M7]
+- WEB-18 "My snippets" library in the editor (save campaign functions, insert them in showdowns) [post-MVP, unscheduled; see editor-ux.md]
 
 ## SRV: Server
 - SRV-01 Fastify app, health (`/healthz` liveness only, `/readyz` DB check; see hosting.md), config, logging [M2]
 - SRV-02 Better Auth integration (Google, email OTP, password), rate limits [M2]
-- SRV-03 Campaign API, run-receipt verification, unlock endpoint [M2]
+  - SRV-02a Account linking only when both sides are verified, 24 h purge of unverified and profile-less users, `haveIBeenPwned` plugin, Resend bounce/complaint webhook + `email_suppression` [M2]
+  - SRV-02b Optional Cloudflare Turnstile on repeated sign-in failures and email-send routes, behind a flag [M2]
+- SRV-03 Campaign API, run-receipt verification, unlock endpoint, contract and Free Farm start endpoints (`POST /api/campaign/contracts/:contractId/start`, `POST /api/campaign/free-farm/start`: server-issued attempt and session seeds) [M2]
 - SRV-04 WS gateway: tickets, heartbeat, routing, validation, rate limits [M3]
 - SRV-05 Rooms + phase machine + timers + reconnect snapshots [M3]
 - SRV-06 Execution worker pool + timeout [M3]
@@ -89,11 +97,12 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 
 ## DB [M2→]
 - DB-01 Drizzle setup, Better Auth tables, profile
+  - DB-01.1 `migrate` script, `drizzle.config`, Render Pre-Deploy wiring, e2e seed (`db:seed:e2e`) [M2]
 - DB-02 Campaign tables, receipts, contract attempts
 - DB-03 Match tables, ledger, cosmetics
 - DB-04 Ranked tables, penalties
 - DB-05 Social + reports
-- DB-06 Reconciliation job, retention jobs (account deletion, incl. the deletion log used by restores; see hosting.md)
+- DB-06 Reconciliation job, retention jobs (see privacy-and-age.md for the periods): account deletion incl. the deletion log used by restores (see hosting.md); on hard-delete set `match_player.user_id` to null and blank comment text in the user's `match_program.source`; purge unverified and profile-less users 24 h after creation; purge expired `verification` rows hourly; clear `run_receipt.source` after 90 days; delete `contract_attempt` after 12 months, `queue_penalty` after 30 days, `report` 12 months after resolution and `email_suppression` after 12 months (provisional)
 - DB-07 Anonymisation script for short-lived prod clones (load tests) [M8]
 
 ## ART [M1→M7]
@@ -114,18 +123,26 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 - AUD-05 Match-found sting + timer SFX
 
 ## OPS
-- OPS-01 CI workflows (ci, determinism, assets, bench, e2e) [M0→M3]
+- **OPS-00** GitHub repo settings [M0, owner]: branch protection on `main` (require a PR, require the `check` status check from `ci.yml`, no force-push, no deletion); Dependabot alerts + security updates (`.github/dependabot.yml` only covers version updates); secret scanning + push protection. The repo is private, so the last one needs the paid GitHub Secret Protection add-on (a cost decision for Evan), a public repo, or a free substitute (a gitleaks step in `ci.yml`, with security-anti-cheat.md updated to match). Owner checklist: [connections](../06-infrastructure/connections.md). Record completion in STATE.md
+- OPS-01 CI workflows (ci, determinism, differential, assets, bench, e2e, preview-db, smoke, release) [M0→M3]
   - OPS-01.1 Root `build` script (`pnpm -r build`): web + tools in M1, server + db in M2; add a build step to `ci.yml`
-- OPS-02 Render services + Neon branches (`dev` is the parent of preview and staging, synthetic seed data only) + preview envs [M2]
+  - OPS-01.2 `engines.yml` (retired-engine bundle build on a `LANGUAGE_VERSION` / `RULES_VERSION` major bump; see environments-and-ci.md) [M8]
+- OPS-02 Render services (GitHub App connection, staging + prod with Pre-Deploy migrate), the `production` GitHub Environment, Neon branches (`dev` is the parent of preview and staging, synthetic seed data only; plus `staging` and `ci`) + API keys, preview envs [M2]; owner prerequisites: see [connections](../06-infrastructure/connections.md)
   - OPS-02.1 `render.yaml` Blueprint (staging + prod services, previews) + env groups; see hosting.md [M2]
-- OPS-03 Domain, Resend DNS, Google OAuth app (consent screen in Testing mode); see hosting.md and connections.md [M2]
-- OPS-04 Sentry, metrics, alerts [M3→M8]
+  - OPS-02.2 `preview-db.yml` (create/migrate/seed/delete the Neon branch `preview/<branch-slug>`, weekly prune) [M2]
+  - OPS-02.3 Preview boot-time Neon branch resolution (`IS_PULL_REQUEST`, `RENDER_GIT_BRANCH`) [M2]
+  - OPS-02.4 `smoke.yml` + `release.yml` (SHA-pinned deploy, `smoke-staging` status, `/healthz` commit) [M2]
+- OPS-03 Domain (after the D-01 trademark and domain availability check), DNS, mail aliases (`support@`, `dmarc@`, `security@`, `privacy@`; DMARC progression `p=none` → `quarantine` → `reject`), Resend DNS, Google OAuth app (consent screen in Testing mode) [M2]; see hosting.md and [connections](../06-infrastructure/connections.md)
+- OPS-04 Sentry (2 projects, DSNs, release tagging, source maps in the Render build), `prom-client` `/metrics` + `METRICS_TOKEN`, Grafana Cloud stack + Metrics Endpoint scrape job, alert rules + email contact point, log redaction (observability PII policy) [M3→M8]; owner prerequisites: see [connections](../06-infrastructure/connections.md)
 - OPS-05 Load tests [M8]
 - OPS-06 Backups (`backup.yml`, R2 bucket, Launch plan + 7-day PITR) [M2], restore drill [M8]; see hosting.md
 - OPS-07 Keep `.env.example` in sync with every variable in connections.md, with comments on which env sets each [M2]
+- OPS-08 Local dev loop: Vite proxy, `docker-compose` Postgres, `db:migrate` / `db:seed` / `db:seed:e2e` scripts, `.env.example` [M2, with SRV-01 / DB-01]
+- OPS-09 Analytics (Plausible Cloud, D-25): account, same-origin script proxy, funnel events `signed_up` → `tutorial_completed` → `chapter_1_completed` → `first_showdown_played` [M8]
+- OPS-10 External uptime monitor + runbooks skeleton [M2]; status page, `security.txt`, complete runbooks, incident template [M8]
 
 ## LEGAL / SAFETY [M2→M8]
-- LEG-01 Age gate + terms acceptance [M2]
+- LEG-01 Pre-auth age gate on the landing screen (client-side, 24 h under-13 flag) + versioned Terms/Privacy acceptance in onboarding (`consent_event`, `428 TERMS_OUTDATED` re-accept) [M2]
 - LEG-02a Draft `/privacy` and `/terms` pages (text from privacy-and-age.md, marked draft pending lawyer review; linked from the sign-in screen and set as the Google consent-screen URLs) [M2]
 - LEG-02b Lawyer-reviewed policies, data export/deletion endpoints, publish the Google consent screen [M8]
 - LEG-03 Handle profanity filter, report flow, moderator tools [M4/M8]

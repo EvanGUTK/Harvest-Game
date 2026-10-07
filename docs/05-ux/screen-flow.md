@@ -75,7 +75,7 @@ Chapters as fields on a hillside path. Each contract is a fence-post marker with
 │ 4  ...                        │  ⏵ Run  ⏸  ⏭ Step  ⟲ Reset  1× 4× 16×│
 │                               │  cycles 2,340 / 6,000 ███░░░          │
 ├───────────────────────────────┼──────────────────────────────────────┤
-│ Problems (1) │ Output │ Run log│ Commands ▸ Reference | Lessons       │
+│ Problems (1) │ Output │ Run log│ Commands ▸ Reference | Lessons      │
 └───────────────────────────────┴──────────────────────────────────────┘
 ```
 
@@ -131,7 +131,7 @@ Same layout plus: a big countdown in the top center, rival chips (avatar, "typin
 - Spectate ships in M6 (see [milestones](../07-roadmap/milestones.md)).
 
 ### Results
-See [scoring-and-judging](../01-game-design/scoring-and-judging.md).
+See [scoring-and-judging](../01-game-design/scoring-and-judging.md). Ranked results add the season header and the RP breakdown lines: the base RP with "(placement ×2)" while placement games remain, "Demotion shield used (N games left)", "Win streak +N RP" and "+3 beat higher-tier rival". Copy for each is in [ranked-ladder](../01-game-design/ranked-ladder.md) §Season UI, and the line shown after leaving a ranked match early is in [matchmaking](../03-architecture/matchmaking.md#copy).
 
 ### Replay viewer (`/replay/<matchId>`)
 - **Reached from** Results, Spectate (after results) and Profile → Match history → **[Replay]**. The URL can be shared: sign-in is required, and who may open it is set by the access rules in [saves-and-persistence](../03-architecture/saves-and-persistence.md). Anyone else sees *"This replay isn't available."*
@@ -146,7 +146,20 @@ Reached from the Multiplayer hub. The **Find Match (Ranked)** button and its coo
 - **Rank card:** division emblem, tier, RP bar (`64 / 100`), the season header, the placement badge, the shield line, the demotion warning, the win streak and the season's peak. Copy for each is in [ranked-ladder](../01-game-design/ranked-ladder.md) §Season UI.
 - **Locked state** (level below 10 or Chapter 4 not cleared): the emblem is greyed and the button reads *"Ranked unlocks at level 10 and after Chapter 4"*, with progress *"Level 7/10 · Chapter 4 not cleared yet"* and a **[Go to campaign]** link.
 - **Leaderboard tab:** the top 100 Diamond I players by RP, with position, handle (tap for the player card), level and RP. Your own row is pinned at the bottom with your global position if you are Diamond I. Otherwise it reads *"Reach Diamond I to appear here."* The route `/leaderboard` is public and readable without signing in.
+- **Season-end modal.** Shown once, over Home, on the first sign-in after a season rolls over: the season's peak rank, the rewards earned with **[Equip]**, and the soft-reset rank with its placement games, then **[Continue]** (copy in [ranked-ladder](../01-game-design/ranked-ladder.md) §Season UI). The season header on this screen turns amber in the last 7 days.
 - Ranked parties are disabled in v1, so a party member sees the solo-only line from [social](../03-architecture/social.md).
+
+### Practice vs bots
+Reached from the Multiplayer hub. The setup card sets the bots (1 to 7, default 3), a difficulty for each bot (Seedling, Grower or Agronomist, see [multiplayer-modes](../01-game-design/multiplayer-modes.md)), the grid (6, 8 or 10), the coding time (**Any**, and by default no timer: the coding phase ends when you press **Lock in when ready**) and the modifiers, then **[Start]**.
+
+- The room has type `practice`. A banner reads *"Practice: no credits or XP"*, and rematch is always available with no vote.
+- Practice is disabled on phones (see [Responsive rules](#responsive-rules)).
+
+### Player card
+An overlay opened from any handle on any screen: handle, level, rank emblem, badges and the equipped drone, with **Add friend**, **Invite to party**, **Block** and **Report**. See [social](../03-architecture/social.md#player-card).
+
+### Report sheet
+A modal opened from the player card, from the room-name row (room browser or lobby) and from the **⚑ Report** link above a player's code in Results and Replay. Its fields and categories are in [moderation](../08-legal-safety/moderation.md#report-sheet-player-facing).
 
 ### Shop
 - **Header:** wallet balance and **"Featured this week · resets in 3d 04h"**. The 6-item rotation flips on Mondays at 00:00 UTC, and the timer counts down to that moment.
@@ -164,7 +177,7 @@ Reached from the Multiplayer hub. The **Find Match (Ranked)** button and its coo
 ### Settings
 Tabs sit in a left rail on desktop and a segmented control on tablet and phone.
 
-- **Account:** email (read-only) · linked sign-in methods (Google ✓ · Email code ✓ · Password: set or change) · **Handle** with **[Change]**, disabled with *"You can change your handle again on 12 Nov"* while `handle_changed_at` is under 30 days old · **Sign out** · **Sign out everywhere** (*"This signs out every other device. You stay signed in here."*) · **Export my data** (*"Preparing your export…"*, then a JSON download) · **Delete account** (confirmation dialog, then the flow in [privacy-and-age](../08-legal-safety/privacy-and-age.md)).
+- **Account:** email (read-only) · linked sign-in methods (Google ✓ · Email code ✓ · Password: set or change) · **Handle** with **[Change]**, disabled with *"You can change your handle again on 12 Nov"* while `handle_changed_at` is under 30 days old · **Sign out** · **Sign out everywhere** (*"This signs out every other device. You stay signed in here."*) · **Export my data** (*"We're preparing your export"*, then a JSON download; one per 24 h, after which the button explains *"You can export again tomorrow."*) · **Delete account** (a dialog that asks for your handle, then a 30-day window in which signing in cancels the deletion with *"Welcome back: deletion has been cancelled."*; the dialog text and the full flow are in [privacy-and-age](../08-legal-safety/privacy-and-age.md#delete-flow-settings--account--delete-account)).
 - **Audio:** Master, Music, SFX and UI sliders.
 - **Display:** UI scale 85–150 % · colorblind preset (Off, Deuteranopia, Protanopia, Tritanopia) · Reduce motion (follows the system setting by default) · UI font (Default or Atkinson Hyperlegible) · Graphics (Auto, Low or High, overriding the device-tier detector in [rendering](../03-architecture/rendering.md)).
 - **Editor:** theme (your owned editor themes, the same slot as the Locker) · font size 12–24 · code font (Default or OpenDyslexic Mono) · keymap (Default, Vim or Emacs) · input mode (Auto, Blocks or Text; Auto follows [editor-ux](editor-ux.md)).
@@ -187,15 +200,18 @@ A banner sits at the top, above every screen.
 - **Reconnected, match still running:** the banner reads "Back online" for 2 s. During coding the client compares its local draft with the server's. If the server has you locked, the server copy wins. If the local draft is newer and differs, the editor loads it and shows the toast *"Restored the draft from this device (8 s newer than the server copy)."* **[Use server copy instead]**. Otherwise the server copy loads silently.
 - **Reconnected after the match ended:** a full-screen *"Your match finished while you were away. Your last saved program was used."* **[See results]**, or **[Back to lobby]** when no results exist.
 - **`session.replaced`:** a full-screen *"You opened Code Harvest in another tab or device. Play there, or"* **[Use this tab instead]**, which reconnects and replaces the other. The client does not reconnect on its own after this message.
+- **`session.revoked`:** a full-screen *"You were signed out. Please sign in again."* **[Sign in]**. The client does not reconnect on its own.
 - **`PROTOCOL_VERSION`:** *"Code Harvest was updated. Reload to continue."* **[Reload]**. Outside a match the page reloads by itself, and in a match the draft is kept in local storage first.
 - **Queue lost after a server restart:** the queue pill changes to *"Search was interrupted"* with **[Search again]**.
-- **Removed from a room:** `room.left` shows a message for its `reason`: kicked, host closed the room, room expired, or "This room isn't available." for blocked.
+- **Removed from a room:** `room.left` returns the player to the Multiplayer hub with a toast chosen by its `reason`: `kicked` *"You were removed from this room by the host."*; `host_closed` *"The host closed this room."* (the host's **Close room** action exists in Lobby only); `room_expired` *"This room has closed."*; `blocked` *"This room isn't available."*
 
 ## Empty, error and edge states (must be designed, not afterthoughts)
 
-- Queue taking long, with a suggestion to try casual or bots
-- Server-maintenance banner (graceful drain message)
-- Under-13 result on the age gate: the "isn't available for your age yet" screen, with no way to continue
-- Rate-limited email code: *"Check spam, or request a new code in N min"*, where N comes from the server's retry-after value for the 3-codes-per-email-per-10-min window in [auth](../03-architecture/auth.md). Never hard-code the number. If the code itself expired: *"That code expired, send a new one."*
+- Queue taking long, with a suggestion to try casual or bots. The queue pill and Find Match states use the copy in [matchmaking](../03-architecture/matchmaking.md#copy)
+- **Maintenance** (drain, `server.draining`): a persistent amber banner *"Code Harvest is updating. Finish your current match; new matches open again soon."* (the default text; the banner shows `server.draining.message` when the server sends one). Find Match, Create room, Join by code and Rematch are disabled with the tooltip *"Unavailable during the update"* (the server refuses them with `MAINTENANCE`), and rooms still in Lobby are closed with the toast *"This room has closed."* Campaign and Free Farm use REST and keep working. After `SIGTERM` (`SERVER_RESTARTING`) the client reconnects with the normal backoff, and the banner clears on the first `hello` without `draining`. If the protocol major changed it shows the reload prompt instead. `server.draining { until: null }` also clears the banner.
+- Under-13 result on the age gate: the "isn't available for your age yet" screen, with no way to continue (sign-in controls hidden, 24 h client flag)
+- **Email code entry** (full spec in [auth](../03-architecture/auth.md#landing-screen-age-gate-then-sign-in)): a resend countdown (*"Resend in 0:58"*); at the 3-codes-per-email-per-10-min limit *"Too many codes sent. Try again in N minutes, or check your spam folder."*, where N comes from the server's retry-after value and is never hard-coded; a wrong code *"That code isn't right (3 tries left)"*; after 5 tries *"Too many tries. Request a new code."*; an expired code *"That code expired. Request a new one."*
+- **Password screen:** **Sign in**, **Create account** and **Forgot password?**. Wrong credentials show *"That email and password don't match."* A breached password shows *"This password appeared in a data breach. Choose another."* When the breach check can't be reached it shows *"Couldn't check that password. Try again in a moment."*
+- **Terms updated:** a blocking *"We've updated our Terms"* interstitial with a summary of the changes and **[I agree]**, shown when the server answers `428 TERMS_OUTDATED` (see [auth](../03-architecture/auth.md#terms--privacy-acceptance)). Sign-out, data export and account deletion stay available.
 - Program has an error at lock: the results show "Your program didn't compile: line 7: …"
 - Replay or room links that can't be opened: *"This replay isn't available."* / *"This room isn't available."*

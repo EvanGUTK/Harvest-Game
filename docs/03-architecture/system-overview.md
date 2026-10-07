@@ -22,6 +22,8 @@ flowchart LR
 
   RESEND[Resend<br/>email codes]
   GOOGLE[Google OAuth]
+  HIBP[HIBP Pwned Passwords<br/>range API]
+  TURNSTILE[Cloudflare Turnstile<br/>optional]
 
   UI -- "HTTPS: client bundle + REST /api" --> API
   UI <-- WSS /ws --> API
@@ -29,7 +31,11 @@ flowchart LR
   LW --> R3F
   API -- pooled SQL --> DB
   API --> RESEND
+  RESEND -- "bounce/complaint webhook" --> API
+  API --> HIBP
   UI -- OAuth redirect --> GOOGLE --> API
+  UI --> TURNSTILE
+  API --> TURNSTILE
 ```
 
 The diagram shows hosting **Option A**: one Render web service serves the client bundle, REST and WebSockets from one origin. A separate static site on the CDN is hosting Option B, used later (see [hosting](../06-infrastructure/hosting.md)).

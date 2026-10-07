@@ -6,8 +6,8 @@
 
 - **Phase:** Architecture complete. Engineering scaffolding complete. **M0 (Foundations) is ready to start.**
 - **Branch:** `claude/sleepy-gauss-gxgilk` (all work so far). Main is empty apart from the initial commit. Merge to `main` when Evan has reviewed the docs.
-- **Blocking decisions:** none. All 22 items in `docs/00-overview/decisions-needed.md` have assumed defaults; the docs are written against those defaults.
-- **Owner inputs:** the single checklist of accounts, credentials, DNS records, OAuth settings, CI secrets and repo settings is [`docs/06-infrastructure/connections.md`](docs/06-infrastructure/connections.md). Nothing blocks M0 code, but set the GitHub repo settings (branch protection on `main` with the `ci` workflow's `check` job required, secret scanning, Dependabot) before the first merge to `main`. The rest is needed by M2, or later where the checklist says so.
+- **Blocking decisions:** none for the design: all 28 items in `docs/00-overview/decisions-needed.md` have assumed defaults, and the docs are written against those defaults. D-22 defaults to "Start M0 now" pending the owner's tick. **Before M0 code:** the owner accepts ADR-0001, 0002 and 0003 (all seven ADRs are still `proposed`) and ticks D-02, D-03, D-04, D-06, D-07, D-17, D-18 and D-20, the rows that M0 content values depend on.
+- **Owner inputs:** the single checklist of accounts, credentials, DNS records, OAuth settings, CI secrets and repo settings is [`docs/06-infrastructure/connections.md`](docs/06-infrastructure/connections.md). No account or credential blocks M0 code, but set the GitHub repo settings (branch protection on `main` with the `ci` workflow's `check` job required, secret scanning, Dependabot) before the first merge to `main`. The rest is needed by M2, or later where the checklist says so. Buy the domain only after the D-01 trademark and domain availability check (or use a neutral technical domain).
 
 ## Next steps (in order)
 
@@ -25,7 +25,7 @@
 - `packages/db` is an empty placeholder until M2.
 - `tools/` are documented but not created (first: `tools/run`, `tools/balance` in M0).
 - `assets/` is empty apart from the manifest header.
-- CI runs typecheck + lint + test only; determinism/bench/asset workflows arrive with the code they test.
+- CI (`ci.yml`, one `check` job) runs a production-dependency audit, typecheck, lint, format check and test only; determinism/bench/asset workflows arrive with the code they test.
 
 ## Done
 

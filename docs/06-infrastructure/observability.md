@@ -20,8 +20,9 @@ Every account, token, DNS record and environment variable named on this page is 
 - **Realtime:** connected sockets, messages/s by type, event-loop lag p99, reconnect rate
 - **Matchmaking:** queue size by mode and rank, wait p50/p90, ready-check success rate, decline rate
 - **Execution:** showdown execution ms p50/p99, compile failures at lock, runtime-error rate
-- **Economy:** credits minted/spent per day, ledger reconciliation status, receipt mismatch rate
+- **Economy:** credits minted/spent per day, ledger reconciliation status, receipt mismatch rate, receipt rejection rate (by code: `RECEIPT_REJECTED`, `RECEIPT_ALREADY_USED`, `FREE_FARM_SESSION_STALE`)
 - **Campaign:** completion rate per contract, median attempts, the most common error codes per chapter (drives lesson rewrites)
+- **Email and auth:** `email_sent`, `email_bounced`, `email_complained`, `hibp_unavailable`, count of `428 TERMS_OUTDATED` responses
 
 ## What may be logged (PII policy)
 
@@ -31,12 +32,12 @@ Logs go to Render and errors go to Sentry, both third parties, so what they rece
 - **Never logged:** email, handle, cookies, `Authorization`, OTP codes, passwords, WebSocket tickets, program source, `report.note`, and request or response bodies. (The birth year typed on the landing screen never reaches the server at all.) IP addresses appear only in rate-limit and abuse log lines, kept ≤ 30 days (see [privacy-and-age](../08-legal-safety/privacy-and-age.md)).
 - **pino redaction (paths):** `req.headers.cookie`, `req.headers.authorization`, `req.headers["x-forwarded-for"]`, `req.query.ticket`, `*.email`, `*.password`, `*.otp`, `*.code`, `*.source`, `*.note`, with the censor string `[redacted]`. The request serializer logs the URL path with the query string stripped for `/ws` and `/api/auth/*`. The `/ws?ticket=` URL therefore never appears in our logs, and the ticket is single-use with a 30 s TTL ([realtime-protocol](../03-architecture/realtime-protocol.md)), so even Render's own access log can't replay it. Log level is `info` in production, never `debug`.
 - **Anomaly logs** (receipt mismatch, ledger drift) store ids only. The program source is already kept in `run_receipt`.
-- **Sentry:** `sendDefaultPii: false`. `beforeSend` drops `request.cookies` and `request.headers`, removes any `source` or `email` key, and truncates breadcrumbs. Session replay is off (if it is ever enabled it must mask all text). Release = `RENDER_GIT_COMMIT`; environment = `staging` or `prod`.
+- **Sentry:** `sendDefaultPii: false`. `beforeSend` drops `request.cookies` and `request.headers`, removes any `source` or `email` key, and truncates breadcrumbs. IP addresses are not collected (the project's "Prevent Storing of IP Addresses" scrubbing option is on), matching the data table in [privacy-and-age](../08-legal-safety/privacy-and-age.md). Session replay is off (if it is ever enabled it must mask all text). Release = `RENDER_GIT_COMMIT`; environment = `staging` or `prod`.
 - **Retention:** Render's log retention is set by Render's plan. If it ever exceeds 30 days, add a log drain with 30-day retention (for example Better Stack or Grafana Loki free tier) and shorten the Render retention.
 
 ## Alerts
 
-Event-loop lag p99 > 200 ms for 5 min · execution p99 > 1 s · ready-check success < 60 % · ledger reconciliation failure · receipt mismatch > 1 % of receipts in an hour · 5xx > 1 %. Event-loop lag is alerted from `/metrics` (it is deliberately not part of Render's `/healthz` check, see [hosting](hosting.md)).
+Event-loop lag p99 > 200 ms for 5 min · execution p99 > 1 s · ready-check success < 60 % · ledger reconciliation failure · receipt mismatch > 1 % of receipts in an hour · 5xx > 1 % · email complaint rate > 0.1 % per day · daily email sends > 70 % of the Resend plan cap. Event-loop lag is alerted from `/metrics` (it is deliberately not part of Render's `/healthz` check, see [hosting](hosting.md)).
 
 ## Alert routing and on-call (solo-developer baseline)
 
