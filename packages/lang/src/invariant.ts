@@ -10,7 +10,8 @@ export type InvariantCode =
   | 'LANG-VALUE-KIND'
   | 'LANG-VALUE-RANGE'
   | 'LANG-HEAP-REFCOUNT'
-  | 'LANG-HEAP-INDEX';
+  | 'LANG-HEAP-INDEX'
+  | 'LANG-UNREACHABLE';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;
@@ -20,4 +21,9 @@ export class InvariantError extends Error {
     this.name = 'InvariantError';
     this.code = code;
   }
+}
+
+/** Exhaustiveness guard: the `default` of every `switch` over a union (standards.md §TypeScript). */
+export function assertNever(value: never): never {
+  throw new InvariantError('LANG-UNREACHABLE', `unhandled union member: ${typeof value}`);
 }

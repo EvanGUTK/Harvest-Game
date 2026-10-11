@@ -12,7 +12,7 @@
  */
 
 import type { Limits } from '../types';
-import { InvariantError } from '../invariant';
+import { InvariantError, assertNever } from '../invariant';
 import { collectionFull, outOfMemory, strTooLong, type RuntimeError } from './runtime-error';
 import {
   isHeapObj,
@@ -160,6 +160,8 @@ export class Heap {
         for (const entry of obj.entries.values()) pending.push(entry.key, entry.value);
         obj.entries.clear();
         return;
+      default:
+        assertNever(obj);
     }
   }
 
