@@ -150,7 +150,7 @@ Stack machine, compact `Int32Array` code with a constant pool.
 - `and` / `or` compile to `JUMP_IF_FALSE_KEEP` / `JUMP_IF_TRUE_KEEP`, which leave the deciding operand on the stack, so they return an operand, not a bool. `NOT` always yields a bool. Only `0`, `None`, `""`, `[]`, `{}` and `False` are falsy ([Truthiness](../02-language/language-spec.md#truthiness-and-and--or)).
 - `def` compiles to a function constant plus `STORE_GLOBAL`, executed in program order, so calling a function before its `def` has run is `R-UNBOUND-GLOBAL`.
 - A name assigned anywhere in a `def` body (and not declared `global`) is a local slot for the whole body. Reading an empty slot is `R-UNBOUND-LOCAL` ([Scoping](../02-language/language-spec.md#scoping)).
-- A chained comparison evaluates each middle operand once: `a < b < c` is `a, b, DUP, ROT3, LT, JUMP_IF_FALSE_KEEP Lf, POP, c, LT, JUMP Le; Lf: SWAP, POP; Le:`.
+- A chained comparison evaluates each middle operand once: `a < b < c` is `a, b, DUP, ROT3, LT, JUMP_IF_FALSE_KEEP Lf, c, LT, JUMP Le; Lf: SWAP, POP; Le:`. `JUMP_IF_FALSE_KEEP` pops the `True` itself when it does not jump, so the true path needs no `POP`.
 - `a[i] op= v` evaluates `a` and `i` once: `a, i, DUP2, INDEX_GET, v, op, INDEX_SET`. `x op= v` is `LOAD x, v, op, STORE x`.
 - `x not in y` is `IN` then `NOT`: 2 base cycles plus the `IN` surcharge.
 - Language intrinsics (`len`, `abs`, `min`, `max`, `str`, `int`, `print`) compile to `CALL_INTRINSIC`, which never yields. Host builtins compile to `CALL_HOST` with the baked `cost` and `touchesWorld` operands, and every `CALL_HOST` yields, `halt()` included.
