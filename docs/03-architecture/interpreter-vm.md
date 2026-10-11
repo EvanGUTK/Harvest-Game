@@ -78,7 +78,14 @@ interface VM {
    *  scheduler actually applied; when omitted, `yield.cost` is charged. It is charged to
    *  the VM cycle counter, so the counter equals `agent.clock` when the VM runs again. */
   resume(value: Value, cost?: number): void;
+  /** The counterpart of `resume` for a host call that failed inside the host (R-BAD-ARG for
+   *  wait(0), goto(9, 9), plant(5); R-TYPE for a non-int sell count). The applied cost (default:
+   *  the baked cost) is charged; the next run() yields `{ kind: 'error' }` with the pending
+   *  CALL_HOST's source range, and the drone is finished like any runtime error. */
+  raise(error: { code: string; message: string }, cost?: number): void;
   readonly cycles: number;        // cycles consumed by this VM so far
+  readonly output: readonly string[];  // the first maxPrintLines lines print wrote
+  readonly droppedLines: number;  // lines dropped after those (the Output panel's notice)
   snapshot(): VMSnapshot;         // serializable, self-contained (debugger timeline, tests)
 }
 
@@ -209,6 +216,7 @@ Costs never depend on wall-clock time or on the host machine. Changing any row c
 - **Frames:** `{ fnIndex, ip, base, locals[] }`. Max depth 64.
 - **Resumable:** the VM is an explicit loop over `ip`, never JS recursion, so it can stop at any instruction and resume later. This enables lockstep scheduling across players, the step debugger, budget cut-off, and running inside a Worker with cooperative time-slicing (the client runs `vm.run(50_000)` per frame chunk).
 - **Determinism rules:** no `Math.random`, `Date`, `performance`, float math, or iteration over JS objects with unspecified order (dicts use `Map`, which preserves insertion order).
+- **Second drone (planned, M2; backlog LANG-05.6).** `LangEngine.spawnVM(parent: VM, fn: Value): VM` will create a VM over the same module with its own frames and stack that **shares the parent's globals and heap** (one program, one namespace; [standard-library](../02-language/standard-library.md) §Second drone: one heap and one set of limits per player). It starts with a zero-argument call to `fn` and halts when that call returns. A snapshot is then taken per program (the parent and its spawned child as one unit) so a shared heap is never duplicated; the snapshot format carries a kind/version word so that per-program snapshots can be added without breaking M0 ones. Not implemented in M0: `spawn` is campaign-only (D-24), showdowns compile it as `E-LOCKED-FEATURE`, and the host table rejects it.
 
 ## Performance target
 
