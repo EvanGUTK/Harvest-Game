@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fnv1a32Ascii } from '../hash/fnv1a';
+import { fnv1a32Ascii } from '@harvest/lang';
 import { createSfc32 } from './sfc32';
 import { splitmix32 } from './splitmix32';
 import { createStreams, randomBelow, seedStream, streamName } from './streams';

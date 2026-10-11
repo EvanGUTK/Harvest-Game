@@ -6,7 +6,7 @@
  * order is layout, weather, player:0 … player:(nSlots−1) (the state hash walks them in this order).
  */
 
-import { fnv1a32Ascii } from '../hash/fnv1a';
+import { fnv1a32Ascii } from '@harvest/lang';
 import { InvariantError } from '../invariant';
 import { createSfc32, type Sfc32 } from './sfc32';
 import { splitmix32 } from './splitmix32';
