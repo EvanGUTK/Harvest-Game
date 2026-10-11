@@ -1,4 +1,4 @@
-import { ACTION_COSTS, BUILTINS, CONSTANTS, SENSOR_COSTS, WAIT_BOUNDS } from '@harvest/content';
+import { ACTION_COSTS, BUILTINS, CONSTANTS, SENSOR_COSTS, WAIT_CYCLES_PER_UNIT } from '@harvest/content';
 import { describe, expect, it } from 'vitest';
 import { constantDefs, hostSignatures } from './signatures';
 
@@ -18,16 +18,25 @@ describe('hostSignatures', () => {
     expect(signatures.map((s) => s.id)).toEqual(BUILTINS.map((_, index) => index));
   });
 
-  it('copies the parameter kinds, return kind and world-touching flag from the metadata', () => {
+  it('copies the arity, world-touching flag and the plain kinds from the metadata', () => {
     for (const [index, meta] of BUILTINS.entries()) {
       const s = hostSignatures()[index];
-      expect(s?.params).toEqual(meta.params);
-      expect(s?.returns).toBe(meta.returns);
+      expect(s?.params.length).toBe(meta.params.length);
       expect(s?.touchesWorld).toBe(meta.touchesWorld);
     }
     expect(signature('plant')).toMatchObject({ params: ['const'], returns: 'bool', touchesWorld: true });
     expect(signature('random')).toMatchObject({ params: ['int'], returns: 'int', touchesWorld: false });
     expect(signature('spawn')).toMatchObject({ params: ['function'], returns: 'bool' });
+  });
+
+  it('maps every const:<group> kind to the VM kind const, as params and as the return of soil', () => {
+    for (const [index, meta] of BUILTINS.entries()) {
+      const s = hostSignatures()[index];
+      expect(s?.params).toEqual(meta.params.map((kind) => (kind.startsWith('const:') ? 'const' : kind)));
+    }
+    expect(signature('plant').params).toEqual(['const']);
+    expect(signature('soil').returns).toBe('const');
+    expect(signature('move').params).toEqual(['const']);
   });
 
   it('bakes the default cycle costs from content (the 1-cycle CALL_HOST is not included)', () => {
@@ -39,7 +48,7 @@ describe('hostSignatures', () => {
     expect(signature('halt').cost).toBe(0);
     expect(signature('crop').cost).toBe(SENSOR_COSTS.crop);
     expect(signature('price').cost).toBe(SENSOR_COSTS.price);
-    expect(signature('wait').cost).toBe(WAIT_BOUNDS.min);
+    expect(signature('wait').cost).toBe(WAIT_CYCLES_PER_UNIT);
   });
 
   it('applies the drone move cost to move and to goto, per step, and to nothing else (Rotor upgrades)', () => {
@@ -57,13 +66,13 @@ describe('hostSignatures', () => {
     expect(signature('plant', 9).cost).toBe(ACTION_COSTS.plant);
   });
 
-  it('renders the unlock as the editor lock text: chapter, skill node, or both, and nothing when always open', () => {
-    expect(signature('move').unlock).toBe('Ch 1');
-    expect(signature('till').unlock).toBe('Skill: till');
-    expect(signature('sell').unlock).toBe('Ch 8 · Skill: sell');
-    expect(signature('goto').unlock).toBe('Ch 5');
-    for (const s of hostSignatures()) {
-      expect(s.unlock === undefined || s.unlock.length > 0).toBe(true);
+  it('passes the unlock through as fields (chapter, skill node, or both) and renders no text', () => {
+    expect(signature('move').unlock).toEqual({ chapter: 1 });
+    expect(signature('till').unlock).toEqual({ node: 'till' });
+    expect(signature('sell').unlock).toEqual({ chapter: 8, node: 'sell' });
+    expect(signature('goto').unlock).toEqual({ chapter: 5 });
+    for (const [index, meta] of BUILTINS.entries()) {
+      expect(hostSignatures()[index]?.unlock).toEqual(meta.unlock);
     }
   });
 

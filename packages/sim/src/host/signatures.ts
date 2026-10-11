@@ -4,12 +4,14 @@
  * (the tables), docs/03-architecture/simulation-engine.md §Clock arithmetic.
  * Invariants: built only from the `content` metadata (BUILTINS and CONSTANTS), so no number lives here; the host id
  * of a builtin is its index in BUILTINS (append-only); the baked cost is the static default, and the applied cost
- * (failed action 5, wait n, goto per step) is worked out by `applyHostCall`. `unlock` is only the editor's lock text:
- * the checker's lock reasons come from the campaign's CompileOptions, not from this table.
+ * (failed action 5, wait n, goto per step) is worked out by `applyHostCall`. `unlock` passes the
+ * content fields through (the editor builds its lock text from them); the checker's lock reasons come from the
+ * campaign's CompileOptions, not from this table.
  */
 
-import { ACTION_COSTS, BUILTINS, CONSTANTS, type BuiltinMeta, type Unlock } from '@harvest/content';
-import type { ConstantDef, HostSignature } from '@harvest/lang';
+import { ACTION_COSTS, BUILTINS, CONSTANTS, type BuiltinMeta, type ParamKind } from '@harvest/content';
+import type { ConstantDef, HostSignature, ValueKind } from '@harvest/lang';
+import { assertNever } from '../invariant';
 
 /** The per-drone stat that changes a baked cost: the Rotor upgrade tier's move cost. */
 export type SignatureUpgrades = { readonly moveCost: number };
@@ -19,23 +21,25 @@ const DEFAULT_UPGRADES: SignatureUpgrades = { moveCost: ACTION_COSTS.move };
 /** Builtins whose baked cost is the drone's move cost (`goto` per step of distance). */
 const MOVE_COST_BUILTINS: ReadonlySet<string> = new Set(['move', 'goto']);
 
-function chapterText(chapter: number): string {
-  return `Ch ${chapter}`;
-}
-
-function nodeText(node: string): string {
-  return `Skill: ${node}`;
-}
-
-/** The lock text the editor shows: "Ch 1", "Skill: till" or "Ch 8 · Skill: sell"; undefined when always open. */
-function unlockText(unlock: Unlock): string | undefined {
-  if ('always' in unlock) return undefined;
-  if ('chapter' in unlock) {
-    return unlock.node === undefined
-      ? chapterText(unlock.chapter)
-      : `${chapterText(unlock.chapter)} · ${nodeText(unlock.node)}`;
+/** The VM only knows a constant as `const`; the group (`const:crop`, …) is the host's to check when it decodes. */
+function paramKind(kind: ParamKind): ValueKind {
+  switch (kind) {
+    case 'int':
+    case 'bool':
+    case 'str':
+    case 'function':
+      return kind;
+    case 'const:direction':
+    case 'const:crop':
+    case 'const:soil':
+      return 'const';
+    default:
+      return assertNever(kind);
   }
-  return nodeText(unlock.node);
+}
+
+function returnKind(kind: BuiltinMeta['returns']): ValueKind | 'any' {
+  return kind === 'none' || kind === 'any' ? kind : paramKind(kind);
 }
 
 function bakedCost(meta: BuiltinMeta, upgrades: SignatureUpgrades): number {
@@ -43,16 +47,15 @@ function bakedCost(meta: BuiltinMeta, upgrades: SignatureUpgrades): number {
 }
 
 function toSignature(meta: BuiltinMeta, id: number, upgrades: SignatureUpgrades): HostSignature {
-  const unlock = unlockText(meta.unlock);
   return {
     id,
     name: meta.name,
-    params: [...meta.params],
+    params: meta.params.map(paramKind),
     ...(meta.optionalParams === undefined ? {} : { optionalParams: meta.optionalParams }),
-    returns: meta.returns,
+    returns: returnKind(meta.returns),
     cost: bakedCost(meta, upgrades),
     touchesWorld: meta.touchesWorld,
-    ...(unlock === undefined ? {} : { unlock }),
+    unlock: { ...meta.unlock },
   };
 }
 
