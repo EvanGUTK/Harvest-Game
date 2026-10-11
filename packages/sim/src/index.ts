@@ -167,6 +167,14 @@ export type {
   MoveOutcome,
 } from './world/actions';
 export { tileIndex, touchTile, withTile } from './world/farm';
+export {
+  sensorCrop,
+  sensorGrowth,
+  sensorIsRipe,
+  sensorIsWithered,
+  sensorMoisture,
+  sensorSoil,
+} from './world/sensors';
 
 // ---------- Scoring (SIM-07) ----------
 
