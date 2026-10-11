@@ -5,8 +5,8 @@
  */
 
 import type { Token } from '../lexer/token';
-import type { Limits, Span } from '../types';
-import { joinSpans, tokenSpan, touching, type TokenCursor } from './cursor';
+import type { Diagnostic, Limits, Span } from '../types';
+import { joinSpans, spanAfter, tokenSpan, touching, type TokenCursor } from './cursor';
 
 /** What the parser was looking for, used as the help line of E-UNEXPECTED-TOKEN. */
 export type Expectation = string;
@@ -109,6 +109,51 @@ export function reportUnexpectedIndent(c: TokenCursor, indent: Token): void {
   });
 }
 
+/** A header line without its `:`; the fix-it inserts it after the last token of the header. */
+export function reportMissingColon(c: TokenCursor, keyword: Token, headerEnd: Token): void {
+  c.report('E-MISSING-COLON', tokenSpan(headerEnd), {
+    message: `This \`${keyword.text}\` line needs a \`:\` at the end.`,
+    help: 'Python-style languages use `:` to start a block.',
+    fix: { label: 'Add `:`', edits: [{ span: spanAfter(headerEnd), newText: ':' }] },
+  });
+}
+
+/** `if x = 3:` (also `elif`, `while`): recovered as `x == 3`. */
+export function reportAssignInCondition(c: TokenCursor, equals: Token): void {
+  const range = tokenSpan(equals);
+  c.report('E-ASSIGN-IN-IF', range, {
+    message: 'Use `==` to compare. A single `=` stores a value.',
+    fix: { label: 'Change `=` to `==`', edits: [{ span: range, newText: '==' }] },
+  });
+}
+
+/** A `def` anywhere but the top level of a file (chief ruling 2026-10-11). */
+export function reportNestedDef(c: TokenCursor, def: Token): void {
+  c.report('E-NESTED-DEF', tokenSpan(def), {
+    message: 'Define functions at the top level, not inside other functions or blocks.',
+  });
+}
+
+export function reportReturnOutside(c: TokenCursor, keyword: Token): void {
+  c.report('E-RETURN-OUTSIDE', tokenSpan(keyword), {
+    message: '`return` only works inside a function made with `def`.',
+  });
+}
+
+/** `break` or `continue` with no loop around it in the same function. */
+export function reportLoopKeywordOutside(c: TokenCursor, keyword: Token): void {
+  const code = keyword.text === 'break' ? 'E-BREAK-OUTSIDE' : 'E-CONTINUE-OUTSIDE';
+  c.report(code, tokenSpan(keyword), { message: `\`${keyword.text}\` only works inside a loop.` });
+}
+
+/** A block nested deeper than `limits.maxNesting` (language-spec.md §Limits). */
+export function reportBlockTooDeep(c: TokenCursor, keyword: Token, limits: Limits): void {
+  c.report('E-TOO-DEEP', tokenSpan(keyword), {
+    message: `This block is nested more than ${String(limits.maxNesting)} levels deep.`,
+    help: 'Move the inner part into a function.',
+  });
+}
+
 /** An expression nested deeper than `limits.maxExpressionDepth` (language-spec.md §Limits). */
 export function reportExpressionTooDeep(c: TokenCursor, at: Token, limits: Limits): void {
   c.report('E-TOO-DEEP', tokenSpan(at), {
@@ -132,4 +177,27 @@ function closerOf(open: string): string {
   if (open === '(') return ')';
   if (open === '[') return ']';
   return '}';
+}
+
+/** More AST nodes than `limits.maxAstNodes` across all files; reported at the first node over the limit. */
+export function programTooBig(range: Span, limits: Limits): Diagnostic {
+  return {
+    code: 'E-PROGRAM-TOO-BIG',
+    severity: 'error',
+    range,
+    message: `Your program has more than ${withThousands(limits.maxAstNodes)} pieces (AST nodes), the most one program can have.`,
+    help: 'Use functions to replace code that repeats.',
+  };
+}
+
+/** `5000` → `5,000`, the way the catalogue writes limits. Integers only. */
+export function withThousands(n: number): string {
+  const digits = String(n);
+  let out = '';
+  for (let i = 0; i < digits.length; i += 1) {
+    const fromEnd = digits.length - i;
+    if (i > 0 && fromEnd % 3 === 0 && digits[i - 1] !== '-') out += ',';
+    out += digits[i] ?? '';
+  }
+  return out;
 }

@@ -12,6 +12,7 @@ import type { Token } from '../lexer/token';
 import type {
   AssignTarget,
   BinaryOp,
+  CompareExpr,
   DefStmt,
   ElifClause,
   Expression,
@@ -26,8 +27,14 @@ import type {
   WhileStmt,
 } from './ast';
 import {
+  reportAssignInCondition,
   reportBadTarget,
+  reportBlockTooDeep,
   reportBodyNotIndented,
+  reportLoopKeywordOutside,
+  reportMissingColon,
+  reportNestedDef,
+  reportReturnOutside,
   reportSlashDivision,
   reportUnexpected,
   reportUnexpectedIndent,
@@ -35,10 +42,13 @@ import {
 import { tokenSpan } from './cursor';
 import { ExpressionParser } from './expressions';
 
-/** Where a statement sits: decides whether `break`, `continue` and `return` are allowed. */
-type BlockContext = { readonly inLoop: boolean; readonly inDef: boolean };
+/**
+ * Where a statement sits: whether `break`/`continue` (`inLoop`) and `return` (`inDef`) are allowed, and
+ * how many blocks enclose it (`depth`: 0 at the top level of a file, where alone `def` is allowed).
+ */
+type BlockContext = { readonly inLoop: boolean; readonly inDef: boolean; readonly depth: number };
 
-const TOP_LEVEL: BlockContext = { inLoop: false, inDef: false };
+const TOP_LEVEL: BlockContext = { inLoop: false, inDef: false, depth: 0 };
 
 /** Augmented-assignment token → its arithmetic operator (`x += 1` means `x = x + 1`). */
 const AUG_ASSIGN_OPS: ReadonlyMap<string, BinaryOp> = new Map<string, BinaryOp>([
@@ -104,7 +114,7 @@ export class StatementParser extends ExpressionParser {
         case 'repeat':
           return this.parseRepeat(ctx);
         case 'def':
-          return this.parseDef();
+          return this.parseDef(ctx);
         case 'elif':
         case 'else':
           return this.parseOrphanClause(ctx);
@@ -112,7 +122,15 @@ export class StatementParser extends ExpressionParser {
     }
     const stmt = this.parseSimpleStatement();
     if (stmt === null) this.skipStatement();
+    else this.checkPlacement(stmt.type, token, ctx);
     return stmt;
+  }
+
+  /** `return` outside a `def`, `break`/`continue` outside a loop: reported, the statement is kept. */
+  private checkPlacement(type: Statement['type'], keyword: Token, ctx: BlockContext): void {
+    if (type === 'ReturnStmt' && !ctx.inDef) reportReturnOutside(this.c, keyword);
+    if ((type === 'BreakStmt' || type === 'ContinueStmt') && !ctx.inLoop)
+      reportLoopKeywordOutside(this.c, keyword);
   }
 
   // ---------- simple statements ----------
@@ -218,13 +236,13 @@ export class StatementParser extends ExpressionParser {
   /** EBNF `if_stmt`. */
   private parseIf(ctx: BlockContext): IfStmt | null {
     const start = this.c.next();
-    const test = this.parseHeaderExpression(start);
+    const test = this.parseCondition(start);
     const body = this.parseBlock(start, ctx);
     const elifs: ElifClause[] = [];
     let clausesOk = true;
     for (let elif = this.c.peek(); this.c.isKeyword('elif'); elif = this.c.peek()) {
       this.c.next();
-      const elifTest = this.parseHeaderExpression(elif);
+      const elifTest = this.parseCondition(elif);
       const elifBody = this.parseBlock(elif, ctx);
       if (elifTest === null) clausesOk = false;
       else elifs.push({ type: 'ElifClause', span: this.c.spanFrom(elif), test: elifTest, body: elifBody });
@@ -246,7 +264,7 @@ export class StatementParser extends ExpressionParser {
   /** EBNF `while_stmt`. */
   private parseWhile(ctx: BlockContext): WhileStmt | null {
     const start = this.c.next();
-    const test = this.parseHeaderExpression(start);
+    const test = this.parseCondition(start);
     const body = this.parseBlock(start, { ...ctx, inLoop: true });
     return test === null ? null : { type: 'WhileStmt', span: this.c.spanFrom(start), test, body };
   }
@@ -286,12 +304,13 @@ export class StatementParser extends ExpressionParser {
     return iterable === null ? null : { target, iterable };
   }
 
-  /** EBNF `def_stmt`. */
-  private parseDef(): DefStmt | null {
+  /** EBNF `def_stmt`. Only at the top level of a file; elsewhere E-NESTED-DEF (the node is kept). */
+  private parseDef(ctx: BlockContext): DefStmt | null {
     const start = this.c.next();
+    if (ctx.depth > 0) reportNestedDef(this.c, start);
     const header = this.parseDefHeader();
     const headerOk = this.finishHeader(header !== null && this.expectColon(start));
-    const body = this.parseBlock(start, { inLoop: false, inDef: true });
+    const body = this.parseBlock(start, { inLoop: false, inDef: true, depth: ctx.depth });
     if (header === null || !headerOk) return null;
     return { type: 'DefStmt', span: this.c.spanFrom(start), name: header.name, params: header.params, body };
   }
@@ -330,10 +349,35 @@ export class StatementParser extends ExpressionParser {
 
   // ---------- headers and blocks ----------
 
-  /** `keyword expr :` for `if`, `elif`, `while` and `repeat`; `null` after a reported error. */
+  /** `keyword expr :` for `repeat`; `null` after a reported error. */
   private parseHeaderExpression(keyword: Token): Expression | null {
     const expr = this.parseExpression();
     return this.finishHeader(expr !== null && this.expectColon(keyword)) ? expr : null;
+  }
+
+  /**
+   * The condition of `if`, `elif` or `while`, then `:`. `if x = 3:` is E-ASSIGN-IN-IF and is read as
+   * `x == 3`, so the rest of the program is still checked.
+   */
+  private parseCondition(keyword: Token): Expression | null {
+    const start = this.c.peek();
+    const left = this.parseExpression();
+    const equals = left === null ? null : this.c.eatOp('=');
+    const test = left === null || equals === null ? left : this.repairAssignInCondition(start, left, equals);
+    return this.finishHeader(test !== null && this.expectColon(keyword)) ? test : null;
+  }
+
+  /** At the `=` after `left` in a condition: reports E-ASSIGN-IN-IF and builds `left == right`. */
+  private repairAssignInCondition(start: Token, left: Expression, equals: Token): CompareExpr | null {
+    reportAssignInCondition(this.c, equals);
+    const right = this.parseExpression();
+    if (right === null) return null;
+    return {
+      type: 'CompareExpr',
+      span: this.c.spanFrom(start),
+      operands: [left, right],
+      operators: [{ op: '==', span: tokenSpan(equals) }],
+    };
   }
 
   /** After a header: when it failed, skips what is left of the line so the block can still be parsed. */
@@ -342,8 +386,13 @@ export class StatementParser extends ExpressionParser {
     return ok;
   }
 
+  /** The `:` that ends a header. A header line that simply stops is E-MISSING-COLON, read as if it were there. */
   private expectColon(keyword: Token): boolean {
     if (this.c.eatOp(':') !== null) return true;
+    if (this.c.peek().kind === 'NEWLINE') {
+      reportMissingColon(this.c, keyword, this.c.lastSignificant);
+      return true;
+    }
     reportUnexpected(this.c, `A \`:\` should end this \`${keyword.text}\` line.`, null);
     return false;
   }
@@ -364,7 +413,9 @@ export class StatementParser extends ExpressionParser {
       return [];
     }
     this.c.next();
-    const body = this.parseStatements(ctx);
+    const inner = { ...ctx, depth: ctx.depth + 1 };
+    if (inner.depth === this.limits.maxNesting + 1) reportBlockTooDeep(this.c, keyword, this.limits);
+    const body = this.parseStatements(inner);
     if (this.c.peek().kind === 'DEDENT') this.c.next();
     return body;
   }

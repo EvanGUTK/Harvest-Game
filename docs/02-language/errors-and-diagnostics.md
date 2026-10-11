@@ -37,7 +37,7 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-WRONG-ARG-COUNT` | `move()` | `move` needs 1 thing in the brackets: a direction like `NORTH`. |
 | `E-SLASH-DIVISION` | `a / 2` | Sprout uses whole numbers. Use `//` for division. *(fix-it)* |
 | `E-ASSIGN-IN-IF` | `if x = 3:` | Use `==` to compare. A single `=` stores a value. *(fix-it)* |
-| `E-NESTED-DEF` | `def` inside `def` | Define functions at the top level, not inside other functions. |
+| `E-NESTED-DEF` | `def` inside another `def` or inside any block | Define functions at the top level, not inside other functions or blocks. |
 | `E-RETURN-OUTSIDE` | `return` at top level | `return` only works inside a function made with `def`. |
 | `E-BREAK-OUTSIDE` | `break` outside a loop | `break` only works inside a loop. |
 | `E-CONTINUE-OUTSIDE` | `continue` outside a loop | `continue` only works inside a loop. |

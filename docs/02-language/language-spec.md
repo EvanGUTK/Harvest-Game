@@ -128,7 +128,7 @@ Python rules, simplified:
 - `global x` must appear before any use of `x` in the same `def`; otherwise `E-GLOBAL-AFTER-USE`.
 - A name that is never assigned in the body is looked up as a global (read-only).
 - `def` is a statement: the function's name is bound when its `def` line executes. A function body may mention a global or another function that is defined further down the file, provided it is bound by the time the call actually runs. Calling a function above its `def` is `R-UNBOUND-GLOBAL`: *"`tend` isn't defined yet at this line. Move the `def` above."* The checker raises `W-USE-BEFORE-DEF` statically for the obvious top-level case. A name that is defined nowhere in the program is the compile-time `E-UNKNOWN-NAME`.
-- No closures over enclosing function locals in v0.1. A nested `def` is a compile error: *"Define functions at the top level."*
+- No closures over enclosing function locals in v0.1. A `def` anywhere but the top level of a file is a compile error (`E-NESTED-DEF`): *"Define functions at the top level, not inside other functions or blocks."*
 
 ## Evaluation and cost model
 
