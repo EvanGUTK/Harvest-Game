@@ -12,60 +12,11 @@ export const RULES_VERSION = '0.1.0';
 
 // ---------- Crops ----------
 
-export type CropId = 'radish' | 'corn' | 'melon';
-
-export type CropDef = {
-  id: CropId;
-  /** Constant name exposed in Sprout, e.g. RADISH */
-  constant: string;
-  seedCost: number;
-  basePrice: number;
-  growCycles: number;
-  witherCycles: number;
-  needsTilled: boolean;
-  /** Growth only advances while moisture >= this (default rule is > 0). */
-  minMoisture: number;
-};
-
-export const CROPS: Readonly<Record<CropId, CropDef>> = {
-  radish: {
-    id: 'radish',
-    constant: 'RADISH',
-    seedCost: 2,
-    basePrice: 5,
-    growCycles: 300,
-    witherCycles: 3_000,
-    needsTilled: false,
-    minMoisture: 1,
-  },
-  corn: {
-    id: 'corn',
-    constant: 'CORN',
-    seedCost: 6,
-    basePrice: 18,
-    growCycles: 900,
-    witherCycles: 1_500,
-    needsTilled: true,
-    minMoisture: 1,
-  },
-  melon: {
-    id: 'melon',
-    constant: 'MELON',
-    seedCost: 15,
-    basePrice: 60,
-    growCycles: 2_400,
-    witherCycles: 2_400,
-    needsTilled: true,
-    minMoisture: 30,
-  },
-};
-
-/** Crop ids in `CROPS` order. Every per-crop iteration uses this array, never Object.keys. */
-export const CROP_IDS: readonly CropId[] = ['radish', 'corn', 'melon'];
+export { CROPS, CROP_IDS, type CropDef, type CropId } from './crops';
 
 // ---------- Builtin cycle costs (on top of the 1-cycle CALL_HOST) ----------
 
-export { ACTION_COSTS, PURE_COSTS, SENSOR_COSTS, WAIT_BOUNDS } from './costs';
+export { ACTION_COSTS, PURE_COSTS, SENSOR_COSTS, WAIT_BOUNDS, WAIT_CYCLES_PER_UNIT } from './costs';
 
 /** Real-time pacing of the editor's 1× speed. Free Farm receipts are capped from this. */
 export const CYCLES_PER_SECOND = 100;
