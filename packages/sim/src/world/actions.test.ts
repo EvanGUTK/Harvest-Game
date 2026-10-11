@@ -303,6 +303,19 @@ describe('refill (standard-library.md §Outcome matrix)', () => {
     expect(full).toMatchObject({ ok: true, cost: ACTION_COSTS.refill });
   });
 
+  it('fails on the tiles beside the well, on its row and on its column', () => {
+    for (const pos of [
+      [1, 0],
+      [0, 1],
+      [2, 2],
+    ] as const) {
+      expect(refill(farmWith(grass(), { water: 3 }), pos)).toMatchObject({
+        ok: false,
+        cost: ACTION_COSTS.refillFailed,
+      });
+    }
+  });
+
   it('anywhere else fails with cost 5 and leaves the tank alone', () => {
     const out = refill(farmWith(grass(), { water: 3 }), AT);
     expect(out).toMatchObject({ ok: false, cost: ACTION_COSTS.refillFailed });
