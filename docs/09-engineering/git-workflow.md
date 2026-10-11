@@ -13,7 +13,7 @@
 
 Types: `feat` `fix` `refactor` `test` `docs` `chore` `perf`. ID is a backlog ID or `ADR-000N`. Docs-only commits may use `docs(area)`.
 
-One logical change per commit. `pnpm check` green before every commit, no exceptions: `.githooks/pre-commit` runs it (installed by `pnpm install` via the `prepare` script). `--no-verify` is never used.
+One logical change per commit. `pnpm check` green before every commit, no exceptions: `.githooks/pre-commit` and `.githooks/pre-merge-commit` run it (installed by `pnpm install` via the `prepare` script), so merge commits are covered too. `--no-verify` is never used.
 
 Every commit that bumps `LANGUAGE_VERSION` or `RULES_VERSION` is tagged `engine-v<lang>.<rules>` on `main`, so `engines.yml` can rebuild any previous major.
 
