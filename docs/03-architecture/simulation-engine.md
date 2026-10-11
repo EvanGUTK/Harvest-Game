@@ -117,6 +117,8 @@ The world is only advanced to the times drones touch it, so simulation cost scal
 4. Per slot ascending, tiles row-major (y then x): `soil` (0 grass, 1 tilled, 2 rock), `moisture`, `cropCode` (index in `CROPS` order, −1 for none), `plantedAt`, `growth`, `ripeAt` (−1 for null), `withered` (0/1). A tile without a crop writes `cropCode = −1`, `plantedAt = 0`, `growth = 0`, `ripeAt = −1`, `withered = 0`.
 5. The four sfc32 state words `(a, b, c, d)` of every PRNG stream in the fixed order `layout, weather, player:0 … player:(nSlots−1)`.
 
+The steps are sequential: step 3 is written for every slot (ascending) before step 4 starts, and step 4 for every slot before step 5. Slot data is therefore not interleaved.
+
 VM heaps, programs, the event log, `lastUpdated` and the farm's `everDryPaused` flag are not hashed.
 
 **Emission.** Before applying any call at time `t`, for every `k` with `lastHashT < k·1000 ≤ t`, emit `{ t: k·1000, k: 'hash', h: H(k·1000) }`. So the hash at 1000 precedes every action at 1000 and covers exactly the calls with `t < 1000`. After the main loop, emit the remaining multiples below `budget`. `finalStateHash = H(budget)` is computed **after** liquidation; when `budget` is a multiple of 1,000 the hash event at `t = budget` is emitted after liquidation and equals `finalStateHash`.

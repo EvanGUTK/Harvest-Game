@@ -158,3 +158,13 @@ export { generateLayout, type LayoutConfig } from './world/layout';
 
 export { advanceTile, advanceTileDetailed, type AdvanceRules, type TileAdvance } from './world/advance';
 export { advanceFarm, type Farm } from './world/farm';
+
+// ---------- State hash (SIM-06) ----------
+
+export {
+  stateHash,
+  stateWords,
+  type DroneHashState,
+  type DroneStatus,
+  type HashableState,
+} from './hash/state-hash';
