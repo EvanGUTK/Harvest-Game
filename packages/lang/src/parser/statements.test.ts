@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LIMITS, type SourceFile, type Span } from '../types';
-import { childNodes, countNodes, type Node, type Statement } from './ast';
+import { childNodes, countNodes, type AstNode, type Statement } from './ast';
 import { parse } from './parser';
 import { sexprFile, sexprStatement } from './sexpr';
 
@@ -194,7 +194,7 @@ describe('parse: example programs (language-spec.md §Example; standard-library.
   });
 
   it("keeps every child's span inside its parent's span in the spec example", () => {
-    const check = (node: Node): void => {
+    const check = (node: AstNode): void => {
       for (const child of childNodes(node)) {
         const inside =
           (child.span.line > node.span.line ||
