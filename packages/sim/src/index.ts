@@ -147,4 +147,5 @@ export { generateLayout, type LayoutConfig } from './world/layout';
 
 export { buildPlayerResult } from './scoring/result';
 export { rankPlayers, type Placement, type RankEntry } from './scoring/ranking';
+export { scorePlayers, type MatchScore } from './scoring/score';
 export type { PlayerStats, ScoringRules } from './scoring/stats';
