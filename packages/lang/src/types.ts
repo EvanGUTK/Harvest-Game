@@ -119,6 +119,11 @@ export type HostSignature = {
    * editor builds its 🔒 message from them (the checker's lock reasons come from `CompileOptions.lockedNames`).
    */
   unlock?: { chapter?: number; node?: string };
+  /**
+   * One beginner-facing description per parameter, e.g. 'a direction like `NORTH`', for E-WRONG-ARG-COUNT.
+   * Filled by sim from content's stdlib metadata; without it the message uses the generic wording.
+   */
+  paramHints?: readonly string[];
 };
 
 // ---------- Compile ----------
