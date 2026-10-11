@@ -13,8 +13,10 @@ import { CROP_IDS, CROPS } from './crops';
 export type ConstantGroup = 'direction' | 'crop' | 'soil';
 
 /**
- * What kind of value a builtin takes or returns. A constant names the group it accepts, so the compiler can
- * tell `move(RADISH)` from `move(NORTH)`: `const:direction`, `const:crop` or `const:soil`.
+ * What kind of value a builtin takes or returns. A constant names the group it accepts (`const:direction`,
+ * `const:crop` or `const:soil`) so the host signature, the editor hints and the host's argument check know which
+ * constants are valid. The compiler only knows a constant when it sees one: `move(RADISH)` compiles and the
+ * host raises the runtime `R-BAD-ARG` (standard-library.md §Bad arguments).
  */
 export type ParamKind = 'int' | 'bool' | 'str' | 'function' | `const:${ConstantGroup}`;
 
