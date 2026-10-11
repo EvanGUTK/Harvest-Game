@@ -22,21 +22,7 @@ export type DroneNo = 0 | 1;
 export type AwardId =
   'top_earner' | 'most_efficient' | 'bumper_crop' | 'market_timer' | 'clean_code' | 'never_thirsty';
 
-export type Soil = 'grass' | 'tilled' | 'rock';
-
-export type Tile = {
-  soil: Soil;
-  moisture: number; // 0..100
-  lastUpdated: number; // cycle
-  crop: null | {
-    kind: CropId;
-    plantedAt: number;
-    growth: number;
-    /** First cycle at which growth reached growCycles; null until ripe. Wither is measured from here. */
-    ripeAt: number | null;
-    withered: boolean;
-  };
-};
+export type { Soil, Tile } from './world/types';
 
 export type Coord = readonly [x: number, y: number];
 
@@ -145,7 +131,7 @@ export interface Simulation {
 
 export { splitmix32, type Splitmix32 } from './prng/splitmix32';
 export { createSfc32, type Sfc32, type Sfc32State } from './prng/sfc32';
-export { InvariantError, type InvariantCode } from './invariant';
+export { assertNever, InvariantError, type InvariantCode } from './invariant';
 export {
   createStreams,
   randomBelow,
@@ -155,3 +141,4 @@ export {
   type NamedStream,
   type StreamId,
 } from './prng/streams';
+export { generateLayout, type LayoutConfig } from './world/layout';
