@@ -22,8 +22,7 @@ export const BOTS: readonly BotProgram[] = [
   {
     id: 'seedling',
     title: 'Seedling',
-    strategy:
-      'Plants a row of radishes, harvests it on the next lap, sells, repeats. Never looks at the soil or at prices.',
+    strategy: 'Waters and plants one row of radishes, harvests it on the next pass, sells once per lap.',
     source: SEEDLING_SOURCE,
   },
   {
