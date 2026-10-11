@@ -141,3 +141,4 @@ export {
   type NamedStream,
   type StreamId,
 } from './prng/streams';
+export { generateLayout, type LayoutConfig } from './world/layout';
