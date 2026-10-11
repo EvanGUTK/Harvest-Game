@@ -6,7 +6,7 @@
 
 import type { Token } from '../lexer/token';
 import type { Diagnostic, Limits, Span } from '../types';
-import { formatCount } from '../vm/runtime-error';
+import { formatCount } from '../format';
 import { joinSpans, spanAfter, tokenSpan, touching, type TokenCursor } from './cursor';
 
 /** What the parser was looking for, used as the help line of E-UNEXPECTED-TOKEN. */
