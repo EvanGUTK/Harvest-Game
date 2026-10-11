@@ -29,6 +29,17 @@ export {
 } from './types';
 import type { Diagnostic, Limits, SourceFiles } from './types';
 
+// ---------- Hashing ----------
+
+export {
+  FNV1A_OFFSET_BASIS,
+  FNV1A_PRIME,
+  HashInputError,
+  fnv1a32Ascii,
+  fnv1a32Bytes,
+  fnv1a32Words,
+} from './hash/fnv1a';
+
 // ---------- Lexer (LANG-01) ----------
 
 export { tokenize, type LexResult } from './lexer/lexer';

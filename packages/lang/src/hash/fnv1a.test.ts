@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { fnv1a32Ascii, fnv1a32Words } from './fnv1a';
+import { fnv1a32Ascii, fnv1a32Bytes, fnv1a32Words } from './fnv1a';
+
+describe('fnv1a32Bytes', () => {
+  it('hashes raw byte values like the published vectors (the UTF-8 entry point of the lang goldens builds on it)', () => {
+    expect(fnv1a32Bytes([])).toBe(0x811c9dc5);
+    expect(fnv1a32Bytes([0x61])).toBe(0xe40c292c);
+    expect(fnv1a32Bytes([0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72])).toBe(0xbf9cf968);
+  });
+});
 
 describe('fnv1a32Ascii', () => {
   it('returns the offset basis for the empty string (simulation-engine.md §State hash)', () => {
@@ -19,7 +27,7 @@ describe('fnv1a32Ascii', () => {
   });
 
   it('rejects a character outside ASCII instead of hashing a truncated byte', () => {
-    expect(() => fnv1a32Ascii('café')).toThrow(/ASCII/);
+    expect(() => fnv1a32Ascii('café')).toThrow(/LANG-HASH-ASCII-ONLY.*ASCII/);
   });
 });
 
