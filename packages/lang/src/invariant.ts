@@ -4,7 +4,7 @@
  * One class per package; every error carries a stable `code` from the union below.
  */
 
-export type InvariantCode = 'INT_DIV_ZERO' | 'INT_NOT_SAFE';
+export type InvariantCode = 'LANG-INT-DIV-ZERO' | 'LANG-INT-NOT-SAFE';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;

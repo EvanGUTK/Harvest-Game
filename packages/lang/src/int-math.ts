@@ -42,7 +42,10 @@ function needsFloorCorrection(r: number, b: number): boolean {
 
 function assertOperands(a: number, b: number): void {
   if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b)) {
-    throw new InvariantError('INT_NOT_SAFE', `expected safe integers, got ${String(a)} and ${String(b)}`);
+    throw new InvariantError(
+      'LANG-INT-NOT-SAFE',
+      `expected safe integers, got ${String(a)} and ${String(b)}`,
+    );
   }
-  if (b === 0) throw new InvariantError('INT_DIV_ZERO', `division of ${String(a)} by zero`);
+  if (b === 0) throw new InvariantError('LANG-INT-DIV-ZERO', `division of ${String(a)} by zero`);
 }
