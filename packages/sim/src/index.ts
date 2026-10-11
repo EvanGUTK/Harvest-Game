@@ -170,3 +170,13 @@ export { buildPlayerResult } from './scoring/result';
 export { rankPlayers, type Placement, type RankEntry } from './scoring/ranking';
 export { scorePlayers, type MatchScore } from './scoring/score';
 export type { PlayerStats, ScoringRules } from './scoring/stats';
+
+// ---------- State hash (SIM-06) ----------
+
+export {
+  stateHash,
+  stateWords,
+  type DroneHashState,
+  type DroneStatus,
+  type HashableState,
+} from './hash/state-hash';

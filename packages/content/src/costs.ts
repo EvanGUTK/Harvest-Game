@@ -49,3 +49,6 @@ export const PURE_COSTS = {
 
 /** `wait(n)` costs n cycles; n outside these bounds is a runtime error (R-BAD-ARG). */
 export const WAIT_BOUNDS = { min: 1, max: 5_000 } as const;
+
+/** `wait(n)` costs this many cycles for each unit of `n` (the per-unit default the stdlib metadata carries). */
+export const WAIT_CYCLES_PER_UNIT = 1;

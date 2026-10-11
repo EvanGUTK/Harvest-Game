@@ -20,7 +20,7 @@ flowchart LR
 - `lang`: lexer, parser, checker, compiler, VM, diagnostics (core catalogue)
 - `sim`: grid, tiles, 3 crops, actions/sensors, discrete-event scheduler, market, event log, state hash
 - `content`: crops, stdlib costs, 3 bot programs
-- `tools/run`: CLI `pnpm sprout run file.sprout --seed 42 --players bots/grower.sprout`
+- `tools/run`: CLI `pnpm sprout run file.sprout --seed 42 --players bot:grower,bot:agronomist` (a `bot:<id>` entry runs a bot from `content`, any other entry is a file path)
 - Golden + determinism tests in Node and Playwright (3 engines)
 - Balance harness v0
 
