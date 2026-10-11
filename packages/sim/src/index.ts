@@ -14,6 +14,17 @@
 import type { CropId } from '@harvest/content';
 import type { BytecodeModule } from '@harvest/lang';
 
+// ---------- Market (SIM-04) ----------
+
+export {
+  advanceMarket,
+  cloneMarket,
+  createMarket,
+  marketPressures,
+  marketPrice,
+  type MarketState,
+} from './market/market';
+
 /** Drones per farm. agentIndex = slot × MAX_DRONES + droneNo; N = nSlots × MAX_DRONES is constant per match. */
 export const MAX_DRONES = 2;
 
@@ -142,3 +153,8 @@ export {
   type StreamId,
 } from './prng/streams';
 export { generateLayout, type LayoutConfig } from './world/layout';
+
+// ---------- World (SIM-01) ----------
+
+export { advanceTile, advanceTileDetailed, type AdvanceRules, type TileAdvance } from './world/advance';
+export { advanceFarm, type Farm } from './world/farm';
