@@ -48,10 +48,10 @@ export { utf8Length } from './lexer/utf8';
 export { countTokens } from './lexer/count-tokens';
 export { KEYWORDS, OPERATORS, isCountedToken, type Token, type TokenKind } from './lexer/token';
 
-// ---------- Integer math ----------
+// ---------- Integer math and invariants ----------
 
 export { floorDiv, floorMod } from './int-math';
-export { InvariantError, type InvariantCode } from './invariant';
+export { InvariantError, assertNever, type InvariantCode } from './invariant';
 
 // ---------- Parser (LANG-02) ----------
 
@@ -123,7 +123,8 @@ export type Feature =
 
 export type HostId = number;
 
-export type ValueKind = 'int' | 'bool' | 'none' | 'str' | 'list' | 'dict' | 'function' | 'const';
+export type { ConstantDef, Value, ValueKind, ValueOps } from './types';
+import type { ConstantDef, Value, ValueKind, ValueOps } from './types';
 
 export type HostSignature = {
   id: HostId;
@@ -138,26 +139,6 @@ export type HostSignature = {
   /** Campaign gating: chapter number or skill-node id that unlocks this builtin (editor 🔒 text). */
   unlock?: string;
 };
-
-/** A game constant visible to programs, e.g. { name: 'RADISH', id: 10, group: 'crop' }. */
-export type ConstantDef = { name: string; id: number; group: string };
-
-/** Opaque runtime value. The concrete representation is internal to the VM. */
-export type Value = { readonly __brand: 'SproutValue' };
-
-/** The only way hosts build and inspect Values. Implemented in M0 (LANG-05). */
-export interface ValueOps {
-  int(n: number): Value;
-  bool(b: boolean): Value;
-  str(s: string): Value;
-  constant(id: number): Value;
-  readonly none: Value;
-  kindOf(v: Value): ValueKind;
-  asInt(v: Value): number;
-  asBool(v: Value): boolean;
-  asStr(v: Value): string;
-  asConstantId(v: Value): number;
-}
 
 // ---------- Compile ----------
 
