@@ -4,8 +4,9 @@ import { DEFAULT_LIMITS, type Diagnostic } from '../types';
 import { parse } from './parser';
 import { outlineFile } from './sexpr';
 
-/** Files the corpus expects to be free of diagnostics (every file except the deliberate error file). */
-const CLEAN = new Set(CORPUS.map((f) => f.name).filter((name) => name !== 'errors.sprout'));
+/** Files with deliberate mistakes; every other corpus file must parse with no diagnostics. */
+const WITH_ERRORS: ReadonlySet<string> = new Set(['errors.sprout', 'lexical.sprout']);
+const CLEAN = new Set(CORPUS.map((f) => f.name).filter((name) => !WITH_ERRORS.has(name)));
 
 const diagnosticLine = (d: Diagnostic): string =>
   `${d.code} ${String(d.range.line)}:${String(d.range.col)}-${String(d.range.endLine)}:${String(d.range.endCol)} ${d.message}`;

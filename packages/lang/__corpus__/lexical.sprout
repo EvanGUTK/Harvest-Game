@@ -1,0 +1,10 @@
+# Lexical mistakes: the lexer reports each one and keeps going.
+greeting = "hello
+path = "a\qb"
+cost = 5 $ 2
+count = 007
+abcdefghijklmnopqrstuvwxyzabcdefg = 1
+if True:
+    a = 1
+  b = 2
+ok = 1

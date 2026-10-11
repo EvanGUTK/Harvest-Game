@@ -1,0 +1,5 @@
+# Windows line endings: every line ends in CR LF.
+total = 0
+for i in range(3):
+    total += i
+print(total)

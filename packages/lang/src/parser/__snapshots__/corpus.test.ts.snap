@@ -1,5 +1,14 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses crlf.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-6:1] file "crlf.sprout"
+  [2:1-2:10] (= total 0)
+  [3:1-4:15] for i in (call range 3)
+    [4:5-4:15] (+= total i)
+  [5:1-5:13] (expr (call print total))
+--- diagnostics ---"
+`;
+
 exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses errors.sprout to its snapshot AST and diagnostics 1`] = `
 "[1:1-19:1] file "errors.sprout"
   [2:1-4:22] def tend()
@@ -75,6 +84,24 @@ exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST sn
                         [28:45-29:53] if l
                           [29:49-29:53] (pass)
 --- diagnostics ---"
+`;
+
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses lexical.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-11:1] file "lexical.sprout"
+  [3:1-3:14] (= path "a\\\\qb")
+  [5:1-5:12] (= count 7)
+  [6:1-6:38] (= abcdefghijklmnopqrstuvwxyzabcdefg 1)
+  [7:1-8:10] if True
+    [8:5-8:10] (= a 1)
+  [9:3-9:8] (= b 2)
+  [10:1-10:7] (= ok 1)
+--- diagnostics ---
+E-UNTERMINATED-STRING 2:12-2:18 This text is missing its closing quote.
+E-BAD-ESCAPE 3:10-3:12 \`\\q\` isn't a known escape. You can use \\\\, \\', \\", \\n and \\t.
+E-UNEXPECTED-CHAR 4:10-4:11 I don't know what to do with \`$\`. Sprout doesn't use that character.
+E-LEADING-ZERO 5:9-5:12 Whole numbers can't start with a zero.
+E-IDENT-TOO-LONG 6:1-6:34 Names can be at most 32 characters. Try a shorter one.
+E-MIXED-INDENT 9:1-9:3 These lines are indented by different amounts. Pick one (4 spaces is standard)."
 `;
 
 exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses spec-example.sprout to its snapshot AST and diagnostics 1`] = `
@@ -157,5 +184,13 @@ exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST sn
     [37:5-37:11] (expr (call tend))
     [38:5-39:14] if (cmp count > 100)
       [39:9-39:14] (break)
+--- diagnostics ---"
+`;
+
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses strings-comments.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-8:57] file "strings-comments.sprout"
+  [2:1-2:16] (= label "a # b")
+  [3:1-7:2] (= items (list 1 2))
+  [8:1-8:20] (expr (call print label items))
 --- diagnostics ---"
 `;
