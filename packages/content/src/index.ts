@@ -97,3 +97,4 @@ export {
 // ---------- Bots (CNT-03) ----------
 
 export { BOTS, type BotId, type BotProgram } from './bots';
+export { STARTER_PROGRAM } from './bots/starter';
