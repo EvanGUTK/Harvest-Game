@@ -9,7 +9,7 @@ import {
   WAIT_CYCLES_PER_UNIT,
 } from './index';
 import { BUILTINS, CONSTANTS } from './stdlib';
-import type { BuiltinMeta, Unlock } from './stdlib';
+import type { BuiltinMeta, ConstantGroup, Unlock } from './stdlib';
 
 /**
  * The builtins of docs/02-language/standard-library.md, hand-pinned from its three tables
@@ -138,18 +138,33 @@ describe('BUILTINS', () => {
   });
 
   it('declares the parameters of the standard-library signatures', () => {
-    expect(find('move').params).toEqual(['const']);
-    expect(find('plant').params).toEqual(['const']);
+    expect(find('move').params).toEqual(['const:direction']);
+    expect(find('plant').params).toEqual(['const:crop']);
     expect(find('goto').params).toEqual(['int', 'int']);
-    expect(find('sell').params).toEqual(['const', 'int']);
+    expect(find('sell').params).toEqual(['const:crop', 'int']);
     expect(find('wait').params).toEqual(['int']);
     expect(find('spawn').params).toEqual(['function']);
-    expect(find('inventory').params).toEqual(['const']);
-    expect(find('price').params).toEqual(['const']);
-    expect(find('seed_cost').params).toEqual(['const']);
+    expect(find('inventory').params).toEqual(['const:crop']);
+    expect(find('price').params).toEqual(['const:crop']);
+    expect(find('seed_cost').params).toEqual(['const:crop']);
     expect(find('random').params).toEqual(['int']);
     expect(find('harvest').params).toEqual([]);
     expect(find('credits').params).toEqual([]);
+  });
+
+  it('names the constant group every const parameter and return accepts, and the group exists in CONSTANTS', () => {
+    const groups = new Set(CONSTANTS.map((c) => c.group));
+    const kinds = BUILTINS.flatMap((b) => [...b.params, b.returns]);
+    const constKinds = kinds.filter((k) => k.startsWith('const:'));
+    expect(constKinds.length).toBeGreaterThan(0);
+    for (const kind of constKinds)
+      expect(groups.has(kind.slice('const:'.length) as ConstantGroup), kind).toBe(true);
+  });
+
+  it('has no builtin that still uses a bare const kind', () => {
+    for (const b of BUILTINS) {
+      for (const kind of [...b.params, b.returns]) expect(kind, b.name).not.toBe('const');
+    }
   });
 
   it('declares the return kinds of the standard-library tables', () => {
@@ -159,7 +174,7 @@ describe('BUILTINS', () => {
     expect(find('goto').returns).toBe('none');
     expect(find('halt').returns).toBe('none');
     expect(find('crop').returns).toBe('any');
-    expect(find('soil').returns).toBe('const');
+    expect(find('soil').returns).toBe('const:soil');
     expect(find('is_ripe').returns).toBe('bool');
     expect(find('price').returns).toBe('int');
   });
