@@ -10,11 +10,14 @@
 import { CROP_IDS, type CropId } from '@harvest/content';
 import { fnv1a32Words } from '@harvest/lang';
 import { InvariantError } from '../invariant';
-import { advanceMarket, marketPressures, type MarketState } from '../market/market';
+import { advanceMarket, marketPressures, type MarketEnv, type MarketState } from '../market/market';
 import type { MatchStreams } from '../prng/streams';
 import type { AdvanceRules } from '../world/advance';
 import { advanceFarm, type Farm } from '../world/farm';
 import type { Soil, Tile } from '../world/types';
+
+/** The rules the hash needs to force-advance the world: tile moisture decay and the market numbers. */
+export type HashRules = AdvanceRules & MarketEnv;
 
 export type DroneStatus = 'running' | 'halted' | 'error' | 'not_spawned';
 
@@ -87,9 +90,9 @@ function assertSlotCounts(state: HashableState): void {
 }
 
 /** The words H(t) hashes, after force-advancing a copy of every farm and of the market to `t`. */
-export function stateWords(state: HashableState, t: number, rules: AdvanceRules): number[] {
+export function stateWords(state: HashableState, t: number, rules: HashRules): number[] {
   assertSlotCounts(state);
-  const market = advanceMarket(state.market, t);
+  const market = advanceMarket(state.market, t, rules);
   const farms = state.farms.map((farm) => advanceFarm(farm, t, rules));
   return [
     t,
@@ -109,6 +112,6 @@ function droneRow(state: HashableState, slot: number): readonly [DroneHashState,
 }
 
 /** H(t) as a uint32. */
-export function stateHash(state: HashableState, t: number, rules: AdvanceRules): number {
+export function stateHash(state: HashableState, t: number, rules: HashRules): number {
   return fnv1a32Words(stateWords(state, t, rules));
 }
