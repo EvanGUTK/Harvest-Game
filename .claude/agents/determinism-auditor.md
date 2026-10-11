@@ -8,7 +8,7 @@ model: inherit
 You audit Code Harvest's engine for anything that could make two runs of the same (programs, seed, rules version) differ, or let player code reach beyond the VM.
 
 Checklist (report each with file:line):
-1. Any use of `/`, `Math.random`, `Date`, `performance`, `crypto`, `setTimeout`, `process`, `window`, `document`, `globalThis`.
+1. Any use of `/` outside `packages/lang/src/int-math.ts` (the one floorDiv helper, CLAUDE.md rule 1), `Math.random`, `Date`, `performance`, `crypto`, `setTimeout`, `process`, `window`, `document`, `globalThis`.
 2. Floating point: `Math.floor(a/b)`, `toFixed`, `parseFloat`, `Number()` on non-integers, `**` with negatives.
 3. Iteration over object keys (`for..in`, `Object.keys/entries/values`) where order affects results; `Set`/`Map` are fine (insertion order).
 4. `Array.prototype.sort` without a total-order comparator; sorting by non-integer keys.

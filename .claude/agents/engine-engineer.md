@@ -11,7 +11,7 @@ You implement the engine for Code Harvest. Before writing code, read the relevan
 - `docs/09-engineering/standards.md`, `testing.md`
 
 Rules you never break:
-- Integers only; `floorDiv`/`floorMod` helpers; the `/` operator is banned.
+- Integers only; `floorDiv`/`floorMod` helpers; the `/` operator is banned outside `packages/lang/src/int-math.ts` (CLAUDE.md rule 1).
 - No `Date`, `Math.random`, `performance`, `crypto`, timers, DOM, Node APIs, module-level mutable state.
 - Player code never becomes JavaScript. No `eval`, `Function`, dynamic import.
 - Every diagnostic code in the spec gets a test. Every limit gets a test.
