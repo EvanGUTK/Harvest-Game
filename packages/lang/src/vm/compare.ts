@@ -94,10 +94,21 @@ function listContains(ctx: OpContext, needle: RtValue, haystack: ListObj): OpRes
   return succeed(false, surcharge);
 }
 
+/** The ordering of `a` against `b` (-1, 0 or 1), or R-TYPE for a pair that has none. Shared with min/max. */
+export type Ordering = { ok: true; sign: number } | { ok: false; error: RuntimeError };
+
+export function compareOrder(ctx: OpContext, a: RtValue, b: RtValue): Ordering {
+  if (isIntLike(a) && isIntLike(b)) return { ok: true, sign: sign(toInt(a), toInt(b)) };
+  if (isStr(a) && isStr(b)) return { ok: true, sign: sign(a.text, b.text) };
+  return {
+    ok: false,
+    error: typeError(`Can't compare \`${reprForMessage(ctx, a)}\` and \`${reprForMessage(ctx, b)}\`.`),
+  };
+}
+
 function order(ctx: OpContext, a: RtValue, b: RtValue, holds: (sign: number) => boolean): OpResult {
-  if (isIntLike(a) && isIntLike(b)) return succeed(holds(sign(toInt(a), toInt(b))), 0);
-  if (isStr(a) && isStr(b)) return succeed(holds(sign(a.text, b.text)), 0);
-  return fail(typeError(`Can't compare \`${reprForMessage(ctx, a)}\` and \`${reprForMessage(ctx, b)}\`.`));
+  const r = compareOrder(ctx, a, b);
+  return r.ok ? succeed(holds(r.sign), 0) : fail(r.error);
 }
 
 /** -1, 0 or 1; strings compare by UTF-16 code unit, as JS `<` does. */
