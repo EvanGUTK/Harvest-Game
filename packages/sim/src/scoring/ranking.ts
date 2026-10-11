@@ -6,21 +6,21 @@
  * group skips the group's size (1st, =2nd, =2nd, 4th).
  */
 
-import type { PlayerResult } from '../index';
-
-export type RankEntry = Pick<
-  PlayerResult,
-  'slot' | 'score' | 'cyclesLastChange' | 'logicCycles' | 'programTokens'
-> & {
-  idle: boolean;
+export type RankEntry = {
+  readonly slot: number;
+  readonly idle: boolean;
+  readonly score: number;
+  readonly cyclesLastChange: number;
+  readonly logicCycles: number;
+  readonly programTokens: number;
 };
 
 export type Placement = {
-  slot: number;
+  readonly slot: number;
   /** 1-based; players in a shared group all hold the group's best place. */
-  place: number;
+  readonly place: number;
   /** True when at least one other player holds the same place ("=2nd"). */
-  shared: boolean;
+  readonly shared: boolean;
 };
 
 /** Negative when `a` places ahead of `b`; 0 when they are equal on every key. Idle always loses. */
