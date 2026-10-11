@@ -1,0 +1,19 @@
+# Plant radishes on every tile, then keep harvesting and replanting.
+def tend():
+    if is_ripe():
+        harvest()
+        plant(RADISH)
+    elif crop() == None:
+        plant(RADISH)
+
+def sweep():
+    for y in range(world_size()):
+        for x in range(world_size()):
+            tend()
+            move(EAST)
+        move(NORTH)
+
+while True:
+    sweep()
+    if inventory(RADISH) >= 20:
+        sell(RADISH, inventory(RADISH))

@@ -1,0 +1,161 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses errors.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-19:1] file "errors.sprout"
+  [2:1-4:22] def tend()
+    [3:5-4:22] if (cmp (call crop) == None)
+      [4:9-4:22] (expr (call plant RADISH))
+  [5:1-5:11] (= x (// 10 2))
+  [8:1-8:9] (return x)
+  [9:1-9:6] (break)
+  [10:1-12:13] def outer()
+    [11:5-12:13] def inner()
+      [12:9-12:13] (pass)
+  [16:1-17:14] while True
+    [17:5-17:14] (= stray 1)
+  [18:1-18:7] (= ok 1)
+--- diagnostics ---
+E-MISSING-COLON 2:10-2:11 This \`def\` line needs a \`:\` at the end.
+E-ASSIGN-IN-IF 3:15-3:16 Use \`==\` to compare. A single \`=\` stores a value.
+E-SLASH-DIVISION 5:8-5:9 Sprout uses whole numbers. Use \`//\` for division.
+E-NO-POWER 6:7-6:9 Sprout has no \`**\`. Multiply the number by itself instead.
+E-NO-FLOAT 7:5-7:8 Sprout uses whole numbers, so \`1.5\` can't be used.
+E-RETURN-OUTSIDE 8:1-8:7 \`return\` only works inside a function made with \`def\`.
+E-BREAK-OUTSIDE 9:1-9:6 \`break\` only works inside a loop.
+E-NESTED-DEF 11:5-11:8 Define functions at the top level, not inside other functions or blocks.
+E-BAD-TARGET 13:1-13:4 You can only store a value in a name or a list/dict slot.
+E-UNEXPECTED-TOKEN 14:1-14:6 I didn't expect \`12abc\` here.
+E-UNEXPECTED-TOKEN 15:15-15:16 I didn't expect \`]\` here.
+E-BAD-INDENT 16:13-16:17 The lines inside this \`while\` should be indented one step further."
+`;
+
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses expressions.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-33:1] file "expressions.sprout"
+  [2:1-2:17] (expr (or a (and b (not c))))
+  [3:1-3:11] (expr (not (cmp x == y)))
+  [4:1-4:23] (expr (- (+ a (* b c)) (% (// d e) f)))
+  [5:1-5:8] (expr (* (- a) (- b)))
+  [6:1-6:18] (expr (* (+ a b) (- c d)))
+  [8:1-8:22] (expr (cmp 0 <= x < (call world_size)))
+  [9:1-9:12] (expr (cmp a == b != c))
+  [10:1-10:29] (expr (cmp (call crop) not in (list RADISH CORN)))
+  [11:1-11:13] (expr (cmp "ab" in name))
+  [13:1-13:29] (expr (+ (+ 1000 0) 9007199254740991))
+  [14:1-14:40] (expr (+ (+ "double" "single") "esc\\"aped\\n\\t\\\\"))
+  [15:1-15:23] (expr (or (and True False) None))
+  [16:1-16:3] (expr (list))
+  [17:1-17:3] (expr (dict))
+  [18:1-18:35] (expr (list 1 (list 2 3) (dict (RADISH 1) ("k" (list 4)))))
+  [20:1-20:11] (expr (index (index grid y) x))
+  [21:1-21:21] (expr (method lst append (call len lst)))
+  [22:1-22:38] (expr (+ (+ (method d get k 0) (method lst pop)) (method lst pop (- 1))))
+  [23:1-23:14] (expr (method (index rows 0) pop))
+  [25:1-32:2] (= total (call sum_of (list 1 2 3) (dict ("a" 1) ("b" 2))))
+--- diagnostics ---"
+`;
+
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses layout.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-30:1] file "layout.sprout"
+  [4:1-4:6] (= x 1)
+  [7:1-12:7] if x
+    [10:5-10:10] (= y 2)
+    [12:2-12:7] (= z 3)
+  [15:1-15:17] (= name "café 🌱")
+  [17:1-29:53] if a
+    [18:5-29:53] if b
+      [19:9-29:53] if c
+        [20:13-29:53] if d
+          [21:17-29:53] if e
+            [22:21-29:53] if f
+              [23:25-29:53] if g
+                [24:29-29:53] if h
+                  [25:33-29:53] if i
+                    [26:37-29:53] if j
+                      [27:41-29:53] if k
+                        [28:45-29:53] if l
+                          [29:49-29:53] (pass)
+--- diagnostics ---"
+`;
+
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses spec-example.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-20:1] file "spec-example.sprout"
+  [2:1-7:22] def tend()
+    [3:5-7:22] if (call is_ripe)
+      [4:9-4:18] (expr (call harvest))
+      [5:9-5:22] (expr (call plant RADISH))
+    [6:5-7:22] elif (cmp (call crop) == None)
+      [7:9-7:22] (expr (call plant RADISH))
+  [9:1-14:20] def sweep()
+    [10:5-14:20] for y in (call range (call world_size))
+      [11:9-13:23] for x in (call range (call world_size))
+        [12:13-12:19] (expr (call tend))
+        [13:13-13:23] (expr (call move EAST))
+      [14:9-14:20] (expr (call move NORTH))
+  [16:1-19:40] while True
+    [17:5-17:12] (expr (call sweep))
+    [18:5-19:40] if (cmp (call inventory RADISH) >= 20)
+      [19:9-19:40] (expr (call sell RADISH (call inventory RADISH)))
+--- diagnostics ---"
+`;
+
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses starter-showdown.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-23:1] file "starter-showdown.sprout"
+  [4:1-11:22] def tend()
+    [5:5-6:16] if (cmp (call moisture) < 10)
+      [6:9-6:16] (expr (call water))
+    [7:5-11:22] if (cmp (call crop) == None)
+      [8:9-8:22] (expr (call plant RADISH))
+    [9:5-11:22] elif (call is_ripe)
+      [10:9-10:18] (expr (call harvest))
+      [11:9-11:22] (expr (call plant RADISH))
+  [13:1-22:36] while True
+    [14:5-18:20] for y in (call range 2)
+      [15:9-17:23] for x in (call range (call world_size))
+        [16:13-16:19] (expr (call tend))
+        [17:13-17:23] (expr (call move EAST))
+      [18:9-18:20] (expr (call move NORTH))
+    [19:5-19:16] (expr (call move SOUTH))
+    [20:5-20:16] (expr (call move SOUTH))
+    [21:5-21:13] (expr (call refill))
+    [22:5-22:36] (expr (call sell RADISH (call inventory RADISH)))
+--- diagnostics ---"
+`;
+
+exports[`parser corpus snapshots (LANG-06.1; interpreter-vm.md §Testing: AST snapshots of the corpus) > parses statements.sprout to its snapshot AST and diagnostics 1`] = `
+"[1:1-40:1] file "statements.sprout"
+  [2:1-2:10] (= count 0)
+  [3:1-3:20] (= (index (index grid 2) 3) RADISH)
+  [4:1-4:11] (+= count 1)
+  [5:1-5:11] (-= count 1)
+  [6:1-6:11] (*= count 2)
+  [7:1-7:12] (//= count 2)
+  [8:1-8:11] (%= count 7)
+  [9:1-9:5] (pass)
+  [11:1-19:15] def tend()
+    [12:5-12:17] (global count)
+    [13:5-18:13] if (call is_ripe)
+      [14:9-14:18] (expr (call harvest))
+    [15:5-16:22] elif (cmp (call crop) == None)
+      [16:9-16:22] (expr (call plant RADISH))
+    else
+      [18:9-18:13] (pass)
+    [19:5-19:15] (+= count 1)
+  [21:1-26:17] def go(x, y)
+    [22:5-23:19] repeat x
+      [23:9-23:19] (expr (call move EAST))
+    [24:5-25:20] for i in (call range y)
+      [25:9-25:20] (expr (call move NORTH))
+    [26:5-26:17] (return (+ x y))
+  [28:1-34:11] def first_ripe(tiles)
+    [29:5-33:21] for t in tiles
+      [30:9-31:21] if (cmp t == None)
+        [31:13-31:21] (continue)
+      [32:9-33:21] if (cmp t > 3)
+        [33:13-33:21] (return t)
+    [34:5-34:11] (return)
+  [36:1-39:14] while True
+    [37:5-37:11] (expr (call tend))
+    [38:5-39:14] if (cmp count > 100)
+      [39:9-39:14] (break)
+--- diagnostics ---"
+`;

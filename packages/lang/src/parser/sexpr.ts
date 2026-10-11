@@ -1,10 +1,12 @@
 /**
- * Compact S-expression rendering of the AST, without spans: `(+ 1 (* 2 3))`.
- * Used by the parser's precedence tables and the corpus snapshots (interpreter-vm.md §Testing), and as a
- * debugging aid. Spans are tested separately, so leaving them out keeps the tables readable.
- * Invariant: two trees render to the same text exactly when they have the same shape, operators and values.
+ * Text renderings of the AST for tests and debugging: compact S-expressions without spans
+ * (`(+ 1 (* 2 3))`, used by the precedence tables) and an indented outline with statement spans (used by
+ * the corpus snapshots, interpreter-vm.md §Testing).
+ * Invariant: two trees render to the same S-expression exactly when they have the same shape, operators
+ * and values; the outline adds every statement's and clause's span.
  */
 
+import type { Span } from '../types';
 import type { Expression, FileNode, Program, Statement } from './ast';
 import { assertNever } from '../invariant';
 
@@ -104,4 +106,58 @@ function list(head: string, items: readonly string[]): string {
 
 function body(stmts: readonly Statement[]): string {
   return stmts.map((s) => ` ${sexprStatement(s)}`).join('');
+}
+
+/** One line per statement, `[line:col-endLine:endCol] head`, with block bodies indented two spaces. */
+export function outlineFile(file: FileNode): string {
+  return [`[${spanText(file.span)}] file ${JSON.stringify(file.name)}`, ...outlineBody(file.body, '  ')].join(
+    '\n',
+  );
+}
+
+function outlineBody(stmts: readonly Statement[], indent: string): string[] {
+  return stmts.flatMap((stmt) => outlineStatement(stmt, indent));
+}
+
+function outlineStatement(stmt: Statement, indent: string): string[] {
+  const line = (span: Span, head: string) => `${indent}[${spanText(span)}] ${head}`;
+  const inner = `${indent}  `;
+  switch (stmt.type) {
+    case 'IfStmt':
+      return [
+        line(stmt.span, `if ${sexpr(stmt.test)}`),
+        ...outlineBody(stmt.body, inner),
+        ...stmt.elifs.flatMap((e) => [line(e.span, `elif ${sexpr(e.test)}`), ...outlineBody(e.body, inner)]),
+        ...(stmt.orelse === null ? [] : [`${indent}else`, ...outlineBody(stmt.orelse, inner)]),
+      ];
+    case 'WhileStmt':
+      return [line(stmt.span, `while ${sexpr(stmt.test)}`), ...outlineBody(stmt.body, inner)];
+    case 'ForStmt':
+      return [
+        line(stmt.span, `for ${stmt.target.name} in ${sexpr(stmt.iterable)}`),
+        ...outlineBody(stmt.body, inner),
+      ];
+    case 'RepeatStmt':
+      return [line(stmt.span, `repeat ${sexpr(stmt.count)}`), ...outlineBody(stmt.body, inner)];
+    case 'DefStmt':
+      return [
+        line(stmt.span, `def ${stmt.name.name}(${stmt.params.map((p) => p.name).join(', ')})`),
+        ...outlineBody(stmt.body, inner),
+      ];
+    case 'ExprStmt':
+    case 'AssignStmt':
+    case 'AugAssignStmt':
+    case 'PassStmt':
+    case 'BreakStmt':
+    case 'ContinueStmt':
+    case 'ReturnStmt':
+    case 'GlobalStmt':
+      return [line(stmt.span, sexprStatement(stmt))];
+    default:
+      return assertNever(stmt);
+  }
+}
+
+function spanText(span: Span): string {
+  return `${String(span.line)}:${String(span.col)}-${String(span.endLine)}:${String(span.endCol)}`;
 }

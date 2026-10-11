@@ -1,0 +1,18 @@
+# Each line has one mistake; the parser reports it and keeps going.
+def tend()
+    if crop() = None:
+        plant(RADISH)
+x = 10 / 2
+y = 2 ** 3
+z = 1.5
+return x
+break
+def outer():
+    def inner():
+        pass
+f() = 1
+12abc = 3
+items = [1, 2,]
+while True: move(EAST)
+    stray = 1
+ok = 1
