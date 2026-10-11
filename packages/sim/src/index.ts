@@ -92,6 +92,10 @@ export { rankPlayers, type Placement, type RankEntry } from './scoring/ranking';
 export { scorePlayers, type MatchScore } from './scoring/score';
 export type { PlayerStats, ScoringRules } from './scoring/stats';
 
+// ---------- Host table (SIM-02) ----------
+
+export { constantDefs, hostSignatures, type SignatureUpgrades } from './host/signatures';
+
 // ---------- State hash (SIM-06) ----------
 
 export {
