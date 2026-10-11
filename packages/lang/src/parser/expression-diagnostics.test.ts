@@ -184,10 +184,10 @@ describe('E-UNCLOSED-BRACKET (errors-and-diagnostics.md: "This `(` is never clos
   });
 });
 
-describe('E-TOO-DEEP for expressions (language-spec.md §Limits: expression nesting depth 64)', () => {
+describe('E-TOO-DEEP for expressions (language-spec.md §Limits: expression tree height 64)', () => {
   const parens = (n: number) => `${'('.repeat(n)}x${')'.repeat(n)}`;
 
-  it('accepts exactly maxExpressionDepth levels: the expression itself plus 63 brackets', () => {
+  it('accepts a height of exactly maxExpressionDepth: a leaf inside 63 parentheses or prefix operators', () => {
     expect(codes(parens(63))).toEqual([]);
     expect(codes(`${'not '.repeat(63)}x`)).toEqual([]);
     expect(codes(`${'-'.repeat(63)}x`)).toEqual([]);
@@ -216,6 +216,35 @@ describe('E-TOO-DEEP for expressions (language-spec.md §Limits: expression nest
     const limits = { ...DEFAULT_LIMITS, maxExpressionDepth: 3 };
     expect(codes('((x))', limits)).toEqual([]);
     expect(codes('(((x)))', limits)).toEqual(['E-TOO-DEEP']);
+  });
+
+  it('counts left-deep chains, which the parser builds without recursing (chief ruling 2026-10-11)', () => {
+    const sum = (terms: number) => Array.from({ length: terms }, () => 'a').join(' + ');
+    // A chain of n terms is n - 1 BinaryExpr nodes stacked on the first leaf: height n.
+    expect(codes(sum(64))).toEqual([]);
+    expect(parseMain(sum(65)).diagnostics).toMatchObject([
+      { code: 'E-TOO-DEEP', range: span(1, 257, 1, 258) },
+    ]);
+    expect(codes(`f${'()'.repeat(63)}`)).toEqual([]);
+    expect(codes(`f${'()'.repeat(64)}`)).toEqual(['E-TOO-DEEP']);
+    expect(codes(`x${'[0]'.repeat(64)}`)).toEqual(['E-TOO-DEEP']);
+    expect(codes(`x${'.pop()'.repeat(64)}`)).toEqual(['E-TOO-DEEP']);
+    expect(codes(Array.from({ length: 65 }, () => 'a').join(' and '))).toEqual(['E-TOO-DEEP']);
+  });
+
+  it('leaves a flat comparison chain at height 2, however long', () => {
+    expect(codes(Array.from({ length: 2_500 }, () => 'a').join(' < '))).toEqual([]);
+  });
+
+  it('counts the comparison that repairs `if x = y:` (E-ASSIGN-IN-IF)', () => {
+    const chain = Array.from({ length: 64 }, () => 'a').join(' + ');
+    expect(codes(`if ${chain} == 1:\n    pass\n`)).toEqual(['E-TOO-DEEP']);
+    expect(codes(`if ${chain} = 1:\n    pass\n`)).toEqual(['E-ASSIGN-IN-IF', 'E-TOO-DEEP']);
+  });
+
+  it('never throws on `f` followed by 4,991 `()` or a 2,500-term `+` chain', () => {
+    expect(codes(`f${'()'.repeat(4_991)}`)).toEqual(['E-TOO-DEEP']);
+    expect(codes(Array.from({ length: 2_500 }, () => 'a').join(' + '))).toEqual(['E-TOO-DEEP']);
   });
 
   it('never throws on 10,000 levels of brackets or `not`, and keeps parsing the next line', () => {
