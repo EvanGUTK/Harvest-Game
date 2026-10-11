@@ -156,6 +156,23 @@ describe('sell', () => {
     expect(f).toEqual(farmBefore);
   });
 
+  it('is a value even when no decay step is crossed: a sale at t = 0 leaves the input pressure record untouched', () => {
+    const m = marketWith({ radish: 6 });
+    const f = farm({ radish: 9 });
+    const marketBefore = { ...m, pressure: { ...m.pressure } };
+    const outcome = sell(m, f, 'radish', 4, 0);
+    expect(outcome.market.pressure.radish).toBe(10);
+    expect(m).toEqual(marketBefore);
+    expect(outcome.market.pressure).not.toBe(m.pressure);
+  });
+
+  it('returns the advanced market even when nothing was sold: an empty-silo sale at t = 500 from pressure 10 gives pressure 8 at 500', () => {
+    const outcome = sell(marketWith({ radish: 10 }), farm(), 'radish', 3, DECAY);
+    expect(outcome.lot).toBeNull();
+    expect(outcome.market.pressure.radish).toBe(8); // floorDiv(10 × 80, 100)
+    expect(outcome.market.lastUpdated).toBe(DECAY);
+  });
+
   it('returns a new silo record, so an earlier farm value never changes after a later sale', () => {
     const f = farm({ radish: 5 });
     const first = sell(market(), f, 'radish', 2, 0);
