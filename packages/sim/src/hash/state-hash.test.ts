@@ -70,6 +70,25 @@ describe('stateWords (simulation-engine.md §State hash)', () => {
     expect(words.slice(19, 26)).toEqual([2, 12, -1, 0, 0, -1, 0]);
   });
 
+  it('writes an unripe crop with its growth and ripeAt −1, and a withered one with withered 1', () => {
+    const unripe: Tile = {
+      soil: 'grass',
+      moisture: 60,
+      lastUpdated: T,
+      crop: { kind: 'corn', plantedAt: 650, growth: 50, ripeAt: null, withered: false },
+    };
+    const unripeWords = stateWords(oneByOne({ farms: [farmOf([unripe])] }), T, { moistureDecay: false });
+    expect(unripeWords.slice(19, 26)).toEqual([0, 60, 1, 650, 50, -1, 0]);
+    const dead: Tile = {
+      soil: 'tilled',
+      moisture: 0,
+      lastUpdated: T,
+      crop: { kind: 'melon', plantedAt: 0, growth: CROPS.melon.growCycles, ripeAt: 100, withered: true },
+    };
+    const deadWords = stateWords(oneByOne({ farms: [farmOf([dead])] }), T, { moistureDecay: false });
+    expect(deadWords.slice(19, 26)).toEqual([1, 0, 2, 0, CROPS.melon.growCycles, 100, 1]);
+  });
+
   it('writes a not-spawned drone as zeros for x, y and clock even if the fields hold values', () => {
     const odd: DroneHashState = { x: 3, y: 4, clock: 99, status: 'not_spawned' };
     const words = stateWords(oneByOne({ drones: [[RUNNING, odd]] }), T, RULES);
