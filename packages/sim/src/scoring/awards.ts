@@ -6,7 +6,7 @@
  */
 
 import { floorDiv } from '@harvest/lang';
-import type { AwardId } from '../index';
+import type { AwardId } from '../types';
 import type { Placement } from './ranking';
 import type { PlayerStats, ScoringRules } from './stats';
 

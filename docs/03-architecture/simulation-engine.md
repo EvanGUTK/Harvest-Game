@@ -118,6 +118,8 @@ The world is only advanced to the times drones touch it, so simulation cost scal
 4. Per slot ascending, tiles row-major (y then x): `soil` (0 grass, 1 tilled, 2 rock), `moisture`, `cropCode` (index in `CROPS` order, −1 for none), `plantedAt`, `growth`, `ripeAt` (−1 for null), `withered` (0/1). A tile without a crop writes `cropCode = −1`, `plantedAt = 0`, `growth = 0`, `ripeAt = −1`, `withered = 0`.
 5. The four sfc32 state words `(a, b, c, d)` of every PRNG stream in the fixed order `layout, weather, player:0 … player:(nSlots−1)`.
 
+The steps are sequential: step 3 is written for every slot (ascending) before step 4 starts, and step 4 for every slot before step 5. Slot data is therefore not interleaved.
+
 VM heaps, programs, the event log, `lastUpdated` and the farm's `everDryPaused` flag are not hashed.
 
 **Emission.** Before applying any call at time `t`, for every `k` with `lastHashT < k·1000 ≤ t`, emit `{ t: k·1000, k: 'hash', h: H(k·1000) }`. So the hash at 1000 precedes every action at 1000 and covers exactly the calls with `t < 1000`. After the main loop, emit the remaining multiples below `budget`. `finalStateHash = H(budget)` is computed **after** liquidation; when `budget` is a multiple of 1,000 the hash event at `t = budget` is emitted after liquidation and equals `finalStateHash`.
@@ -163,7 +165,7 @@ SimRun.snapshot(): SimSnapshot                                            // the
   - `startMoisture` is `{ min: 0, max: 40 }` in showdowns; campaign runs before the Water node use `{ min: 100, max: 100 }`. `moistureDecay` is `true` in showdowns and `false` in campaign runs before the Water node. Both are derived from the player's unlocks, so the client, the server re-simulation and `startStateHash` agree (see [farm-simulation](../01-game-design/farm-simulation.md) §Rocks and seeds).
   - `spawnEnabled` is `false` in showdowns (D-24): the compiler already reports `E-LOCKED-FEATURE`, and the host table also rejects `spawn()`. `randomEnabled` is `false` in ranked (D-18).
 - **`PlayerInput`** is `{ slot, module: BytecodeModule | null, compileError?, upgrades? }`. A `null` module is the idle program, and `compileError` (the first diagnostic) surfaces in `PlayerResult.error`. `upgrades` is `{ moveCost, waterAmount, maxDrones }` (campaign only; showdowns use the defaults).
-- **`PlayerResult`** is `{ slot, score, cyclesLastChange, logicCycles, programTokens, cropsHarvested, awards, output, error? }`. `output` is the first 200 `print` lines and is never shown to rivals (see [realtime-protocol](realtime-protocol.md)). `SimResult` is `{ players, finalStateHash, events }`.
+- **`PlayerResult`** is `{ slot, score, cyclesLastChange, logicCycles, programTokens, cropsHarvested, cyclesUsed, awards, output, error? }`. `cyclesUsed` is the player's value from [Clock arithmetic](#clock-arithmetic-normative) (0 for the idle program). `output` is the first 200 `print` lines and is never shown to rivals (see [realtime-protocol](realtime-protocol.md)). `SimResult` is `{ players, finalStateHash, events }`.
 - **Host-call contract.** `spawn` follows the Clock arithmetic bullet above; the scheduler resumes the VM with `vm.resume(result, cost?)` as described there.
 
 ## Balance harness (`tools/balance`)

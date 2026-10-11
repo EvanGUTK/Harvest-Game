@@ -5,7 +5,7 @@
  * empty because they depend on the whole lobby (see awards.ts).
  */
 
-import type { PlayerResult } from '../index';
+import type { PlayerResult } from '../types';
 import type { PlayerStats, ScoringRules } from './stats';
 
 function withError(result: PlayerResult, error: PlayerStats['error']): PlayerResult {
@@ -21,6 +21,7 @@ function idleResult(rules: ScoringRules, stats: PlayerStats): PlayerResult {
       logicCycles: 0,
       programTokens: 0,
       cropsHarvested: 0,
+      cyclesUsed: 0,
       awards: [],
       output: [],
     },
@@ -37,6 +38,7 @@ function programResult(rules: ScoringRules, stats: PlayerStats): PlayerResult {
       logicCycles: stats.logicCycles,
       programTokens: stats.programTokens,
       cropsHarvested: stats.cropsHarvested,
+      cyclesUsed: stats.cyclesUsed,
       awards: [],
       output: [...stats.output],
     },

@@ -8,7 +8,8 @@
 
 import type { CropId } from '@harvest/content';
 import { advanceTileDetailed, type AdvanceRules } from './advance';
-import type { Tile } from './types';
+import { InvariantError } from '../invariant';
+import type { Coord, Tile } from '../types';
 
 export type Farm = {
   readonly credits: number;
@@ -31,4 +32,35 @@ export function advanceFarm(farm: Farm, t: number, rules: AdvanceRules): Farm {
     return advanced.tile;
   });
   return { ...farm, tiles, everDryPaused };
+}
+
+/** Row-major index (y then x) of a tile; a position outside the grid is an invariant violation. */
+export function tileIndex(gridSize: number, [x, y]: Coord): number {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= gridSize || y >= gridSize) {
+    throw new InvariantError('SIM-BAD-COORD', `(${x},${y}) is outside a ${gridSize}×${gridSize} grid`);
+  }
+  return y * gridSize + x;
+}
+
+/** Advance the one tile at `pos` to cycle `t` and return it with the farm that now holds it. */
+export function touchTile(
+  farm: Farm,
+  gridSize: number,
+  pos: Coord,
+  t: number,
+  rules: AdvanceRules,
+): { farm: Farm; tile: Tile } {
+  const index = tileIndex(gridSize, pos);
+  const current = farm.tiles[index];
+  if (current === undefined) throw new InvariantError('SIM-BAD-COORD', `farm has no tile at index ${index}`);
+  const advanced = advanceTileDetailed(current, t, rules);
+  return {
+    farm: withTile(farm, index, advanced.tile, farm.everDryPaused || advanced.dryPaused),
+    tile: advanced.tile,
+  };
+}
+
+/** The farm with the tile at `index` replaced; other fields are kept. */
+export function withTile(farm: Farm, index: number, tile: Tile, everDryPaused = farm.everDryPaused): Farm {
+  return { ...farm, tiles: farm.tiles.map((existing, i) => (i === index ? tile : existing)), everDryPaused };
 }
