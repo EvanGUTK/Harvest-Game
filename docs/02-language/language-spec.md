@@ -74,7 +74,7 @@ Chained comparisons (`0 <= x < 8`) behave as in Python.
 | `None` | Returned by functions without `return`. |
 | `str` | Immutable. Supports `+`, `*` (repeat), indexing, `==`, `len()`, `in` (substring) and `for … in` (one character at a time). Mostly for `print` and dict keys. Max length 256. Length, indexing and the limit count **UTF-16 code units** (JS semantics). |
 | `list` | Mutable, max **1,024** elements. Supports indexing (negative indices allowed), `+`, `*`, `==`, `len`, `.append(x)`, `.pop()`, `.pop(i)`, `in`, `for … in`. |
-| `dict` | Mutable, max **1,024** entries. Keys may be `int`, `bool`, `str`, `None` or game constants. Supports `d[k]`, `d[k] = v`, `k in d`, `==`, `len`, `for k in d` (insertion order), `.get(k, default)`. There is no way to remove a key in v0.1 (overwrite the value instead). |
+| `dict` | Mutable, max **1,024** entries. Keys may be `int`, `bool`, `str`, `None` or game constants. Supports `d[k]`, `d[k] = v`, `k in d`, `==`, `len`, `for k in d` (insertion order), `.get(k[, default])`. There is no way to remove a key in v0.1 (overwrite the value instead). |
 | `function` | User-defined via `def` or a builtin. First-class: can be passed to `spawn(fn)`. |
 | constants | `NORTH`, `RADISH`, … opaque enum values. Comparable with `==`, usable as dict keys, printable. |
 
