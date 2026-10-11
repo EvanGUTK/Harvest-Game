@@ -9,8 +9,14 @@
 import { ACTION_COSTS, PURE_COSTS, SENSOR_COSTS, WAIT_CYCLES_PER_UNIT } from './costs';
 import { CROP_IDS, CROPS } from './crops';
 
-/** What kind of value a builtin takes or returns; `const` is a game constant such as `NORTH` or `RADISH`. */
-export type ParamKind = 'int' | 'bool' | 'str' | 'const' | 'function';
+/** The groups of game constants (`NORTH`, `RADISH`, `GRASS`, ...). */
+export type ConstantGroup = 'direction' | 'crop' | 'soil';
+
+/**
+ * What kind of value a builtin takes or returns. A constant names the group it accepts, so the compiler can
+ * tell `move(RADISH)` from `move(NORTH)`: `const:direction`, `const:crop` or `const:soil`.
+ */
+export type ParamKind = 'int' | 'bool' | 'str' | 'function' | `const:${ConstantGroup}`;
 
 /** Campaign gating (the Unlock column). Everything is unlocked in multiplayer. */
 export type Unlock =
@@ -42,7 +48,7 @@ export type ConstantMeta = {
   name: string;
   /** Stable across versions; the VM stores constants by id. */
   id: number;
-  group: 'direction' | 'crop' | 'soil';
+  group: ConstantGroup;
   unlock: Unlock;
 };
 
@@ -60,7 +66,7 @@ export const BUILTINS: readonly BuiltinMeta[] = [
   {
     name: 'move',
     kind: 'action',
-    params: ['const'],
+    params: ['const:direction'],
     returns: 'none',
     cost: ACTION_COSTS.move,
     touchesWorld: true,
@@ -72,7 +78,7 @@ export const BUILTINS: readonly BuiltinMeta[] = [
   {
     name: 'plant',
     kind: 'action',
-    params: ['const'],
+    params: ['const:crop'],
     returns: 'bool',
     cost: ACTION_COSTS.plant,
     touchesWorld: true,
@@ -145,7 +151,7 @@ export const BUILTINS: readonly BuiltinMeta[] = [
   {
     name: 'sell',
     kind: 'action',
-    params: ['const', 'int'],
+    params: ['const:crop', 'int'],
     returns: 'int',
     cost: ACTION_COSTS.sell,
     touchesWorld: true,
@@ -280,7 +286,7 @@ export const BUILTINS: readonly BuiltinMeta[] = [
     name: 'soil',
     kind: 'sensor',
     params: [],
-    returns: 'const',
+    returns: 'const:soil',
     cost: SENSOR_COSTS.soil,
     touchesWorld: true,
     unlock: { node: 'till' },
@@ -327,7 +333,7 @@ export const BUILTINS: readonly BuiltinMeta[] = [
   {
     name: 'inventory',
     kind: 'sensor',
-    params: ['const'],
+    params: ['const:crop'],
     returns: 'int',
     cost: SENSOR_COSTS.inventory,
     touchesWorld: true,
@@ -339,7 +345,7 @@ export const BUILTINS: readonly BuiltinMeta[] = [
   {
     name: 'price',
     kind: 'sensor',
-    params: ['const'],
+    params: ['const:crop'],
     returns: 'int',
     cost: SENSOR_COSTS.price,
     touchesWorld: true,
@@ -351,7 +357,7 @@ export const BUILTINS: readonly BuiltinMeta[] = [
   {
     name: 'seed_cost',
     kind: 'sensor',
-    params: ['const'],
+    params: ['const:crop'],
     returns: 'int',
     cost: SENSOR_COSTS.seed_cost,
     touchesWorld: true,
