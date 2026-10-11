@@ -108,6 +108,20 @@ export default defineConfig(
     },
   },
   {
+    // The one place `/` is allowed: the floorDiv/floorMod helper module (simulation-engine.md §Determinism,
+    // standards.md §Purity, CLAUDE.md rule 1). Its exactness is proven in int-math.ts and its tests. Every
+    // other engine rule, including the `/=` ban, still applies to this file. Approved by the owner 2026-10-11.
+    files: ['packages/lang/src/int-math.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        noDefaultExport,
+        ...enginePuritySyntax.filter((rule) => rule.selector !== "BinaryExpression[operator='/']"),
+        ...sandboxSyntax,
+      ],
+    },
+  },
+  {
     // Engine tests must run unchanged in Node and all three browser engines (SIM-08), so they keep the
     // global and property bans. They may use regex, `/` and `**` in assertions (testing.md §Rules).
     files: ENGINE_TESTS,
