@@ -80,9 +80,12 @@ function advanceCrop(crop: Crop, m0: number, last: number, t: number, rules: Adv
   return { crop: { ...crop, withered }, dryPaused: false };
 }
 
-/** Advance `tile` to cycle `t` and report whether a dry gap paused an unripe crop. `t < lastUpdated` is an invariant violation. */
+/** Advance `tile` to cycle `t` and report whether a dry gap paused an unripe crop. A non-integer `t`, or `t < lastUpdated`, is an invariant violation. */
 export function advanceTileDetailed(tile: Tile, t: number, rules: AdvanceRules): TileAdvance {
   const last = tile.lastUpdated;
+  if (!Number.isSafeInteger(t)) {
+    throw new InvariantError('SIM-BAD-CYCLE', `a cycle must be a safe integer, got ${t}`);
+  }
   if (t < last) {
     throw new InvariantError('SIM-TIME-BACKWARDS', `cannot advance a tile from cycle ${last} back to ${t}`);
   }

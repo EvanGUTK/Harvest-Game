@@ -55,6 +55,14 @@ describe('advanceTile', () => {
     expect(advanceTile(tile, 120, DECAY)).toEqual(tile);
   });
 
+  it('rejects a non-integer cycle with or without moisture decay (SIM-BAD-CYCLE), so a config flag cannot decide between throwing and corrupting state', () => {
+    for (const rules of [DECAY, NO_DECAY]) {
+      for (const bad of [10.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+        expect(() => advanceTile(growing('radish', 6, 0, 1), bad, rules)).toThrow(/SIM-BAD-CYCLE/);
+      }
+    }
+  });
+
   it('refuses to move time backwards', () => {
     expect(() => advanceTile(bare(10, 100), 99, DECAY)).toThrow(/SIM-TIME-BACKWARDS/);
   });
