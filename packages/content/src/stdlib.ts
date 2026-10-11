@@ -1,19 +1,19 @@
 /**
  * Standard-library metadata: one row per builtin and per constant the player can use.
  * Design: docs/02-language/standard-library.md (the tables are the source), docs/02-language/curriculum.md (gating).
- * Invariants: data only; every cost comes from ACTION_COSTS, SENSOR_COSTS, PURE_COSTS or WAIT_BOUNDS, never a
+ * Invariants: data only; every cost comes from ACTION_COSTS, SENSOR_COSTS, PURE_COSTS or WAIT_CYCLES_PER_UNIT, never a
  * literal; the order of BUILTINS is the order of the doc and append-only (the sim host table uses the index as the
  * host id); constant ids are stable, and the crop ids are 10 + the index in CROP_IDS (pinned by a test).
  */
 
-import { ACTION_COSTS, PURE_COSTS, SENSOR_COSTS, WAIT_BOUNDS } from './costs';
+import { ACTION_COSTS, PURE_COSTS, SENSOR_COSTS, WAIT_CYCLES_PER_UNIT } from './costs';
+import { CROP_IDS, CROPS } from './crops';
 
 /** What kind of value a builtin takes or returns; `const` is a game constant such as `NORTH` or `RADISH`. */
 export type ParamKind = 'int' | 'bool' | 'str' | 'const' | 'function';
 
 /** Campaign gating (the Unlock column). Everything is unlocked in multiplayer. */
 export type Unlock =
-  | { always: true }
   /** A chapter teaches it; `node` is also required when the skill tree sells it ("Ch 8 · Skill: Sell"). */
   | { chapter: number; node?: string }
   /** Sold by a skill-tree node only ("Skill: Till"). */
@@ -159,11 +159,11 @@ export const BUILTINS: readonly BuiltinMeta[] = [
     kind: 'action',
     params: ['int'],
     returns: 'none',
-    cost: WAIT_BOUNDS.min,
+    cost: WAIT_CYCLES_PER_UNIT,
     argumentCost: true,
     touchesWorld: true,
     unlock: chapter(4),
-    paramHints: [`a whole number of cycles from ${WAIT_BOUNDS.min} to ${WAIT_BOUNDS.max}`],
+    paramHints: ['a whole number of cycles from 1 to 5,000'],
     doc: 'Does nothing for n cycles, which is cheaper than a busy loop.',
     example: 'wait(50)',
   },
@@ -420,9 +420,12 @@ export const CONSTANTS: readonly ConstantMeta[] = [
   { name: 'SOUTH', id: 1, group: 'direction', unlock: chapter(1) },
   { name: 'EAST', id: 2, group: 'direction', unlock: chapter(1) },
   { name: 'WEST', id: 3, group: 'direction', unlock: chapter(1) },
-  { name: 'RADISH', id: FIRST_CROP_ID, group: 'crop', unlock: chapter(1) },
-  { name: 'CORN', id: FIRST_CROP_ID + 1, group: 'crop', unlock: chapter(1) },
-  { name: 'MELON', id: FIRST_CROP_ID + 2, group: 'crop', unlock: chapter(1) },
+  ...CROP_IDS.map((id, index): ConstantMeta => ({
+    name: CROPS[id].constant,
+    id: FIRST_CROP_ID + index,
+    group: 'crop',
+    unlock: chapter(1),
+  })),
   { name: 'GRASS', id: FIRST_SOIL_ID, group: 'soil', unlock: { node: 'till' } },
   { name: 'TILLED', id: FIRST_SOIL_ID + 1, group: 'soil', unlock: { node: 'till' } },
   { name: 'ROCK', id: FIRST_SOIL_ID + 2, group: 'soil', unlock: { node: 'till' } },
