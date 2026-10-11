@@ -5,7 +5,7 @@
  */
 
 import type { Token } from '../lexer/token';
-import type { Limits } from '../types';
+import type { Limits, Span } from '../types';
 import { joinSpans, tokenSpan, touching, type TokenCursor } from './cursor';
 
 /** What the parser was looking for, used as the help line of E-UNEXPECTED-TOKEN. */
@@ -82,6 +82,30 @@ export function reportNoFloat(c: TokenCursor, whole: Token, fraction: Token): vo
   c.report('E-NO-FLOAT', joinSpans(tokenSpan(whole), tokenSpan(fraction)), {
     message: `Sprout uses whole numbers, so \`${whole.text}.${fraction.text}\` can't be used.`,
     help: '`//` divides and drops the remainder, so everything stays a whole number.',
+  });
+}
+
+/** `f() = 1`, `1 = x`: only a name or an indexed slot can be assigned (EBNF `target`). */
+export function reportBadTarget(c: TokenCursor, target: Span): void {
+  c.report('E-BAD-TARGET', target, {
+    message: 'You can only store a value in a name or a list/dict slot.',
+    help: 'For example `count = 5` or `scores[0] = 5`.',
+  });
+}
+
+/** A `:` line whose block is not indented below it (catalogue wording, keyword interpolated). */
+export function reportBodyNotIndented(c: TokenCursor, header: Token, at: Token): void {
+  c.report('E-BAD-INDENT', tokenSpan(at), {
+    message: `The lines inside this \`${header.text}\` should be indented one step further.`,
+    help: 'Start the block on the next line, indented by 4 spaces.',
+  });
+}
+
+/** An indented line with no `:` line above it to start a block. */
+export function reportUnexpectedIndent(c: TokenCursor, indent: Token): void {
+  c.report('E-BAD-INDENT', tokenSpan(indent), {
+    message: 'This line is indented, but no `:` line above starts a block.',
+    help: 'Line it up with the line above, or end the line above with `:` to start a block.',
   });
 }
 

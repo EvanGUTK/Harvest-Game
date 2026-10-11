@@ -5,7 +5,9 @@
  * to the last token its production consumed (never a NEWLINE) and lies inside its parent's span.
  * Parentheses produce no node: the inner expression's span excludes them, the enclosing node's includes
  * them. The tree holds well-formed nodes only; a statement the parser cannot repair is dropped and
- * reported, so an AST is compiled only when the parse produced no error diagnostic.
+ * reported, so an AST is compiled only when the parse produced no error diagnostic. Repairs keep the node:
+ * a block that is missing or written on its header line (E-BAD-INDENT) becomes an empty body, so a
+ * compound statement's body is empty only when an error was reported.
  *
  * Node counting rule (E-PROGRAM-TOO-BIG, language-spec.md §Limits): every object with a `type` counts
  * as one node, except the `Program` and `FileNode` containers. That is every statement, expression,
