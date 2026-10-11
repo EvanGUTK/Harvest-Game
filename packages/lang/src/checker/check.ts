@@ -12,6 +12,7 @@ import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits, LockReaso
 import { INTRINSIC_NAMES } from '../intrinsics/intrinsics';
 import { checkArity } from './arity';
 import { checkDuplicateDefs, checkFileCount } from './files';
+import { checkGating } from './gating';
 import { checkPureLoops } from './infinite-loop';
 import { checkNames } from './names';
 import { checkReachability } from './reachability';
@@ -45,6 +46,7 @@ export function check(program: Program, scopes: ScopeInfo, opts: CheckOptions): 
   const diagnostics = [
     ...checkFileCount(program, opts.limits),
     ...checkDuplicateDefs(program),
+    ...checkGating(program, scopes, opts),
     ...checkNames(program, scopes, opts),
     ...checkArity(program, scopes, opts),
     ...checkReachability(program),

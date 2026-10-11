@@ -4,7 +4,8 @@
  * Invariant: builders are pure; the caller decides where and whether a diagnostic applies.
  */
 
-import type { Diagnostic, Span } from '../types';
+import { assertNever } from '../invariant';
+import type { Diagnostic, LockReason, Span } from '../types';
 
 function error(code: string, range: Span, message: string): Diagnostic {
   return { code, severity: 'error', range, message };
@@ -175,4 +176,34 @@ export function unusedVariable(range: Span, name: string): Diagnostic {
     range,
     message: `\`${name}\` is given a value but never used.`,
   };
+}
+
+/**
+ * E-LOCKED-FEATURE: "<subject> isn't unlocked yet." plus the suffix for why (curriculum.md §Feature gating
+ * map; standard-library.md for the two multiplayer cases). Subjects are the token (`while`, `+`, `.append`)
+ * or a phrase ("Lists", "Storing a value with `=`"); `plural` picks "aren't".
+ */
+export function lockedFeature(range: Span, subject: string, plural: boolean, reason: LockReason): Diagnostic {
+  const stem = `${subject} ${plural ? "aren't" : "isn't"} unlocked yet.`;
+  return error('E-LOCKED-FEATURE', range, `${stem} ${lockSuffix(subject, reason)}`);
+}
+
+function lockSuffix(subject: string, reason: LockReason): string {
+  switch (reason.kind) {
+    case 'chapter':
+      return `You'll get it in Chapter ${String(reason.chapter)}.`;
+    case 'node':
+      return `Buy the ${reason.node} node in the skill tree.`;
+    case 'mode':
+      return reason.mode === 'single-player-only'
+        ? `${callForm(subject)} is single-player only in v1.`
+        : `${callForm(subject)} is turned off in ranked matches so replays stay clean.`;
+    default:
+      return assertNever(reason);
+  }
+}
+
+/** "`spawn`" → "`spawn()`": the catalogue writes mode-locked builtins as calls. */
+function callForm(subject: string): string {
+  return subject.startsWith('`') && subject.endsWith('`') ? `${subject.slice(0, -1)}()\`` : subject;
 }

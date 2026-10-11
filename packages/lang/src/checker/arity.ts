@@ -15,6 +15,7 @@ import type { Diagnostic, Span } from '../types';
 import type { CheckOptions } from './check';
 import { unknownMethod, wrongArgCount } from './diagnostics';
 import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
+import { lockedNameReason } from './gating';
 import { staticFunctions } from './static-functions';
 
 /** An accepted argument count: `max: null` means any number from `min` up. */
@@ -108,7 +109,10 @@ class CallTargets {
   private readonly intrinsics = new Map<string, Arity>();
   private readonly userFunctions: ReadonlyMap<string, number>;
 
-  constructor(program: Program, opts: CheckOptions) {
+  constructor(
+    program: Program,
+    private readonly opts: CheckOptions,
+  ) {
     for (const sig of opts.hostSignatures) {
       const max = sig.params.length;
       this.hosts.set(sig.name, {
@@ -126,6 +130,8 @@ class CallTargets {
     const who = `\`${name}\``;
     const given = call.args.length;
     const kind = scopes.resolutions.get(call.callee)?.kind;
+    // A locked builtin is reported once, as E-LOCKED-FEATURE (gating.ts), never also for its arity.
+    if (lockedNameReason(name, kind, this.opts) !== undefined) return null;
     switch (kind) {
       case 'builtin': {
         const host = this.hosts.get(name);
