@@ -50,6 +50,8 @@ const DIRECTION_HINT = 'a direction like `NORTH`';
 const CROP_HINT = 'a crop like `RADISH`';
 const COUNT_HINT = 'a whole number of units';
 
+// Skill-node ids used in the Unlock fields below (till, water, moisture-sensor, is-ripe-sensor, sell,
+// price-sensor, measure): provisional, CNT-05 owns the final ids.
 const chapter = (n: number, node?: string): Unlock =>
   node === undefined ? { chapter: n } : { chapter: n, node };
 
