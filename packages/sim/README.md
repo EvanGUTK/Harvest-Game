@@ -11,3 +11,4 @@ Deterministic farm world, host functions (actions/sensors), shared market, and t
 ## Public API so far
 
 - **PRNG (SIM-05):** `splitmix32`, `createSfc32`, `seedStream`, `createStreams`, `randomBelow`, `generateLayout` (FNV-1a comes from `@harvest/lang`). Streams `layout`, `weather` and `player:<slot>` are seeded from the match seed as in [§PRNG seeding](../../docs/03-architecture/simulation-engine.md#determinism).
+- **World (SIM-01):** `advanceTile`, `advanceTileDetailed` (also reports the dry pause behind Never Thirsty), `advanceFarm`, `Farm`, `AdvanceRules`, `TileAdvance`. `Farm.everDryPaused` is sticky and not part of the state hash.
