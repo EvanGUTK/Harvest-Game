@@ -51,8 +51,8 @@ Awards never affect placement. They give non-winners something to chase. `Player
 | ⚡ **Most Efficient** | `most_efficient` | Highest `floorDiv((score − startCredits) × 1000, max(1, cyclesUsed))`, where `cyclesUsed` is the player's value from [simulation-engine](../03-architecture/simulation-engine.md) (the maximum over their drones of `min(agent.clock, budget)`). Players with score ≤ `startCredits` are not eligible |
 | 🌾 **Bumper Crop** | `bumper_crop` | Most crops harvested into the silo (`cropsHarvested`, at least 1) |
 | 📈 **Market Timer** | `market_timer` | Highest unit-weighted average sale price as basis points of base price: `floorDiv(Σ over sell lots of (units × floorDiv(price × 10_000, basePrice)), Σ units)`. Needs ≥ 1 unit sold |
-| ✂️ **Clean Code** | `clean_code` | Fewest `programTokens` among players placed in the top half (places 1 to ⌈n ÷ 2⌉ of n players) |
-| 💧 **Never Thirsty** | `never_thirsty` | At least 1 crop planted, and no crop of the player's ever had its growth paused by 0 moisture while it was unripe |
+| ✂️ **Clean Code** | `clean_code` | Fewest `programTokens` among players placed in the top half (places 1 to ⌈n ÷ 2⌉ of n players; `n` counts every slot including idle players, and a shared place such as "=2nd" counts as place 2) |
+| 💧 **Never Thirsty** | `never_thirsty` | At least 1 crop planted, and no crop of the player's ever had its growth paused for lack of moisture (below the crop's minimum) while it was unripe |
 
 ## Multiplayer rewards (wallet credits)
 
