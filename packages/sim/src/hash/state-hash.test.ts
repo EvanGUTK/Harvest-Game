@@ -139,6 +139,25 @@ describe('stateWords (simulation-engine.md §State hash)', () => {
     expect(streamWords.slice(12, 16)).toEqual(state.streams.player(1).state());
   });
 
+  it('rejects drone rows or streams that do not match the number of farms (SIM-BAD-SLOT-COUNT)', () => {
+    expect(() => stateWords(oneByOne({ drones: [] }), T, RULES)).toThrow(/SIM-BAD-SLOT-COUNT/);
+    expect(() =>
+      stateWords(
+        oneByOne({
+          drones: [
+            [RUNNING, NOT_SPAWNED],
+            [RUNNING, NOT_SPAWNED],
+          ],
+        }),
+        T,
+        RULES,
+      ),
+    ).toThrow(/SIM-BAD-SLOT-COUNT/);
+    expect(() => stateWords(oneByOne({ streams: createStreams(12_345, 2) }), T, RULES)).toThrow(
+      /SIM-BAD-SLOT-COUNT/,
+    );
+  });
+
   it('force-advances every tile to t before writing it (a stale tile hashes as its advanced self)', () => {
     const stale: Tile = {
       soil: 'tilled',

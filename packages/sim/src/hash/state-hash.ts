@@ -33,6 +33,8 @@ export type HashableState = {
 
 const STATUS_CODE: Record<DroneStatus, number> = { running: 0, halted: 1, error: 2, not_spawned: 3 };
 const SOIL_CODE: Record<Soil, number> = { grass: 0, tilled: 1, rock: 2 };
+/** The streams every match has besides the per-slot ones: `layout` and `weather`. */
+const FIXED_STREAMS = 2;
 const NO_CROP = -1;
 const NO_RIPE_AT = -1;
 
@@ -64,8 +66,19 @@ function slotHeadWords(farm: Farm, drones: readonly [DroneHashState, DroneHashSt
   return [farm.credits, ...siloWords(farm), farm.water, ...drones.flatMap(droneWords)];
 }
 
+function assertSlotCounts(state: HashableState): void {
+  const nSlots = state.farms.length;
+  if (state.drones.length !== nSlots || state.streams.ordered.length !== FIXED_STREAMS + nSlots) {
+    throw new InvariantError(
+      'SIM-BAD-SLOT-COUNT',
+      `${nSlots} farms need ${nSlots} drone rows and ${FIXED_STREAMS + nSlots} streams, got ${state.drones.length} and ${state.streams.ordered.length}`,
+    );
+  }
+}
+
 /** The words H(t) hashes, after force-advancing a copy of every farm and of the market to `t`. */
 export function stateWords(state: HashableState, t: number, rules: AdvanceRules): number[] {
+  assertSlotCounts(state);
   const market = advanceMarket(state.market, t);
   const farms = state.farms.map((farm) => advanceFarm(farm, t, rules));
   return [
