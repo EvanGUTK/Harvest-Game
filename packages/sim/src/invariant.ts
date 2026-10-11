@@ -3,7 +3,7 @@
  * Standards: docs/09-engineering/standards.md §Errors. Every error carries a stable `code`.
  */
 
-export type InvariantCode = 'SIM-BAD-RANDOM-BOUND' | 'SIM-BAD-SLOT';
+export type InvariantCode = 'SIM-BAD-GRID' | 'SIM-BAD-RANDOM-BOUND' | 'SIM-BAD-SLOT';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;
