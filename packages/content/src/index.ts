@@ -92,6 +92,7 @@ export {
   BUILTINS,
   CONSTANTS,
   type BuiltinMeta,
+  type ConstantGroup,
   type ConstantMeta,
   type ParamKind,
   type Unlock,

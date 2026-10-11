@@ -1,0 +1,32 @@
+# Precedence: or < and < not < comparison < sum < term < unary < postfix < atom.
+a or b and not c
+not x == y
+a + b * c - d // e % f
+-a * -b
+(a + b) * (c - d)
+# Chained comparisons and membership.
+0 <= x < world_size()
+a == b != c
+crop() not in [RADISH, CORN]
+"ab" in name
+# Literals and collections.
+1_000 + 0 + 9007199254740991
+"double" + 'single' + "esc\"aped\n\t\\"
+True and False or None
+[]
+{}
+[1, [2, 3], {RADISH: 1, "k": [4]}]
+# Postfix: calls, indexing and method calls, left to right.
+grid[y][x]
+lst.append(len(lst))
+d.get(k, 0) + lst.pop() + lst.pop(-1)
+rows[0].pop()
+# Implicit line joining inside brackets.
+total = sum_of(
+    [1, 2,
+     3],
+    {
+        "a": 1,
+        "b": 2
+    }
+)

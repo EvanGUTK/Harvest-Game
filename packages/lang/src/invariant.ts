@@ -15,7 +15,8 @@ export type InvariantCode =
   | 'LANG-UNREACHABLE'
   | 'LANG-VALUE-UNKNOWN-CONST'
   | 'LANG-VALUE-UNKNOWN-FUNCTION'
-  | 'LANG-METHOD-ARITY';
+  | 'LANG-METHOD-ARITY'
+  | 'LANG-INTRINSIC-ARITY';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;

@@ -10,7 +10,7 @@
 import { CROPS, WORLD } from '@harvest/content';
 import { floorDiv } from '@harvest/lang';
 import { InvariantError } from '../invariant';
-import type { Tile } from './types';
+import type { Tile } from '../types';
 
 export type AdvanceRules = {
   /** false until the campaign Water node is owned: moisture never decrements (SimConfig.moistureDecay). */

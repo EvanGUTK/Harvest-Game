@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { advanceMarket, createMarket, marketPressures, type MarketState } from '../market/market';
 import { createStreams } from '../prng/streams';
 import { advanceFarm, type Farm } from '../world/farm';
-import type { Tile } from '../world/types';
+import type { Tile } from '../types';
 import { stateHash, stateWords, type DroneHashState, type HashableState } from './state-hash';
 
 function marketWith(pressure: Partial<MarketState['pressure']>): MarketState {
