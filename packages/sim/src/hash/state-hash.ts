@@ -19,20 +19,30 @@ import type { Soil, Tile } from '../world/types';
 export type DroneStatus = 'running' | 'halted' | 'error' | 'not_spawned';
 
 /** What the hash reads of a drone: position, committed clock and status. */
-export type DroneHashState = { x: number; y: number; clock: number; status: DroneStatus };
-
-export type HashableState = {
-  gridSize: number;
-  /** One farm per slot, ascending. */
-  farms: readonly Farm[];
-  /** Per slot, drone 0 then drone 1. */
-  drones: readonly (readonly [DroneHashState, DroneHashState])[];
-  market: MarketState;
-  streams: MatchStreams;
+export type DroneHashState = {
+  readonly x: number;
+  readonly y: number;
+  readonly clock: number;
+  readonly status: DroneStatus;
 };
 
-const STATUS_CODE: Record<DroneStatus, number> = { running: 0, halted: 1, error: 2, not_spawned: 3 };
-const SOIL_CODE: Record<Soil, number> = { grass: 0, tilled: 1, rock: 2 };
+export type HashableState = {
+  readonly gridSize: number;
+  /** One farm per slot, ascending. */
+  readonly farms: readonly Farm[];
+  /** Per slot, drone 0 then drone 1. */
+  readonly drones: readonly (readonly [DroneHashState, DroneHashState])[];
+  readonly market: MarketState;
+  readonly streams: MatchStreams;
+};
+
+const STATUS_CODE: Readonly<Record<DroneStatus, number>> = {
+  running: 0,
+  halted: 1,
+  error: 2,
+  not_spawned: 3,
+};
+const SOIL_CODE: Readonly<Record<Soil, number>> = { grass: 0, tilled: 1, rock: 2 };
 /** The streams every match has besides the per-slot ones: `layout` and `weather`. */
 const FIXED_STREAMS = 2;
 const NO_CROP = -1;
