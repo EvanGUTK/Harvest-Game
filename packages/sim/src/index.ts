@@ -146,4 +146,5 @@ export { generateLayout, type LayoutConfig } from './world/layout';
 // ---------- Scoring (SIM-07) ----------
 
 export { buildPlayerResult } from './scoring/result';
+export { rankPlayers, type Placement, type RankEntry } from './scoring/ranking';
 export type { PlayerStats, ScoringRules } from './scoring/stats';
