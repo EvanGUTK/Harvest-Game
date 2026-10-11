@@ -79,6 +79,31 @@ export function isHeapObj(v: RtValue): v is HeapObj {
   return typeof v === 'object' && v !== null && (v.tag === 'str' || v.tag === 'list' || v.tag === 'dict');
 }
 
+export type Container = ListObj | DictObj;
+
+/** int or bool: bool is a subtype of int (language-spec.md §Type interactions). */
+export function isIntLike(v: RtValue): v is number | boolean {
+  return typeof v === 'number' || typeof v === 'boolean';
+}
+
+/** The int value of an int or bool (True is 1, False is 0). */
+export function toInt(v: number | boolean): number {
+  if (typeof v === 'number') return v;
+  return v ? 1 : 0;
+}
+
+export function isStr(v: RtValue): v is StrObj {
+  return typeof v === 'object' && v !== null && v.tag === 'str';
+}
+
+export function isList(v: RtValue): v is ListObj {
+  return typeof v === 'object' && v !== null && v.tag === 'list';
+}
+
+export function isDict(v: RtValue): v is DictObj {
+  return typeof v === 'object' && v !== null && v.tag === 'dict';
+}
+
 export function kindOf(v: RtValue): ValueKind {
   if (typeof v === 'number') return 'int';
   if (typeof v === 'boolean') return 'bool';
