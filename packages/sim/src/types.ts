@@ -82,6 +82,8 @@ export type PlayerResult = {
   logicCycles: number;
   programTokens: number;
   cropsHarvested: number;
+  /** Maximum over the player's drones of min(clock, cycleBudget); 0 for the idle program. */
+  cyclesUsed: number;
   awards: AwardId[];
   /** First 200 print() lines (never shown to rivals). */
   output: string[];
