@@ -153,6 +153,8 @@ function outlineStatement(stmt: Statement, indent: string): string[] {
     case 'ReturnStmt':
     case 'GlobalStmt':
       return [line(stmt.span, sexprStatement(stmt))];
+    default:
+      return assertNever(stmt);
   }
 }
 
