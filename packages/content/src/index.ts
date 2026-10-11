@@ -60,6 +60,9 @@ export const CROPS: Readonly<Record<CropId, CropDef>> = {
   },
 };
 
+/** Crop ids in `CROPS` order. Every per-crop iteration uses this array, never Object.keys. */
+export const CROP_IDS: readonly CropId[] = ['radish', 'corn', 'melon'];
+
 // ---------- Builtin cycle costs (on top of the 1-cycle CALL_HOST) ----------
 
 export const ACTION_COSTS = {
