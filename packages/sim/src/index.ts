@@ -12,6 +12,7 @@
  */
 
 import type { CropId } from '@harvest/content';
+import type { Coord } from './world/types';
 import type { BytecodeModule } from '@harvest/lang';
 
 // ---------- Market (SIM-04) ----------
@@ -35,9 +36,7 @@ export type DroneNo = 0 | 1;
 export type AwardId =
   'top_earner' | 'most_efficient' | 'bumper_crop' | 'market_timer' | 'clean_code' | 'never_thirsty';
 
-export type { Soil, Tile } from './world/types';
-
-export type Coord = readonly [x: number, y: number];
+export type { Coord, Soil, Tile } from './world/types';
 
 export type SimConfig = {
   rulesVersion: string;
@@ -162,6 +161,24 @@ export { generateLayout, type LayoutConfig } from './world/layout';
 
 export { advanceTile, advanceTileDetailed, type AdvanceRules, type TileAdvance } from './world/advance';
 export { advanceFarm, type Farm } from './world/farm';
+export { DEFAULT_DRONE_STATS, harvest, move, plant, refill, till, water } from './world/actions';
+export type {
+  ActionContext,
+  ActionEvent,
+  ActionOutcome,
+  Direction,
+  DroneStats,
+  MoveOutcome,
+} from './world/actions';
+export { tileIndex, touchTile, withTile } from './world/farm';
+export {
+  sensorCrop,
+  sensorGrowth,
+  sensorIsRipe,
+  sensorIsWithered,
+  sensorMoisture,
+  sensorSoil,
+} from './world/sensors';
 
 // ---------- Scoring (SIM-07) ----------
 
@@ -170,3 +187,13 @@ export { buildPlayerResult } from './scoring/result';
 export { rankPlayers, type Placement, type RankEntry } from './scoring/ranking';
 export { scorePlayers, type MatchScore } from './scoring/score';
 export type { PlayerStats, ScoringRules } from './scoring/stats';
+
+// ---------- State hash (SIM-06) ----------
+
+export {
+  stateHash,
+  stateWords,
+  type DroneHashState,
+  type DroneStatus,
+  type HashableState,
+} from './hash/state-hash';
