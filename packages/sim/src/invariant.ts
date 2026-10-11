@@ -10,6 +10,7 @@ export type InvariantCode =
   | 'SIM-BAD-SEED'
   | 'SIM-BAD-SLOT'
   | 'SIM-BAD-SLOT-COUNT'
+  | 'SIM-TIME-BACKWARDS'
   | 'SIM-UNREACHABLE';
 
 export class InvariantError extends Error {
