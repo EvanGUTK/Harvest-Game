@@ -6,9 +6,9 @@ An ADR moves from `proposed` to `accepted` when the owner approves the matching 
 
 | ADR | Decision | Status |
 |---|---|---|
-| [0001](0001-typescript-everywhere.md) | TypeScript everywhere, no Wasm engine in v1 | proposed |
-| [0002](0002-custom-dsl-not-real-python.md) | Custom Python-style DSL "Sprout" instead of real Python | proposed |
-| [0003](0003-deterministic-server-authoritative-sim.md) | Deterministic, server-authoritative, discrete-event simulation | proposed |
+| [0001](0001-typescript-everywhere.md) | TypeScript everywhere, no Wasm engine in v1 | accepted |
+| [0002](0002-custom-dsl-not-real-python.md) | Custom Python-style DSL "Sprout" instead of real Python | accepted |
+| [0003](0003-deterministic-server-authoritative-sim.md) | Deterministic, server-authoritative, discrete-event simulation | accepted |
 | [0004](0004-hosting-render-neon.md) | Render + Neon, not ChatGPT Sites | proposed |
 | [0005](0005-visible-rank-matchmaking.md) | Matchmaking on visible rank only | proposed |
 | [0006](0006-auth-better-auth.md) | Better Auth with Google OAuth, email OTP (Resend), password | proposed |

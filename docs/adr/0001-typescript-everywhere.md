@@ -1,6 +1,6 @@
 # ADR-0001: TypeScript everywhere (no Wasm engine in v1)
 
-- **Status:** proposed
+- **Status:** accepted (2026-10-11)
 - **Date:** 2026-10-07
 
 ## Context
