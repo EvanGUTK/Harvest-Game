@@ -75,7 +75,7 @@ Chained comparisons (`0 <= x < 8`) behave as in Python.
 | `str` | Immutable. Supports `+`, `*` (repeat), indexing, `==`, `len()`, `in` (substring) and `for … in` (one character at a time). Mostly for `print` and dict keys. Max length 256. Length, indexing and the limit count **UTF-16 code units** (JS semantics). |
 | `list` | Mutable, max **1,024** elements. Supports indexing (negative indices allowed), `+`, `*`, `==`, `len`, `.append(x)`, `.pop()`, `.pop(i)`, `in`, `for … in`. |
 | `dict` | Mutable, max **1,024** entries. Keys may be `int`, `bool`, `str`, `None` or game constants. Supports `d[k]`, `d[k] = v`, `k in d`, `==`, `len`, `for k in d` (insertion order), `.get(k[, default])`. There is no way to remove a key in v0.1 (overwrite the value instead). |
-| `function` | User-defined via `def` or a builtin. First-class: can be passed to `spawn(fn)`. |
+| `function` | User-defined via `def`; first-class, can be stored or passed to `spawn(fn)`. Builtins are not values (`E-BUILTIN-NOT-VALUE`). |
 | constants | `NORTH`, `RADISH`, … opaque enum values. Comparable with `==`, usable as dict keys, printable. |
 
 Tuples, sets, floats, classes, exceptions, imports, comprehensions, lambdas, f-strings and slicing are **not in v0.1**. Comprehensions and tuples are candidates for v0.2.
@@ -127,6 +127,7 @@ Python rules, simplified:
 - A name that is assigned anywhere in a `def` body (including `for` targets and augmented assignment such as `total += 1`) and not declared `global` in that function is **local for the whole body**. Reading it before its first assignment is `R-UNBOUND-LOCAL`: *"`total` is used before it gets a value in this function. Did you mean `global total`?"*
 - `global x` must appear before any use of `x` in the same `def`; otherwise `E-GLOBAL-AFTER-USE`.
 - A name that is never assigned in the body is looked up as a global (read-only).
+- Builtin commands (`move`, `plant`, …), intrinsics (`range`, `len`, `abs`, `min`, `max`, `str`, `int`, `print`) and game constants (`RADISH`, `NORTH`, …) are reserved: using one as a variable, a function or parameter name, a `for` target or in `global` is `E-RESERVED-NAME`.
 - `def` is a statement: the function's name is bound when its `def` line executes. A function body may mention a global or another function that is defined further down the file, provided it is bound by the time the call actually runs. Calling a function above its `def` is `R-UNBOUND-GLOBAL`: *"`tend` isn't defined yet at this line. Move the `def` above."* The checker raises `W-USE-BEFORE-DEF` statically for the obvious top-level case. A name that is defined nowhere in the program is the compile-time `E-UNKNOWN-NAME`.
 - No closures over enclosing function locals in v0.1. A `def` anywhere but the top level of a file is a compile error (`E-NESTED-DEF`): *"Define functions at the top level, not inside other functions or blocks."*
 

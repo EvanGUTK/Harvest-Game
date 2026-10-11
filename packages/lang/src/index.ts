@@ -99,6 +99,17 @@ export type {
   WhileStmt,
 } from './parser/ast';
 
+// ---------- Checker (LANG-03) ----------
+
+export {
+  check,
+  scopeNames,
+  type CheckOptions,
+  type CheckResult,
+  type IntrinsicSignature,
+} from './checker/check';
+export type { ScopeInfo } from './scope/scope';
+
 // ---------- Features ----------
 
 export type { Feature } from './types';
