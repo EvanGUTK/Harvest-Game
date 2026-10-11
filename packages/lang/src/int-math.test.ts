@@ -160,13 +160,13 @@ describe('floorDiv and floorMod: Python floor semantics (language-spec.md §Type
 });
 
 describe('floorDiv and floorMod: programmer errors (standards.md §Errors)', () => {
-  it('throws INT_DIV_ZERO on a zero divisor, because the VM raises R-DIV-ZERO before calling', () => {
-    expect(errorCode(() => floorDiv(1, 0))).toBe('INT_DIV_ZERO');
-    expect(errorCode(() => floorMod(1, 0))).toBe('INT_DIV_ZERO');
-    expect(errorCode(() => floorDiv(0, -0))).toBe('INT_DIV_ZERO');
+  it('throws LANG-INT-DIV-ZERO on a zero divisor, because the VM raises R-DIV-ZERO before calling', () => {
+    expect(errorCode(() => floorDiv(1, 0))).toBe('LANG-INT-DIV-ZERO');
+    expect(errorCode(() => floorMod(1, 0))).toBe('LANG-INT-DIV-ZERO');
+    expect(errorCode(() => floorDiv(0, -0))).toBe('LANG-INT-DIV-ZERO');
   });
 
-  it('throws INT_NOT_SAFE on an operand that is not a safe integer', () => {
+  it('throws LANG-INT-NOT-SAFE on an operand that is not a safe integer', () => {
     const bad = [
       Number.NaN,
       0.5,
@@ -177,10 +177,10 @@ describe('floorDiv and floorMod: programmer errors (standards.md §Errors)', () 
       -TWO_POW_53,
     ];
     for (const x of bad) {
-      expect(errorCode(() => floorDiv(x, 3))).toBe('INT_NOT_SAFE');
-      expect(errorCode(() => floorDiv(3, x))).toBe('INT_NOT_SAFE');
-      expect(errorCode(() => floorMod(x, 3))).toBe('INT_NOT_SAFE');
-      expect(errorCode(() => floorMod(3, x))).toBe('INT_NOT_SAFE');
+      expect(errorCode(() => floorDiv(x, 3))).toBe('LANG-INT-NOT-SAFE');
+      expect(errorCode(() => floorDiv(3, x))).toBe('LANG-INT-NOT-SAFE');
+      expect(errorCode(() => floorMod(x, 3))).toBe('LANG-INT-NOT-SAFE');
+      expect(errorCode(() => floorMod(3, x))).toBe('LANG-INT-NOT-SAFE');
     }
   });
 
