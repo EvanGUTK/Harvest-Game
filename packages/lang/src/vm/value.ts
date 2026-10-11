@@ -15,7 +15,7 @@
 
 import type { Value, ValueKind, ValueOps } from '../index';
 import { floorDiv } from '../int-math';
-import { InvariantError } from '../invariant';
+import { InvariantError, assertNever } from '../invariant';
 
 export type StrObj = {
   readonly tag: 'str';
@@ -94,6 +94,8 @@ export function kindOf(v: RtValue): ValueKind {
       return 'function';
     case 'const':
       return 'const';
+    default:
+      return assertNever(v);
   }
 }
 
@@ -112,6 +114,8 @@ export function isTruthy(v: RtValue): boolean {
     case 'fn':
     case 'const':
       return true;
+    default:
+      return assertNever(v);
   }
 }
 
@@ -133,6 +137,8 @@ export function dictKeyOf(v: RtValue): DictKey | undefined {
     case 'dict':
     case 'fn':
       return undefined;
+    default:
+      return assertNever(v);
   }
 }
 
