@@ -9,8 +9,9 @@
  * campaign's CompileOptions, not from this table.
  */
 
-import { ACTION_COSTS, BUILTINS, CONSTANTS, type BuiltinMeta } from '@harvest/content';
-import type { ConstantDef, HostSignature } from '@harvest/lang';
+import { ACTION_COSTS, BUILTINS, CONSTANTS, type BuiltinMeta, type ParamKind } from '@harvest/content';
+import type { ConstantDef, HostSignature, ValueKind } from '@harvest/lang';
+import { assertNever } from '../invariant';
 
 /** The per-drone stat that changes a baked cost: the Rotor upgrade tier's move cost. */
 export type SignatureUpgrades = { readonly moveCost: number };
@@ -20,6 +21,27 @@ const DEFAULT_UPGRADES: SignatureUpgrades = { moveCost: ACTION_COSTS.move };
 /** Builtins whose baked cost is the drone's move cost (`goto` per step of distance). */
 const MOVE_COST_BUILTINS: ReadonlySet<string> = new Set(['move', 'goto']);
 
+/** The VM only knows a constant as `const`; the group (`const:crop`, …) is the host's to check when it decodes. */
+function paramKind(kind: ParamKind): ValueKind {
+  switch (kind) {
+    case 'int':
+    case 'bool':
+    case 'str':
+    case 'function':
+      return kind;
+    case 'const:direction':
+    case 'const:crop':
+    case 'const:soil':
+      return 'const';
+    default:
+      return assertNever(kind);
+  }
+}
+
+function returnKind(kind: BuiltinMeta['returns']): ValueKind | 'any' {
+  return kind === 'none' || kind === 'any' ? kind : paramKind(kind);
+}
+
 function bakedCost(meta: BuiltinMeta, upgrades: SignatureUpgrades): number {
   return MOVE_COST_BUILTINS.has(meta.name) ? upgrades.moveCost : meta.cost;
 }
@@ -28,9 +50,9 @@ function toSignature(meta: BuiltinMeta, id: number, upgrades: SignatureUpgrades)
   return {
     id,
     name: meta.name,
-    params: [...meta.params],
+    params: meta.params.map(paramKind),
     ...(meta.optionalParams === undefined ? {} : { optionalParams: meta.optionalParams }),
-    returns: meta.returns,
+    returns: returnKind(meta.returns),
     cost: bakedCost(meta, upgrades),
     touchesWorld: meta.touchesWorld,
     unlock: { ...meta.unlock },

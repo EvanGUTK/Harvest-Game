@@ -181,7 +181,7 @@ World time is cycles, so every implementation must charge exactly these costs. [
 | `min(lst)`, `max(lst)` (single-list form) | 1 + len(lst) |
 | `lst.pop(i)` | 1 + number of elements after index `i` that shift left (a negative `i` is normalised first); `lst.pop()` shifts none, so 1 |
 | `str(x)` | 1 + len(result) |
-| `int(s)` | 1 + len(s) |
+| `int(s)` | 1 + len(s); `int(x)` for an int or bool: 1 |
 | `print(…)` | 1 + len(printed line) |
 | `wait(n)` | `n` (1 ≤ n ≤ 5,000) |
 | `goto(x, y)` | `move` cost × wrapped Manhattan distance (see standard-library) |

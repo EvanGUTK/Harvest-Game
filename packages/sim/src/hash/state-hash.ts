@@ -14,7 +14,7 @@ import { advanceMarket, marketPressures, type MarketState } from '../market/mark
 import type { MatchStreams } from '../prng/streams';
 import type { AdvanceRules } from '../world/advance';
 import { advanceFarm, type Farm } from '../world/farm';
-import type { Soil, Tile } from '../world/types';
+import type { Soil, Tile } from '../types';
 
 export type DroneStatus = 'running' | 'halted' | 'error' | 'not_spawned';
 

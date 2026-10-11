@@ -7,7 +7,7 @@
 
 import { CROPS, type CropId } from '@harvest/content';
 import { floorDiv } from '@harvest/lang';
-import type { Soil, Tile } from './types';
+import type { Soil, Tile } from '../types';
 
 const PERCENT = 100;
 

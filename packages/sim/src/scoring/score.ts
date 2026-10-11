@@ -5,7 +5,7 @@
  * assigned last (awards.ts) because they compare players with each other and use the placements.
  */
 
-import type { PlayerResult } from '../index';
+import type { PlayerResult } from '../types';
 import { InvariantError } from '../invariant';
 import { assignAwards } from './awards';
 import { rankPlayers } from './ranking';

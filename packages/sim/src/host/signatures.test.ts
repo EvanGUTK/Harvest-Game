@@ -18,16 +18,25 @@ describe('hostSignatures', () => {
     expect(signatures.map((s) => s.id)).toEqual(BUILTINS.map((_, index) => index));
   });
 
-  it('copies the parameter kinds, return kind and world-touching flag from the metadata', () => {
+  it('copies the arity, world-touching flag and the plain kinds from the metadata', () => {
     for (const [index, meta] of BUILTINS.entries()) {
       const s = hostSignatures()[index];
-      expect(s?.params).toEqual(meta.params);
-      expect(s?.returns).toBe(meta.returns);
+      expect(s?.params.length).toBe(meta.params.length);
       expect(s?.touchesWorld).toBe(meta.touchesWorld);
     }
     expect(signature('plant')).toMatchObject({ params: ['const'], returns: 'bool', touchesWorld: true });
     expect(signature('random')).toMatchObject({ params: ['int'], returns: 'int', touchesWorld: false });
     expect(signature('spawn')).toMatchObject({ params: ['function'], returns: 'bool' });
+  });
+
+  it('maps every const:<group> kind to the VM kind const, as params and as the return of soil', () => {
+    for (const [index, meta] of BUILTINS.entries()) {
+      const s = hostSignatures()[index];
+      expect(s?.params).toEqual(meta.params.map((kind) => (kind.startsWith('const:') ? 'const' : kind)));
+    }
+    expect(signature('plant').params).toEqual(['const']);
+    expect(signature('soil').returns).toBe('const');
+    expect(signature('move').params).toEqual(['const']);
   });
 
   it('bakes the default cycle costs from content (the 1-cycle CALL_HOST is not included)', () => {
