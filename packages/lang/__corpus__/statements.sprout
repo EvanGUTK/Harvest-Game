@@ -1,0 +1,39 @@
+# Every statement form in the EBNF.
+count = 0
+grid[2][3] = RADISH
+count += 1
+count -= 1
+count *= 2
+count //= 2
+count %= 7
+pass
+
+def tend():
+    global count
+    if is_ripe():
+        harvest()
+    elif crop() == None:
+        plant(RADISH)
+    else:
+        pass
+    count += 1
+
+def go(x, y):
+    repeat x:
+        move(EAST)
+    for i in range(y):
+        move(NORTH)
+    return x + y
+
+def first_ripe(tiles):
+    for t in tiles:
+        if t == None:
+            continue
+        if t > 3:
+            return t
+    return
+
+while True:
+    tend()
+    if count > 100:
+        break

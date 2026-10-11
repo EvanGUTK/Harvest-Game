@@ -12,7 +12,7 @@ import { floorMod } from '@harvest/lang';
 import { assertNever } from '../invariant';
 import type { AdvanceRules } from './advance';
 import { tileIndex, touchTile, withTile, type Farm } from './farm';
-import type { Coord, Tile } from './types';
+import type { Coord, Tile } from '../types';
 
 export type Direction = 'north' | 'south' | 'east' | 'west';
 
