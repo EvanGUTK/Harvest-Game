@@ -30,14 +30,14 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | Code | Example trigger | Message (beginner wording) |
 |---|---|---|
 | `E-MISSING-COLON` | `if is_ripe()` | This `if` line needs a `:` at the end. *(fix: add `:`)* |
-| `E-BAD-INDENT` | block body not indented | The lines inside this `while` should be indented one step further. |
+| `E-BAD-INDENT` | block body not indented (or written on the `:` line); an indented line with no `:` line above it | The lines inside this `while` should be indented one step further. For a line indented with no block to belong to: This line is indented, but no `:` line above starts a block. |
 | `E-MIXED-INDENT` | 2 and 4 spaces in one block | These lines are indented by different amounts. Pick one (4 spaces is standard). |
 | `E-UNKNOWN-NAME` | `harvset()` | I don't know `harvset`. Did you mean `harvest`? *(Levenshtein ≤ 2 suggestion, fix-it)* |
 | `E-LOCKED-FEATURE` | `while` in Ch 2; `sell` before its chapter, or before the Sell node is bought; `random()` in ranked; `spawn()` in a showdown | `while` isn't unlocked yet. You'll get it in Chapter 4. For a command node whose chapter is reached: "`sell` isn't unlocked yet. Buy the Sell node in the skill tree." *(Chapter and node gating are campaign only. The two multiplayer cases are `spawn()`, single-player only in v1 (D-24), and `random()`, off in ranked (D-18).)* Where a builtin is turned off for a mode, the message says why: "`random()` is turned off in ranked matches so replays stay clean." |
 | `E-WRONG-ARG-COUNT` | `move()` | `move` needs 1 thing in the brackets: a direction like `NORTH`. |
 | `E-SLASH-DIVISION` | `a / 2` | Sprout uses whole numbers. Use `//` for division. *(fix-it)* |
 | `E-ASSIGN-IN-IF` | `if x = 3:` | Use `==` to compare. A single `=` stores a value. *(fix-it)* |
-| `E-NESTED-DEF` | `def` inside `def` | Define functions at the top level, not inside other functions. |
+| `E-NESTED-DEF` | `def` inside another `def` or inside any block | Define functions at the top level, not inside other functions or blocks. |
 | `E-RETURN-OUTSIDE` | `return` at top level | `return` only works inside a function made with `def`. |
 | `E-BREAK-OUTSIDE` | `break` outside a loop | `break` only works inside a loop. |
 | `E-CONTINUE-OUTSIDE` | `continue` outside a loop | `continue` only works inside a loop. |
@@ -55,8 +55,9 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-UNCLOSED-BRACKET` | `f(1, 2` at the end of the file | This `(` is never closed. Add a `)` where the brackets should end. |
 | `E-NO-FLOAT` | `1.5` | Sprout uses whole numbers, so `1.5` can't be used. |
 | `E-NO-POWER` | `a ** 2`, `a **= 2` | Sprout has no `**`. Multiply the number by itself instead. |
+| `E-BAD-TARGET` | `f() = 1`, `1 = x` | You can only store a value in a name or a list/dict slot. |
 | `E-TOO-MANY-FILES` | an 11th file in the campaign, or a second file in a showdown | Your program can have at most 10 files (1 in a showdown). |
-| `E-TOO-DEEP` / `E-PROGRAM-TOO-BIG` / `E-SRC-TOO-BIG` | limits | Tells you the limit and suggests using functions to simplify. `E-TOO-DEEP` covers both block nesting and expression nesting; for an expression it says: This expression is nested more than 64 levels deep. |
+| `E-TOO-DEEP` / `E-PROGRAM-TOO-BIG` / `E-SRC-TOO-BIG` | limits | Tells you the limit and suggests using functions to simplify. `E-TOO-DEEP` covers both block nesting and expression tree height (language-spec §Limits); for an expression it says: This expression is nested more than 64 levels deep. |
 | `W-UNREACHABLE` | code after `while True:` with no `break` | warning: This code will never run because the loop above never ends. |
 | `W-PURE-INFINITE-LOOP` | `while True:` that only does arithmetic, with no `break`, `return`, `halt()`, action or sensor, directly or in any function it calls | warning: This loop never ends and never touches the farm, so it will use up all your cycles doing nothing. |
 | `W-USE-BEFORE-DEF` | `tend()` at the top level above `def tend():` | warning: `tend` isn't defined yet at this line. Move the `def` above. |
@@ -68,12 +69,12 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 
 | Code | Message |
 |---|---|
-| `R-TYPE` | Can't add a number and a crop. `x` is `5`, `y` is `RADISH`. Other examples: "Can't compare `RADISH` and `5`." and "`in` needs a list, dict or text on the right." Also raised when assigning into a text value (`s[0] = "a"`) and when a list or dict is used as a dict key. |
+| `R-TYPE` | Can't add a number and a crop. `x` is `5`, `y` is `RADISH`. Other examples: "Can't compare `RADISH` and `5`." and "`in` needs a list, dict or text on the right." Also raised when assigning into a text value (`s[0] = "a"`) and when a list or dict is used as a dict key. Arithmetic names both kinds ("a number", "text", "a list", "a dict", "None", "a function", or "a" plus the constant's group, such as "a crop"): "Can't subtract text from a number.", "Can't multiply text by text.", "Can't divide a number by None.", "Can't divide a crop by a number to get a remainder.", "Can't make text negative."; the "`x` is `5`" sentence is added only when an operand is a plain variable name. Also: "`in` on text needs text on the left, but got a number." and "A list can't be a dict key. Use a number, text, None or a constant." Values inside messages are shown as `str()` would show them, cut at 40 characters with "…". |
 | `R-INDEX` | List index 9 is outside the list (it has 8 items, so use 0–7). Text indexes use the same code. |
 | `R-KEY` | The dict has no key `CORN`. Use `d.get(CORN, 0)` if it might be missing. |
 | `R-DIV-ZERO` | Can't divide by zero (`//` or `%`). |
 | `R-OVERFLOW` | That number got too big. |
-| `R-STACK-OVERFLOW` | A function called itself too many times (64 max). Check your stopping condition. Also raised when `==` has to look more than 64 levels deep, for example in a list that contains itself. |
+| `R-STACK-OVERFLOW` | A function called itself too many times (64 max). Check your stopping condition. Also raised when `==` has to look more than 64 levels deep, for example in a list that contains itself, and when `str()` or `print` has to: "A value is nested too deeply to compare or print (64 levels max), for example a list that contains itself." |
 | `R-COLLECTION-FULL` | Lists and dicts can hold at most 1,024 items. |
 | `R-OUT-OF-MEMORY` | Your program is holding too much data at once (16,384 cells). Let go of lists you no longer need. |
 | `R-STR-TOO-LONG` | Text can be at most 256 characters long. |

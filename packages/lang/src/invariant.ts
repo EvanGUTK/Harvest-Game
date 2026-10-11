@@ -4,7 +4,17 @@
  * One class per package; every error carries a stable `code` from the union below.
  */
 
-export type InvariantCode = 'LANG-INT-DIV-ZERO' | 'LANG-INT-NOT-SAFE';
+export type InvariantCode =
+  | 'LANG-INT-DIV-ZERO'
+  | 'LANG-INT-NOT-SAFE'
+  | 'LANG-VALUE-KIND'
+  | 'LANG-VALUE-RANGE'
+  | 'LANG-HEAP-REFCOUNT'
+  | 'LANG-HEAP-INDEX'
+  | 'LANG-HOST-STR-TOO-LONG'
+  | 'LANG-UNREACHABLE'
+  | 'LANG-VALUE-UNKNOWN-CONST'
+  | 'LANG-VALUE-UNKNOWN-FUNCTION';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;
@@ -14,4 +24,9 @@ export class InvariantError extends Error {
     this.name = 'InvariantError';
     this.code = code;
   }
+}
+
+/** Exhaustiveness guard: the `default` of every `switch` over a union (standards.md §TypeScript). */
+export function assertNever(value: never): never {
+  throw new InvariantError('LANG-UNREACHABLE', `unhandled union member: ${typeof value}`);
 }

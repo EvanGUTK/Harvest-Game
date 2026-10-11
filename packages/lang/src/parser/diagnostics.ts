@@ -5,8 +5,9 @@
  */
 
 import type { Token } from '../lexer/token';
-import type { Limits } from '../types';
-import { joinSpans, tokenSpan, touching, type TokenCursor } from './cursor';
+import type { Diagnostic, Limits, Span } from '../types';
+import { formatCount } from '../format';
+import { joinSpans, spanAfter, tokenSpan, touching, type TokenCursor } from './cursor';
 
 /** What the parser was looking for, used as the help line of E-UNEXPECTED-TOKEN. */
 export type Expectation = string;
@@ -85,6 +86,75 @@ export function reportNoFloat(c: TokenCursor, whole: Token, fraction: Token): vo
   });
 }
 
+/** `f() = 1`, `1 = x`: only a name or an indexed slot can be assigned (EBNF `target`). */
+export function reportBadTarget(c: TokenCursor, target: Span): void {
+  c.report('E-BAD-TARGET', target, {
+    message: 'You can only store a value in a name or a list/dict slot.',
+    help: 'For example `count = 5` or `scores[0] = 5`.',
+  });
+}
+
+/** A `:` line whose block is not indented below it (catalogue wording, keyword interpolated). */
+export function reportBodyNotIndented(c: TokenCursor, header: Token, at: Token): void {
+  c.report('E-BAD-INDENT', tokenSpan(at), {
+    message: `The lines inside this \`${header.text}\` should be indented one step further.`,
+    help: 'Start the block on the next line, indented by 4 spaces.',
+  });
+}
+
+/** An indented line with no `:` line above it to start a block. */
+export function reportUnexpectedIndent(c: TokenCursor, indent: Token): void {
+  c.report('E-BAD-INDENT', tokenSpan(indent), {
+    message: 'This line is indented, but no `:` line above starts a block.',
+    help: 'Line it up with the line above, or end the line above with `:` to start a block.',
+  });
+}
+
+/** A header line without its `:`; the fix-it inserts it after the last token of the header. */
+export function reportMissingColon(c: TokenCursor, keyword: Token, headerEnd: Token): void {
+  c.report('E-MISSING-COLON', tokenSpan(headerEnd), {
+    message: `This \`${keyword.text}\` line needs a \`:\` at the end.`,
+    help: 'Python-style languages use `:` to start a block.',
+    fix: { label: 'Add `:`', edits: [{ span: spanAfter(headerEnd), newText: ':' }] },
+  });
+}
+
+/** `if x = 3:` (also `elif`, `while`): recovered as `x == 3`. */
+export function reportAssignInCondition(c: TokenCursor, equals: Token): void {
+  const range = tokenSpan(equals);
+  c.report('E-ASSIGN-IN-IF', range, {
+    message: 'Use `==` to compare. A single `=` stores a value.',
+    fix: { label: 'Change `=` to `==`', edits: [{ span: range, newText: '==' }] },
+  });
+}
+
+/** A `def` anywhere but the top level of a file (chief ruling 2026-10-11). */
+export function reportNestedDef(c: TokenCursor, def: Token): void {
+  c.report('E-NESTED-DEF', tokenSpan(def), {
+    message: 'Define functions at the top level, not inside other functions or blocks.',
+  });
+}
+
+export function reportReturnOutside(c: TokenCursor, keyword: Token): void {
+  c.report('E-RETURN-OUTSIDE', tokenSpan(keyword), {
+    message: '`return` only works inside a function made with `def`.',
+  });
+}
+
+/** `break` or `continue` with no loop around it in the same function. */
+export function reportLoopKeywordOutside(c: TokenCursor, keyword: Token): void {
+  const code = keyword.text === 'break' ? 'E-BREAK-OUTSIDE' : 'E-CONTINUE-OUTSIDE';
+  c.report(code, tokenSpan(keyword), { message: `\`${keyword.text}\` only works inside a loop.` });
+}
+
+/** A block nested deeper than `limits.maxNesting` (language-spec.md §Limits). */
+export function reportBlockTooDeep(c: TokenCursor, keyword: Token, limits: Limits): void {
+  c.report('E-TOO-DEEP', tokenSpan(keyword), {
+    message: `This block is nested more than ${String(limits.maxNesting)} levels deep.`,
+    help: 'Move the inner part into a function.',
+  });
+}
+
 /** An expression nested deeper than `limits.maxExpressionDepth` (language-spec.md §Limits). */
 export function reportExpressionTooDeep(c: TokenCursor, at: Token, limits: Limits): void {
   c.report('E-TOO-DEEP', tokenSpan(at), {
@@ -108,4 +178,15 @@ function closerOf(open: string): string {
   if (open === '(') return ')';
   if (open === '[') return ']';
   return '}';
+}
+
+/** More AST nodes than `limits.maxAstNodes` across all files; reported at the first node over the limit. */
+export function programTooBig(range: Span, limits: Limits): Diagnostic {
+  return {
+    code: 'E-PROGRAM-TOO-BIG',
+    severity: 'error',
+    range,
+    message: `Your program has more than ${formatCount(limits.maxAstNodes)} pieces (AST nodes), the most one program can have.`,
+    help: 'Use functions to replace code that repeats.',
+  };
 }

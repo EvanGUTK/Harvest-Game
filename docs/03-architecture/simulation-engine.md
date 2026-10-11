@@ -71,6 +71,7 @@ plantedAt = t of the plant action; cycle plantedAt itself contributes 0 growth
 - **No-decay switch.** With `moistureDecay = false` (campaign runs before the Water node, see Public API) moisture never decrements: `m(c) = m(last)` and `stop = ∞` above. `water` still applies `min(100, m + 40)`.
 - **Wither boundary:** a harvest at `t = ripeAt + witherCycles − 1` still pays, a harvest at `t = ripeAt + witherCycles` yields 0. Wither counts world cycles, so a dry tile does not delay it.
 - `plant`, `till`, `water`, `harvest` and every sensor first advance the tile to `t`, then read or mutate it. `water` applies `min(100, m(t) + 40)` to the advanced moisture.
+- **Dry pause (Never Thirsty).** An advance reports a *dry pause* when some cycle `c ∈ (last, t]` has `m(c) < crop.minMoisture` while the crop is still unripe (`ripeAt = null` at the start of `c`); a cycle in which the crop reaches `growCycles` grew, so it is not dry, and a dry cycle after `ripeAt` never counts. In O(1) terms a pause is reported when `m0 < mm`, or when `stop ≤ t` and the crop did not ripen before `stop`, and never for an empty, ripe or withered tile. A farm ORs the report of every tile it advances into a sticky boolean `everDryPaused` (never reset), which scoring reads for the Never Thirsty award. Because `m(c)` and `ripeAt` compose across touches, the flag is the same however the advances are split. It is not part of the state hash.
 - **Advancing is compositional:** `advanceTile(advanceTile(x, t1), t2)` equals `advanceTile(x, t2)`. This is what lets the state hash force-advance the whole world without changing any outcome, and a unit test asserts it for random touch sequences (SIM-01).
 
 ### Market (normative)
@@ -80,6 +81,7 @@ State per crop: integer `pressure`. `market.lastUpdated` plays the role of the t
 - **Decay.** Market `pressure` decays once for every multiple of 500 in `(market.lastUpdated, t]`: `p = floorDiv(p × 80, 100)` per step (at most `budget / 500 = 60` steps), applied **before** any sale or price read at `t`, so a sale at exactly `t = 500` sees the decayed pressure.
 - **Price.** `priceBp = max(floorBp, 10_000 − stepBp × pressure)` and `price = floorDiv(base × priceBp, 10_000)`, where `floorBp = MARKET.priceFloorBp`, `stepBp = MARKET.pressureStepBp` and `base` is the crop's base price, all from `content`. The decay interval and factor (500, 80 / 100) and `liquidationBp` are also `MARKET` constants.
 - **Sale.** `sell(crop, n)` sells `k = min(n, inventory)` units. **One price per lot:** the price is computed once from the pressure *before* the sale, `credits += k × price`, then `pressure += k`. The price impact of a lot therefore only hits later sales, and the balance harness tracks "dump everything in one `sell`" strategies.
+- **Shared or fixed.** `SimConfig.sharedMarket = true` is one market for the whole match, moved by every sale, including the player's own sales in a solo test run (only rivals are absent). `sharedMarket = false` is the campaign mode: the market has no pressure dynamics at all, so a sale adds no pressure and the price is always the base price (fixed prices per chapter). Liquidation still pays `liquidationBp` of that price.
 - **Liquidation** at the end of the match, after `world.advanceTo(budget)`: per slot ascending, per crop in `CROPS` order, `credits += floorDiv(inventory × price × liquidationBp, 10_000)` where `price` is the final market price, then the inventory is emptied. Liquidation never changes `pressure`, emits no `sell` event, and is **not** a credits change for tiebreak #1 (`cyclesLastChange`).
 
 The world is only advanced to the times drones touch it, so simulation cost scales with **drone activity**, not with grid size × cycles.
@@ -116,7 +118,7 @@ The world is only advanced to the times drones touch it, so simulation cost scal
 4. Per slot ascending, tiles row-major (y then x): `soil` (0 grass, 1 tilled, 2 rock), `moisture`, `cropCode` (index in `CROPS` order, −1 for none), `plantedAt`, `growth`, `ripeAt` (−1 for null), `withered` (0/1). A tile without a crop writes `cropCode = −1`, `plantedAt = 0`, `growth = 0`, `ripeAt = −1`, `withered = 0`.
 5. The four sfc32 state words `(a, b, c, d)` of every PRNG stream in the fixed order `layout, weather, player:0 … player:(nSlots−1)`.
 
-VM heaps, programs, the event log and `lastUpdated` are not hashed.
+VM heaps, programs, the event log, `lastUpdated` and the farm's `everDryPaused` flag are not hashed.
 
 **Emission.** Before applying any call at time `t`, for every `k` with `lastHashT < k·1000 ≤ t`, emit `{ t: k·1000, k: 'hash', h: H(k·1000) }`. So the hash at 1000 precedes every action at 1000 and covers exactly the calls with `t < 1000`. After the main loop, emit the remaining multiples below `budget`. `finalStateHash = H(budget)` is computed **after** liquidation; when `budget` is a multiple of 1,000 the hash event at `t = budget` is emitted after liquidation and equals `finalStateHash`.
 
