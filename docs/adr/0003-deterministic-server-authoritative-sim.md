@@ -1,6 +1,6 @@
 # ADR-0003: Deterministic, server-authoritative, discrete-event simulation
 
-- **Status:** proposed
+- **Status:** accepted (2026-10-11)
 - **Date:** 2026-10-07
 
 ## Context

@@ -32,12 +32,15 @@ const noDefaultExport = {
   message: 'No default exports (standards.md).',
 };
 
+/** The `/` ban, named so the int-math.ts override below can lift exactly this one rule. */
+const divisionBan = {
+  selector: "BinaryExpression[operator='/']",
+  message: 'Integers only: use floorDiv (standards.md §Purity).',
+};
+
 /** Syntax that is banned in engine source because it breaks determinism or the sandbox. */
 const enginePuritySyntax = [
-  {
-    selector: "BinaryExpression[operator='/']",
-    message: 'Integers only: use floorDiv (standards.md §Purity).',
-  },
+  divisionBan,
   { selector: "AssignmentExpression[operator='/=']", message: 'Integers only: use floorDiv.' },
   { selector: "BinaryExpression[operator='**']", message: 'No exponentiation in the engine.' },
   { selector: 'ForInStatement', message: 'Unstable iteration order; use arrays or Map.' },
@@ -105,6 +108,20 @@ export default defineConfig(
         { object: 'Object', property: 'entries', message: 'Unstable for results; use arrays or Map.' },
       ],
       'no-restricted-syntax': ['error', noDefaultExport, ...enginePuritySyntax, ...sandboxSyntax],
+    },
+  },
+  {
+    // The one place `/` is allowed: the floorDiv/floorMod helper module (simulation-engine.md §Determinism,
+    // standards.md §Purity, CLAUDE.md rule 1). Its exactness is proven in int-math.ts and its tests. Every
+    // other engine rule, including the `/=` ban, still applies to this file. Approved by the owner 2026-10-11.
+    files: ['packages/lang/src/int-math.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        noDefaultExport,
+        ...enginePuritySyntax.filter((rule) => rule !== divisionBan),
+        ...sandboxSyntax,
+      ],
     },
   },
   {
