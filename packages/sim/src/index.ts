@@ -24,6 +24,8 @@ export {
   marketPrice,
   type MarketState,
 } from './market/market';
+export { liquidate } from './market/liquidate';
+export { sell, type FarmLedger, type SaleLot, type SaleOutcome } from './market/sell';
 
 /** Drones per farm. agentIndex = slot × MAX_DRONES + droneNo; N = nSlots × MAX_DRONES is constant per match. */
 export const MAX_DRONES = 2;
@@ -158,3 +160,11 @@ export { generateLayout, type LayoutConfig } from './world/layout';
 
 export { advanceTile, advanceTileDetailed, type AdvanceRules, type TileAdvance } from './world/advance';
 export { advanceFarm, type Farm } from './world/farm';
+
+// ---------- Scoring (SIM-07) ----------
+
+export { assignAwards } from './scoring/awards';
+export { buildPlayerResult } from './scoring/result';
+export { rankPlayers, type Placement, type RankEntry } from './scoring/ranking';
+export { scorePlayers, type MatchScore } from './scoring/score';
+export type { PlayerStats, ScoringRules } from './scoring/stats';

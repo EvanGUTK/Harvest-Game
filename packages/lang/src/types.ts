@@ -109,7 +109,10 @@ export type HostSignature = {
   returns: ValueKind | 'any';
   /** Extra cycles on top of the 1-cycle CALL_HOST instruction. Baked into bytecode at compile time. */
   cost: number;
-  /** True if the call reads or mutates the world (forces a scheduler yield). */
+  /**
+   * True if the scheduler must advance the world to t before applying the call. Every CALL_HOST yields
+   * to the scheduler regardless; only `random` is false.
+   */
   touchesWorld: boolean;
   /** Campaign gating: chapter number or skill-node id that unlocks this builtin (editor 🔒 text). */
   unlock?: string;
@@ -153,7 +156,8 @@ export type VMSnapshot = { readonly __brand: 'VMSnapshot'; readonly languageVers
 
 export interface VM {
   /**
-   * Run pure instructions until a world-touching host call, halt, error, or maxCycles.
+   * Run instructions until a host call, halt, error, or maxCycles. Every CALL_HOST yields (lang has
+   * no host table); `touchesWorld` only tells the scheduler to advance the world first.
    * With `stopAtLine`, also yields `{ kind: 'line' }` at the next statement boundary (debugger Step).
    */
   run(maxCycles: number, opts?: { stopAtLine?: boolean }): VMYield;

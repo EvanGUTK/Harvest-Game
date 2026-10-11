@@ -52,7 +52,7 @@ type HostSignature = {
   params: readonly ValueKind[]; optionalParams?: number;
   returns: ValueKind | 'any';
   cost: number;           // extra cycles on top of the 1-cycle CALL_HOST; the default baked into the bytecode
-  touchesWorld: boolean;  // true: the call yields to the scheduler
+  touchesWorld: boolean;  // true: the scheduler advances the world to t before applying the call; every CALL_HOST yields regardless, and only `random` is false
   locked?: boolean;       // stub field; the docs gate builtins through lockedNames instead
 };
 type ConstantDef = { name: string; id: number; group: string };   // e.g. { name: 'RADISH', id: 10, group: 'crop' }
@@ -66,8 +66,10 @@ interface ValueOps {              // Value is opaque outside lang
 }
 
 interface VM {
-  /** Run pure instructions until: a host call needs the world, the program halts,
-   *  a runtime error occurs, or `maxCycles` elapse. With `stopAtLine`, also yield at the
+  /** Run instructions until: a host call, the program halts, a runtime error occurs,
+   *  or `maxCycles` elapse. EVERY CALL_HOST yields `host` (lang has no host table, so it can
+   *  compute no builtin, `random` included); `touchesWorld` only tells the scheduler whether to
+   *  advance the world to the call's cycle first. With `stopAtLine`, also yield at the
    *  next statement boundary (debugger Step).
    *  A pure instruction executes only while `remaining >= 1`. A CALL_HOST yields `host` whenever
    *  `remaining >= 1`, regardless of `host.cost`; at `remaining = 0` the VM yields `budget`. */
@@ -94,7 +96,7 @@ type VMYield =
 
 `Feature` (the syntax gating union), `Limits` (with `DEFAULT_LIMITS`), `Diagnostic` and `Span` are as in the stub; their values are owned by [curriculum](../02-language/curriculum.md#feature-gating-map-normative), [language-spec](../02-language/language-spec.md#limits-hard-enforced-by-the-compilervm) and [errors-and-diagnostics](../02-language/errors-and-diagnostics.md).
 
-`lang` doesn't know what `plant` means. `sim` passes **host signatures** (name, arity, arg types, cost, whether it touches the world) and game constants to `compile`; the compiler bakes each builtin's id, cycle cost and world-touching flag into its `CALL_HOST` operands. A module, and therefore a `VMSnapshot`, is self-contained: `createVM` needs only the module and the limits, and `restoreVM` needs only the snapshot. Host costs are therefore fixed at compile time, and per-player cost differences (campaign drone upgrades) are expressed by compiling each player's program with that player's own `hostSignatures`. `sim` handles the `host` yields itself.
+`lang` doesn't know what `plant` means. `sim` passes **host signatures** (name, arity, arg types, cost, whether the world must be advanced before the call) and game constants to `compile`; the compiler bakes each builtin's id, cycle cost and world-touching flag into its `CALL_HOST` operands. A module, and therefore a `VMSnapshot`, is self-contained: `createVM` needs only the module and the limits, and `restoreVM` needs only the snapshot. Host costs are therefore fixed at compile time, and per-player cost differences (campaign drone upgrades) are expressed by compiling each player's program with that player's own `hostSignatures`. `sim` handles the `host` yields itself.
 
 `HostSignature.cost` is the static default. Some calls cost something else on the day: `wait(n)` costs `n`, `goto` costs `move` cost × wrapped distance, and a failed `plant`, `harvest`, `till`, `water` or `refill` costs 5. `sim` works the real cost out from the arguments and the world and passes it to `resume(value, cost)`; `lang` never sees the farm.
 
