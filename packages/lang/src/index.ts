@@ -53,6 +53,53 @@ export { KEYWORDS, OPERATORS, isCountedToken, type Token, type TokenKind } from 
 export { floorDiv, floorMod } from './int-math';
 export { InvariantError, type InvariantCode } from './invariant';
 
+// ---------- Parser (LANG-02) ----------
+
+export { parse, type ParseResult } from './parser/parser';
+export type {
+  AssignStmt,
+  AssignTarget,
+  AugAssignStmt,
+  BinaryExpr,
+  BinaryOp,
+  BoolLiteral,
+  BreakStmt,
+  CallExpr,
+  CompareExpr,
+  CompareOp,
+  CompareOperator,
+  ContinueStmt,
+  DefStmt,
+  DictEntry,
+  DictLiteral,
+  ElifClause,
+  Expression,
+  ExprStmt,
+  FileNode,
+  ForStmt,
+  GlobalStmt,
+  Identifier,
+  IfStmt,
+  IndexExpr,
+  IntLiteral,
+  ListLiteral,
+  LogicalExpr,
+  LogicalOp,
+  MethodCallExpr,
+  NameExpr,
+  AstNode,
+  NoneLiteral,
+  PassStmt,
+  Program,
+  RepeatStmt,
+  ReturnStmt,
+  Statement,
+  StringLiteral,
+  UnaryExpr,
+  UnaryOp,
+  WhileStmt,
+} from './parser/ast';
+
 // ---------- Features ----------
 
 /** Language features the campaign unlocks one by one (curriculum.md §Feature gating map is the source). */
