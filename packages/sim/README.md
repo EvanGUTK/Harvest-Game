@@ -11,3 +11,4 @@ Deterministic farm world, host functions (actions/sensors), shared market, and t
 ## Public API so far
 
 - **PRNG (SIM-05):** `splitmix32`, `createSfc32`, `seedStream`, `createStreams`, `randomBelow`, `generateLayout` (FNV-1a comes from `@harvest/lang`). Streams `layout`, `weather` and `player:<slot>` are seeded from the match seed as in [§PRNG seeding](../../docs/03-architecture/simulation-engine.md#determinism).
+- **Scoring (SIM-07):** `scorePlayers(rules, stats)` turns the scheduler's per-slot `PlayerStats` into `PlayerResult`s (final credits after liquidation, the idle program's fixed result, awards) and placements with the tiebreakers and shared places; `buildPlayerResult`, `rankPlayers` and `assignAwards` are the parts. See [scoring-and-judging](../../docs/01-game-design/scoring-and-judging.md).
