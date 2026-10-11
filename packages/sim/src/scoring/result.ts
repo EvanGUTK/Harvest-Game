@@ -5,7 +5,7 @@
  * empty because they depend on the whole lobby (see awards.ts).
  */
 
-import type { PlayerResult } from '../index';
+import type { PlayerResult } from '../types';
 import type { PlayerStats, ScoringRules } from './stats';
 
 function withError(result: PlayerResult, error: PlayerStats['error']): PlayerResult {

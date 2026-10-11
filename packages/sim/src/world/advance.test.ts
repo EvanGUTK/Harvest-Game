@@ -2,7 +2,7 @@ import { CROPS, type CropId } from '@harvest/content';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { advanceTile, advanceTileDetailed, type AdvanceRules } from './advance';
-import type { Soil, Tile } from './types';
+import type { Soil, Tile } from '../types';
 
 const DECAY: AdvanceRules = { moistureDecay: true };
 const NO_DECAY: AdvanceRules = { moistureDecay: false };

@@ -8,7 +8,7 @@
 
 import type { CropId } from '@harvest/content';
 import { advanceTileDetailed, type AdvanceRules } from './advance';
-import type { Tile } from './types';
+import type { Tile } from '../types';
 
 export type Farm = {
   readonly credits: number;
