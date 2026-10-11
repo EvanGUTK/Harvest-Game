@@ -172,8 +172,8 @@ export interface VM {
   resume(value: Value, cost?: number): void;
   /**
    * The counterpart of `resume` for a host call that failed inside the host (R-BAD-ARG for wait(0),
-   * goto(9, 9), plant(5); R-TYPE for a non-int sell count). The applied cost (default: the baked
-   * cost) is charged, and the next run() yields `{ kind: 'error' }` with the call's source range.
+   * goto(9, 9), plant(5); R-TYPE for a non-int sell count). The applied cost (default 0: nothing
+   * beyond the 1-cycle call, like a VM runtime error) is charged, and the next run() yields `{ kind: 'error' }` with the call's source range.
    */
   raise(error: { code: string; message: string }, cost?: number): void;
   readonly cycles: number;

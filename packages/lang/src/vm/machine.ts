@@ -177,7 +177,8 @@ export class Machine {
 
   raise(error: { code: string; message: string }, cost?: number): void {
     const call = this.pendingCall();
-    this.chargeHostCost(cost ?? call.cost);
+    // Default 0: a host-side error charges nothing beyond the 1-cycle call, like a VM runtime error.
+    this.chargeHostCost(cost ?? 0);
     this.releaseAll(call.args);
     const diagnostic: Diagnostic = {
       code: error.code,

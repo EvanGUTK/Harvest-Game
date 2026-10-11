@@ -510,7 +510,7 @@ describe('clock arithmetic (simulation-engine.md §Clock arithmetic)', () => {
 });
 
 describe('raise (chief ruling 2026-10-11: a host call that fails inside the host)', () => {
-  it('charges the applied cost and yields the error at the call’s source range on the next run', () => {
+  it('charges nothing beyond the call by default and yields the error at the call’s source range', () => {
     const machine = vm(
       (e, pool) => {
         e.emit(Op.LINE, 0);
@@ -528,7 +528,7 @@ describe('raise (chief ruling 2026-10-11: a host call that fails inside the host
     });
     expect(machine.run(100)).toEqual({
       kind: 'error',
-      atCycle: 3,
+      atCycle: 2,
       error: {
         code: 'R-BAD-ARG',
         severity: 'error',
@@ -536,6 +536,19 @@ describe('raise (chief ruling 2026-10-11: a host call that fails inside the host
         message: '`wait` needs a whole number from 1 to 5,000, but got `0`.',
       },
     });
+  });
+});
+
+describe('raise with an applied cost', () => {
+  it('charges the cost the host applied', () => {
+    const machine = vm((e, pool) => {
+      e.emit(Op.CONST, int(pool, 0));
+      e.emit(Op.CALL_HOST, 7, 1, 1, 0);
+      e.emit(Op.HALT);
+    });
+    machine.run(100);
+    machine.raise({ code: 'R-BAD-ARG', message: 'bad' }, 5);
+    expect(machine.run(100)).toMatchObject({ kind: 'error', atCycle: 7 });
   });
 });
 
