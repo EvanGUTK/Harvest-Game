@@ -7,7 +7,7 @@
 
 import { BASIS_POINTS, CROPS, CROP_IDS, MARKET, type CropId } from '@harvest/content';
 import { floorDiv } from '@harvest/lang';
-import type { SimConfig } from '../index';
+import type { SimConfig } from '../types';
 import { InvariantError } from '../invariant';
 
 /** Plain, serializable market state. A value: every operation returns a new state and never writes into its input. */

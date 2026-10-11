@@ -114,8 +114,11 @@ export type HostSignature = {
    * to the scheduler regardless; only `random` is false.
    */
   touchesWorld: boolean;
-  /** Campaign gating: chapter number or skill-node id that unlocks this builtin (editor 🔒 text). */
-  unlock?: string;
+  /**
+   * Campaign gating: the chapter that teaches this builtin and/or the skill node that sells it. Fields only; the
+   * editor builds its 🔒 message from them (the checker's lock reasons come from `CompileOptions.lockedNames`).
+   */
+  unlock?: { chapter?: number; node?: string };
 };
 
 // ---------- Compile ----------

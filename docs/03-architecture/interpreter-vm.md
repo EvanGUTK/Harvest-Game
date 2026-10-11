@@ -53,7 +53,7 @@ type HostSignature = {
   returns: ValueKind | 'any';
   cost: number;           // extra cycles on top of the 1-cycle CALL_HOST; the default baked into the bytecode
   touchesWorld: boolean;  // true: the scheduler advances the world to t before applying the call; every CALL_HOST yields regardless, and only `random` is false
-  locked?: boolean;       // stub field; the docs gate builtins through lockedNames instead
+  unlock?: { chapter?: number; node?: string };   // campaign gating as fields (chapter that teaches it, skill node that sells it); the editor builds its 🔒 text from them, the checker gates through lockedNames
 };
 type ConstantDef = { name: string; id: number; group: string };   // e.g. { name: 'RADISH', id: 10, group: 'crop' }
 type ValueKind = 'int' | 'bool' | 'none' | 'str' | 'list' | 'dict' | 'function' | 'const';

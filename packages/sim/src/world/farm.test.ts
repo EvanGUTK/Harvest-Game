@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { advanceTile } from './advance';
 import { advanceFarm, tileIndex, touchTile, withTile, type Farm } from './farm';
-import type { Tile } from './types';
+import type { Tile } from '../types';
 
 const DECAY = { moistureDecay: true } as const;
 
