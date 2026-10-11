@@ -81,6 +81,7 @@ State per crop: integer `pressure`. `market.lastUpdated` plays the role of the t
 - **Decay.** Market `pressure` decays once for every multiple of 500 in `(market.lastUpdated, t]`: `p = floorDiv(p × 80, 100)` per step (at most `budget / 500 = 60` steps), applied **before** any sale or price read at `t`, so a sale at exactly `t = 500` sees the decayed pressure.
 - **Price.** `priceBp = max(floorBp, 10_000 − stepBp × pressure)` and `price = floorDiv(base × priceBp, 10_000)`, where `floorBp = MARKET.priceFloorBp`, `stepBp = MARKET.pressureStepBp` and `base` is the crop's base price, all from `content`. The decay interval and factor (500, 80 / 100) and `liquidationBp` are also `MARKET` constants.
 - **Sale.** `sell(crop, n)` sells `k = min(n, inventory)` units. **One price per lot:** the price is computed once from the pressure *before* the sale, `credits += k × price`, then `pressure += k`. The price impact of a lot therefore only hits later sales, and the balance harness tracks "dump everything in one `sell`" strategies.
+- **Shared or fixed.** `SimConfig.sharedMarket = true` is one market for the whole match, moved by every sale, including the player's own sales in a solo test run (only rivals are absent). `sharedMarket = false` is the campaign mode: the market has no pressure dynamics at all, so a sale adds no pressure and the price is always the base price (fixed prices per chapter). Liquidation still pays `liquidationBp` of that price.
 - **Liquidation** at the end of the match, after `world.advanceTo(budget)`: per slot ascending, per crop in `CROPS` order, `credits += floorDiv(inventory × price × liquidationBp, 10_000)` where `price` is the final market price, then the inventory is emptied. Liquidation never changes `pressure`, emits no `sell` event, and is **not** a credits change for tiebreak #1 (`cyclesLastChange`).
 
 The world is only advanced to the times drones touch it, so simulation cost scales with **drone activity**, not with grid size × cycles.
@@ -116,6 +117,8 @@ The world is only advanced to the times drones touch it, so simulation cost scal
 3. Per slot ascending: `credits`; `inventory` per crop in `CROPS` order; `water` (the farm's one shared tank); then per drone ascending (`droneNo` 0, 1): `x, y, clock, status`. `clock` is the committed `agent.clock`. `status` is 0 running, 1 halted, 2 error, 3 not spawned (a not-spawned drone writes 0 for `x, y, clock`).
 4. Per slot ascending, tiles row-major (y then x): `soil` (0 grass, 1 tilled, 2 rock), `moisture`, `cropCode` (index in `CROPS` order, −1 for none), `plantedAt`, `growth`, `ripeAt` (−1 for null), `withered` (0/1). A tile without a crop writes `cropCode = −1`, `plantedAt = 0`, `growth = 0`, `ripeAt = −1`, `withered = 0`.
 5. The four sfc32 state words `(a, b, c, d)` of every PRNG stream in the fixed order `layout, weather, player:0 … player:(nSlots−1)`.
+
+The steps are sequential: step 3 is written for every slot (ascending) before step 4 starts, and step 4 for every slot before step 5. Slot data is therefore not interleaved.
 
 VM heaps, programs, the event log, `lastUpdated` and the farm's `everDryPaused` flag are not hashed.
 
@@ -162,7 +165,7 @@ SimRun.snapshot(): SimSnapshot                                            // the
   - `startMoisture` is `{ min: 0, max: 40 }` in showdowns; campaign runs before the Water node use `{ min: 100, max: 100 }`. `moistureDecay` is `true` in showdowns and `false` in campaign runs before the Water node. Both are derived from the player's unlocks, so the client, the server re-simulation and `startStateHash` agree (see [farm-simulation](../01-game-design/farm-simulation.md) §Rocks and seeds).
   - `spawnEnabled` is `false` in showdowns (D-24): the compiler already reports `E-LOCKED-FEATURE`, and the host table also rejects `spawn()`. `randomEnabled` is `false` in ranked (D-18).
 - **`PlayerInput`** is `{ slot, module: BytecodeModule | null, compileError?, upgrades? }`. A `null` module is the idle program, and `compileError` (the first diagnostic) surfaces in `PlayerResult.error`. `upgrades` is `{ moveCost, waterAmount, maxDrones }` (campaign only; showdowns use the defaults).
-- **`PlayerResult`** is `{ slot, score, cyclesLastChange, logicCycles, programTokens, cropsHarvested, awards, output, error? }`. `output` is the first 200 `print` lines and is never shown to rivals (see [realtime-protocol](realtime-protocol.md)). `SimResult` is `{ players, finalStateHash, events }`.
+- **`PlayerResult`** is `{ slot, score, cyclesLastChange, logicCycles, programTokens, cropsHarvested, cyclesUsed, awards, output, error? }`. `cyclesUsed` is the player's value from [Clock arithmetic](#clock-arithmetic-normative) (0 for the idle program). `output` is the first 200 `print` lines and is never shown to rivals (see [realtime-protocol](realtime-protocol.md)). `SimResult` is `{ players, finalStateHash, events }`.
 - **Host-call contract.** `spawn` follows the Clock arithmetic bullet above; the scheduler resumes the VM with `vm.resume(result, cost?)` as described there.
 
 ## Balance harness (`tools/balance`)

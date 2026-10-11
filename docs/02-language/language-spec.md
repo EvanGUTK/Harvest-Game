@@ -74,7 +74,7 @@ Chained comparisons (`0 <= x < 8`) behave as in Python.
 | `None` | Returned by functions without `return`. |
 | `str` | Immutable. Supports `+`, `*` (repeat), indexing, `==`, `len()`, `in` (substring) and `for … in` (one character at a time). Mostly for `print` and dict keys. Max length 256. Length, indexing and the limit count **UTF-16 code units** (JS semantics). |
 | `list` | Mutable, max **1,024** elements. Supports indexing (negative indices allowed), `+`, `*`, `==`, `len`, `.append(x)`, `.pop()`, `.pop(i)`, `in`, `for … in`. |
-| `dict` | Mutable, max **1,024** entries. Keys may be `int`, `bool`, `str`, `None` or game constants. Supports `d[k]`, `d[k] = v`, `k in d`, `==`, `len`, `for k in d` (insertion order), `.get(k, default)`. There is no way to remove a key in v0.1 (overwrite the value instead). |
+| `dict` | Mutable, max **1,024** entries. Keys may be `int`, `bool`, `str`, `None` or game constants. Supports `d[k]`, `d[k] = v`, `k in d`, `==`, `len`, `for k in d` (insertion order), `.get(k[, default])`. There is no way to remove a key in v0.1 (overwrite the value instead). |
 | `function` | User-defined via `def` or a builtin. First-class: can be passed to `spawn(fn)`. |
 | constants | `NORTH`, `RADISH`, … opaque enum values. Comparable with `==`, usable as dict keys, printable. |
 
@@ -89,7 +89,7 @@ Tuples, sets, floats, classes, exceptions, imports, comprehensions, lambdas, f-s
 ### Type interactions
 
 - **`bool` is a subtype of `int`**: `True < 2` is valid, and as a dict key `True` and `1` are the same key.
-- **`==` and `!=` never raise.** Values of different types are unequal (the only cross-type equalities are `bool` with `int`). `None` equals only `None`; constants and functions equal only themselves; `str` compares by content. `list` and `dict` compare **structurally** (element by element, recursively; dicts ignore insertion order). Structure nested deeper than the call-depth limit (for example a list that contains itself) raises `R-STACK-OVERFLOW`.
+- **`==` and `!=` never raise.** Values of different types are unequal (the only cross-type equalities are `bool` with `int`). `None` equals only `None`; constants and functions equal only themselves; `str` compares by content. `list` and `dict` compare **structurally** (element by element, recursively; dicts ignore insertion order). Structure nested deeper than the call-depth limit (for example a list that contains itself) raises `R-STACK-OVERFLOW`; the outermost pair is level 1, and the limit does not depend on the current call depth. `str()` and `print` apply the same depth rule to nested lists and dicts.
 - **`<  <=  >  >=` are defined only for `int`/`bool` against `int`/`bool`, and `str` against `str`** (strings compare by UTF-16 code unit, like JS). Every other pair, including constants, `None`, lists and dicts, is `R-TYPE` (*"Can't compare `RADISH` and `5`."*).
 - **`x in y` (and `not in`)**: if `y` is a `str`, `x` must also be a `str` (else `R-TYPE`) and the result is a substring test; if `y` is a `list`, whether any element `== x`; if `y` is a `dict`, whether the key is present. Any other right-hand type (`int`, `None`, constant, function) is `R-TYPE`: *"`in` needs a list, dict or text on the right."*
 - **Calling.** Calling a value that is not a function (`x = 5` then `x()`) is `R-NOT-CALLABLE`. Calling a function value (a variable that holds a `def`) with the wrong number of arguments is `R-WRONG-ARG-COUNT`; a direct call by name is checked earlier, at compile time, as `E-WRONG-ARG-COUNT`.
@@ -128,7 +128,7 @@ Python rules, simplified:
 - `global x` must appear before any use of `x` in the same `def`; otherwise `E-GLOBAL-AFTER-USE`.
 - A name that is never assigned in the body is looked up as a global (read-only).
 - `def` is a statement: the function's name is bound when its `def` line executes. A function body may mention a global or another function that is defined further down the file, provided it is bound by the time the call actually runs. Calling a function above its `def` is `R-UNBOUND-GLOBAL`: *"`tend` isn't defined yet at this line. Move the `def` above."* The checker raises `W-USE-BEFORE-DEF` statically for the obvious top-level case. A name that is defined nowhere in the program is the compile-time `E-UNKNOWN-NAME`.
-- No closures over enclosing function locals in v0.1. A nested `def` is a compile error: *"Define functions at the top level."*
+- No closures over enclosing function locals in v0.1. A `def` anywhere but the top level of a file is a compile error (`E-NESTED-DEF`): *"Define functions at the top level, not inside other functions or blocks."*
 
 ## Evaluation and cost model
 
@@ -149,7 +149,7 @@ The program compiles to bytecode for a stack VM (see [interpreter-vm](../03-arch
 | Files per program | 10 (campaign), 1 (showdown v1) | compile | `E-TOO-MANY-FILES` |
 | AST nodes | 5,000 per program (all files together) | compile | `E-PROGRAM-TOO-BIG` |
 | Nesting depth (blocks) | 12 | compile | `E-TOO-DEEP` |
-| Expression nesting depth | 64 | compile | `E-TOO-DEEP` |
+| Expression tree height | 64 | compile | `E-TOO-DEEP` |
 | Call depth (recursion) | 64 | runtime | `R-STACK-OVERFLOW` |
 | List / dict size | 1,024 | runtime | `R-COLLECTION-FULL` |
 | Total live heap cells | 16,384 | runtime | `R-OUT-OF-MEMORY` |
@@ -160,7 +160,7 @@ The program compiles to bytecode for a stack VM (see [interpreter-vm](../03-arch
 
 **Heap cells.** A heap cell is one list slot or one dict entry. A `str` value costs `ceil(len / 16)` cells (a full 256-unit string is 16 cells; literals in the constant pool are free). Ints, bools, `None`, constants and functions are free. Call frames and the value stack are not heap cells; they are bounded by the call-depth limit (64) and the AST limit. By design, 64 frames each holding a full 1,024-element list exceed 16,384 cells, so `R-OUT-OF-MEMORY` fires first.
 
-**Expression nesting depth.** A whole expression is level 1. Every expression nested inside brackets (a parenthesised group, a list or dict element, a call argument, an index) and every prefix `-` or `not` adds one level. The limit keeps the parser's recursion bounded, so input like ten thousand `(` gets a diagnostic instead of crashing the compiler.
+**Expression tree height.** A name or literal has height 1; every other expression is one more than its tallest part, and a pair of parentheses adds one too. So `a + b + c` has height 3, `f()()` has height 3, and `[[x]]` has height 3. Every kind of nesting counts: brackets, prefix `-` and `not`, call chains and long left-deep chains such as `a + b + c + …`. A comparison chain is one expression, so `0 <= x < 8` has height 2. Together with the 12-level block limit this bounds the depth of the whole syntax tree. Input like ten thousand `(` therefore gets a diagnostic instead of crashing the compiler, and later compiler stages can walk the tree recursively.
 
 **Two size counters.** Sprout code averages roughly 0.3 AST nodes per source byte, so the 5,000-node and 16 KB limits sit close together, and dense code can reach the node limit first. The AST limit is a parser safety net, not a gameplay target: the editor status bar shows `bytes / 16,384` and `nodes / 5,000` side by side so a player is never surprised by `E-PROGRAM-TOO-BIG`.
 
