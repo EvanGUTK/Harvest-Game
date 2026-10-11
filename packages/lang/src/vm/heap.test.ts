@@ -182,7 +182,7 @@ describe('Heap: reference counts (interpreter-vm.md §VM heap accounting)', () =
     expect(lit.rc).toBe(0);
   });
 
-  it('throws HEAP_REFCOUNT when an object is released more often than it was referenced', () => {
+  it('throws LANG-HEAP-REFCOUNT when an object is released more often than it was referenced', () => {
     const heap = new Heap(DEFAULT_LIMITS);
     const list = owned(heap.allocList([]));
     heap.release(list);
@@ -190,18 +190,18 @@ describe('Heap: reference counts (interpreter-vm.md §VM heap accounting)', () =
       invariantCode(() => {
         heap.release(list);
       }),
-    ).toBe('HEAP_REFCOUNT');
+    ).toBe('LANG-HEAP-REFCOUNT');
   });
 
-  it('throws HEAP_INDEX on a slot outside the list, because callers check R-INDEX first', () => {
+  it('throws LANG-HEAP-INDEX on a slot outside the list, because callers check R-INDEX first', () => {
     const heap = new Heap(DEFAULT_LIMITS);
     const list = owned(heap.allocList([0]));
     expect(
       invariantCode(() => {
         heap.listSet(list, 1, 0);
       }),
-    ).toBe('HEAP_INDEX');
-    expect(invariantCode(() => heap.listRemoveAt(list, -1))).toBe('HEAP_INDEX');
+    ).toBe('LANG-HEAP-INDEX');
+    expect(invariantCode(() => heap.listRemoveAt(list, -1))).toBe('LANG-HEAP-INDEX');
   });
 
   it('numbers objects per heap, deterministically, for snapshots', () => {

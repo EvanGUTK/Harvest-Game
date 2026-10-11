@@ -136,7 +136,7 @@ export class Heap {
   private dropReference(obj: HeapObj, pending: RtValue[]): void {
     if (obj.rc <= 0) {
       throw new InvariantError(
-        'HEAP_REFCOUNT',
+        'LANG-HEAP-REFCOUNT',
         `${obj.tag} #${String(obj.id)} released more often than referenced`,
       );
     }
@@ -179,7 +179,7 @@ export class Heap {
   private assertSlot(list: ListObj, index: number): void {
     if (!Number.isInteger(index) || index < 0 || index >= list.items.length) {
       throw new InvariantError(
-        'HEAP_INDEX',
+        'LANG-HEAP-INDEX',
         `slot ${String(index)} outside a list of ${String(list.items.length)}`,
       );
     }
