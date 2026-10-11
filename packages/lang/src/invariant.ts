@@ -19,7 +19,11 @@ export type InvariantCode =
   | 'LANG-INTRINSIC-ARITY'
   | 'LANG-FOREIGN-MODULE'
   | 'LANG-BAD-BYTECODE'
-  | 'LANG-UNRESOLVED-LABEL';
+  | 'LANG-UNRESOLVED-LABEL'
+  | 'LANG-VM-PENDING-HOST'
+  | 'LANG-VM-NO-PENDING-HOST'
+  | 'LANG-VM-BAD-COST'
+  | 'LANG-VM-STACK';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;
