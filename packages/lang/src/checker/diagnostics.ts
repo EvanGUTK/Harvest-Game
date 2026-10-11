@@ -91,3 +91,32 @@ export function globalParam(range: Span, name: string, fn: string): Diagnostic {
     `\`${name}\` is a parameter of \`${fn}\`, so it can't be declared \`global\`. Rename the parameter or drop the \`global\` line.`,
   );
 }
+
+/**
+ * E-WRONG-ARG-COUNT. With a hint, the catalogue sentence ("`move` needs 1 thing in the brackets: a
+ * direction like `NORTH`.") and the given count as help; without one, "…, but got N." (chief ruling W3).
+ */
+export function wrongArgCount(
+  range: Span,
+  who: string,
+  min: number,
+  max: number | null,
+  given: number,
+  hint: string | null,
+): Diagnostic {
+  const needs = `${who} needs ${countPhrase(min, max)} in the brackets`;
+  if (hint === null) return error('E-WRONG-ARG-COUNT', range, `${needs}, but got ${String(given)}.`);
+  return { ...error('E-WRONG-ARG-COUNT', range, `${needs}: ${hint}.`), help: `You gave ${String(given)}.` };
+}
+
+/** "nothing", "1 thing", "2 things", "0 or 1 things", "1 to 3 things", "at least 1 thing". */
+function countPhrase(min: number, max: number | null): string {
+  if (max === null) return `at least ${things(min)}`;
+  if (max === min) return min === 0 ? 'nothing' : things(min);
+  if (max === min + 1) return `${String(min)} or ${String(max)} things`;
+  return `${String(min)} to ${String(max)} things`;
+}
+
+function things(n: number): string {
+  return n === 1 ? '1 thing' : `${String(n)} things`;
+}

@@ -14,18 +14,20 @@ function host(
   name: string,
   params: HostSignature['params'],
   touchesWorld: boolean,
+  paramHints?: readonly string[],
 ): HostSignature {
-  return { id, name, params, returns: 'any', cost: 1, touchesWorld };
+  const sig: HostSignature = { id, name, params, returns: 'any', cost: 1, touchesWorld };
+  return paramHints === undefined ? sig : { ...sig, paramHints };
 }
 
 export const TEST_OPTIONS: CheckOptions = {
   hostSignatures: [
-    host(1, 'move', ['const'], true),
+    host(1, 'move', ['const'], true, ['a direction like `NORTH`']),
     host(2, 'plant', ['const'], true),
     host(3, 'harvest', [], true),
     host(4, 'is_ripe', [], true),
     host(5, 'crop', [], true),
-    host(6, 'sell', ['const', 'int'], true),
+    host(6, 'sell', ['const', 'int'], true, ['a crop like `RADISH`', 'a number']),
     host(7, 'inventory', ['const'], true),
     host(8, 'world_size', [], false),
     host(9, 'halt', [], true),

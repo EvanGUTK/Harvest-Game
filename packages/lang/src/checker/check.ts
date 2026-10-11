@@ -9,6 +9,7 @@
 import type { Program } from '../parser/ast';
 import type { ResolveOptions, ScopeInfo } from '../scope/scope';
 import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits } from '../types';
+import { checkArity } from './arity';
 import { checkDuplicateDefs, checkFileCount } from './files';
 import { checkNames } from './names';
 
@@ -51,6 +52,7 @@ export function check(program: Program, scopes: ScopeInfo, opts: CheckOptions): 
     ...checkFileCount(program, opts.limits),
     ...checkDuplicateDefs(program),
     ...checkNames(program, scopes, opts),
+    ...checkArity(program, scopes, opts),
   ];
   return { diagnostics: inSourceOrder(diagnostics, program) };
 }
