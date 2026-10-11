@@ -6,6 +6,7 @@
 
 import type { Token } from '../lexer/token';
 import type { Diagnostic, Limits, Span } from '../types';
+import { formatCount } from '../format';
 import { joinSpans, spanAfter, tokenSpan, touching, type TokenCursor } from './cursor';
 
 /** What the parser was looking for, used as the help line of E-UNEXPECTED-TOKEN. */
@@ -185,19 +186,7 @@ export function programTooBig(range: Span, limits: Limits): Diagnostic {
     code: 'E-PROGRAM-TOO-BIG',
     severity: 'error',
     range,
-    message: `Your program has more than ${withThousands(limits.maxAstNodes)} pieces (AST nodes), the most one program can have.`,
+    message: `Your program has more than ${formatCount(limits.maxAstNodes)} pieces (AST nodes), the most one program can have.`,
     help: 'Use functions to replace code that repeats.',
   };
-}
-
-/** `5000` → `5,000`, the way the catalogue writes limits. Integers only. */
-export function withThousands(n: number): string {
-  const digits = String(n);
-  let out = '';
-  for (let i = 0; i < digits.length; i += 1) {
-    const fromEnd = digits.length - i;
-    if (i > 0 && fromEnd % 3 === 0 && digits[i - 1] !== '-') out += ',';
-    out += digits[i] ?? '';
-  }
-  return out;
 }
