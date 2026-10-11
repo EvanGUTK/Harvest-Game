@@ -64,12 +64,12 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 
 | Code | Message |
 |---|---|
-| `R-TYPE` | Can't add a number and a crop. `x` is `5`, `y` is `RADISH`. Other examples: "Can't compare `RADISH` and `5`." and "`in` needs a list, dict or text on the right." Also raised when assigning into a text value (`s[0] = "a"`) and when a list or dict is used as a dict key. |
+| `R-TYPE` | Can't add a number and a crop. `x` is `5`, `y` is `RADISH`. Other examples: "Can't compare `RADISH` and `5`." and "`in` needs a list, dict or text on the right." Also raised when assigning into a text value (`s[0] = "a"`) and when a list or dict is used as a dict key. Arithmetic names both kinds ("a number", "text", "a list", "a dict", "None", "a function", or "a" plus the constant's group, such as "a crop"): "Can't subtract text from a number.", "Can't multiply text by text.", "Can't divide a number by None.", "Can't divide a crop by a number to get a remainder.", "Can't make text negative."; the "`x` is `5`" sentence is added only when an operand is a plain variable name. Also: "`in` on text needs text on the left, but got a number." and "A list can't be a dict key. Use a number, text, None or a constant." Values inside messages are shown as `str()` would show them, cut at 40 characters with "…". |
 | `R-INDEX` | List index 9 is outside the list (it has 8 items, so use 0–7). Text indexes use the same code. |
 | `R-KEY` | The dict has no key `CORN`. Use `d.get(CORN, 0)` if it might be missing. |
 | `R-DIV-ZERO` | Can't divide by zero (`//` or `%`). |
 | `R-OVERFLOW` | That number got too big. |
-| `R-STACK-OVERFLOW` | A function called itself too many times (64 max). Check your stopping condition. Also raised when `==` has to look more than 64 levels deep, for example in a list that contains itself. |
+| `R-STACK-OVERFLOW` | A function called itself too many times (64 max). Check your stopping condition. Also raised when `==` has to look more than 64 levels deep, for example in a list that contains itself, and when `str()` or `print` has to: "A value is nested too deeply to compare or print (64 levels max), for example a list that contains itself." |
 | `R-COLLECTION-FULL` | Lists and dicts can hold at most 1,024 items. |
 | `R-OUT-OF-MEMORY` | Your program is holding too much data at once (16,384 cells). Let go of lists you no longer need. |
 | `R-STR-TOO-LONG` | Text can be at most 256 characters long. |
