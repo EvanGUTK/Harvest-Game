@@ -6,6 +6,7 @@
  * (pre-order over the source), each once.
  */
 
+import { assertNever } from '../invariant';
 import type { Statement } from '../parser/ast';
 
 /**
@@ -50,6 +51,8 @@ export function bindingName(stmt: Statement): string | null {
     case 'WhileStmt':
     case 'RepeatStmt':
       return null;
+    default:
+      return assertNever(stmt);
   }
 }
 
@@ -85,5 +88,7 @@ function nestedBlocks(stmt: Statement): readonly (readonly Statement[])[] {
     case 'ReturnStmt':
     case 'GlobalStmt':
       return [];
+    default:
+      return assertNever(stmt);
   }
 }
