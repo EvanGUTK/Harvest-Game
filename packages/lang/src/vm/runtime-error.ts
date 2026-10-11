@@ -6,7 +6,7 @@
  */
 
 import type { Limits } from '../types';
-import { floorDiv, floorMod } from '../int-math';
+import { formatCount } from '../format';
 import type { RtValue } from './value';
 
 export type RuntimeCode =
@@ -57,16 +57,6 @@ export function typeError(message: string, operands?: readonly RtValue[]): Runti
 export const DIV_ZERO: RuntimeError = { code: 'R-DIV-ZERO', message: "Can't divide by zero (`//` or `%`)." };
 
 export const OVERFLOW: RuntimeError = { code: 'R-OVERFLOW', message: 'That number got too big.' };
-
-const DIGIT_GROUP = 1_000;
-const DIGITS_PER_GROUP = 3;
-
-/** Formats a non-negative integer with thousands separators, as the catalogue writes limits: 16384 → "16,384". */
-export function formatCount(n: number): string {
-  if (n < DIGIT_GROUP) return String(n);
-  const group = String(floorMod(n, DIGIT_GROUP)).padStart(DIGITS_PER_GROUP, '0');
-  return `${formatCount(floorDiv(n, DIGIT_GROUP))},${group}`;
-}
 
 export function outOfMemory(limits: Limits): RuntimeError {
   return {
