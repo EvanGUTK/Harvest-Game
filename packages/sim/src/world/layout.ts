@@ -10,7 +10,7 @@
 import { BASIS_POINTS, WORLD } from '@harvest/content';
 import { InvariantError } from '../invariant';
 import type { Sfc32 } from '../prng/sfc32';
-import type { Tile } from './types';
+import type { Tile } from '../types';
 
 export type LayoutConfig = {
   readonly gridSize: number;
