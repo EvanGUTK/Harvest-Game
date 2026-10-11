@@ -79,8 +79,8 @@ interface VM {
    *  the VM cycle counter, so the counter equals `agent.clock` when the VM runs again. */
   resume(value: Value, cost?: number): void;
   /** The counterpart of `resume` for a host call that failed inside the host (R-BAD-ARG for
-   *  wait(0), goto(9, 9), plant(5); R-TYPE for a non-int sell count). The applied cost (default:
-   *  the baked cost) is charged; the next run() yields `{ kind: 'error' }` with the pending
+   *  wait(0), goto(9, 9), plant(5); R-TYPE for a non-int sell count). The applied cost (default 0:
+   *  a host error charges nothing beyond the 1-cycle call, like a VM runtime error) is charged; the next run() yields `{ kind: 'error' }` with the pending
    *  CALL_HOST's source range, and the drone is finished like any runtime error. */
   raise(error: { code: string; message: string }, cost?: number): void;
   readonly cycles: number;        // cycles consumed by this VM so far
