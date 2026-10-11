@@ -158,6 +158,35 @@ describe('Heap: reference counts (interpreter-vm.md §VM heap accounting)', () =
     expect(heap.liveCells).toBe(2);
   });
 
+  it('keeps an element alive when a list slot is overwritten with itself (lst[0] = lst[0])', () => {
+    const heap = new Heap(DEFAULT_LIMITS);
+    const s = owned(heap.allocStr(text(16)));
+    const list = owned(heap.allocList([s]));
+    heap.release(s);
+    // The list now holds the only reference: releasing before retaining would free `s` here.
+    heap.listSet(list, 0, s);
+    expect(heap.liveCells).toBe(2);
+    expect(s.rc).toBe(1);
+    heap.release(list);
+    expect(heap.liveCells).toBe(0);
+    expect(s.rc).toBe(0);
+  });
+
+  it('keeps a value alive when a dict key is overwritten with its own value (d[k] = d[k])', () => {
+    const heap = new Heap(DEFAULT_LIMITS);
+    const d = heap.allocDict();
+    const s = owned(heap.allocStr(text(16)));
+    expect(heap.dictSet(d, key(1), 1, s)).toBeUndefined();
+    heap.release(s);
+    // The dict now holds the only reference: releasing before retaining would free `s` here.
+    expect(heap.dictSet(d, key(1), 1, s)).toBeUndefined();
+    expect(heap.liveCells).toBe(2);
+    expect(s.rc).toBe(1);
+    heap.release(d);
+    expect(heap.liveCells).toBe(0);
+    expect(s.rc).toBe(0);
+  });
+
   it('keeps the first-inserted key and releases the old value when a dict key is overwritten', () => {
     const heap = new Heap(DEFAULT_LIMITS);
     const d = heap.allocDict();
