@@ -54,7 +54,7 @@ function isRipe(crop: Crop): boolean {
   return crop.ripeAt !== null && !crop.withered;
 }
 
-function plantBlockReason(farm: Farm, tile: Tile, crop: CropId): boolean {
+function isPlantBlocked(farm: Farm, tile: Tile, crop: CropId): boolean {
   if (tile.crop !== null && !tile.crop.withered) return true;
   if (tile.soil === 'rock') return true;
   if (CROPS[crop].needsTilled && tile.soil === 'grass') return true;
@@ -65,7 +65,7 @@ function plantBlockReason(farm: Farm, tile: Tile, crop: CropId): boolean {
 export function plant(farm: Farm, pos: Coord, crop: CropId, ctx: ActionContext): ActionOutcome {
   const touched = touchTile(farm, ctx.gridSize, pos, ctx.t, ctx.rules);
   const event = (ok: boolean): ActionEvent => ({ k: 'plant', at: pos, crop, ok });
-  if (plantBlockReason(touched.farm, touched.tile, crop)) {
+  if (isPlantBlocked(touched.farm, touched.tile, crop)) {
     return { ok: false, cost: ACTION_COSTS.plantFailed, farm: touched.farm, event: event(false) };
   }
   const planted: Tile = {

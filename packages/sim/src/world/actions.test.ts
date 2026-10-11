@@ -359,7 +359,7 @@ describe('move (farm-simulation.md §Grid: edges wrap)', () => {
     expect(move([0, 0], 'south', CTX).to).toEqual([0, 2]);
   });
 
-  it('always succeeds at the drone move cost, onto rock too, and describes the move event', () => {
+  it('always succeeds at the drone move cost and describes the move event', () => {
     const out = move([0, 0], 'east', CTX);
     expect(out.cost).toBe(ACTION_COSTS.move);
     expect(out.event).toEqual({ k: 'move', to: [1, 0] });
