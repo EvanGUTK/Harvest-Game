@@ -162,18 +162,18 @@ describe('valueOps (interpreter-vm.md §Public API: the only way hosts build and
     expect(Object.is(valueOps.asInt(valueOps.int(-0)), 0)).toBe(true);
   });
 
-  it('throws VALUE_RANGE for an int outside ±9,007,199,254,740,991 or a fraction', () => {
-    expect(invariantCode(() => valueOps.int(2 ** 53))).toBe('VALUE_RANGE');
-    expect(invariantCode(() => valueOps.int(0.5))).toBe('VALUE_RANGE');
-    expect(invariantCode(() => valueOps.int(Number.NaN))).toBe('VALUE_RANGE');
+  it('throws LANG-VALUE-RANGE for an int outside ±9,007,199,254,740,991 or a fraction', () => {
+    expect(invariantCode(() => valueOps.int(2 ** 53))).toBe('LANG-VALUE-RANGE');
+    expect(invariantCode(() => valueOps.int(0.5))).toBe('LANG-VALUE-RANGE');
+    expect(invariantCode(() => valueOps.int(Number.NaN))).toBe('LANG-VALUE-RANGE');
   });
 
-  it('throws VALUE_KIND when a host reads a value as the wrong kind', () => {
+  it('throws LANG-VALUE-KIND when a host reads a value as the wrong kind', () => {
     const ops = valueOps;
-    expect(invariantCode(() => ops.asInt(ops.none))).toBe('VALUE_KIND');
-    expect(invariantCode(() => ops.asInt(ops.str('1')))).toBe('VALUE_KIND');
-    expect(invariantCode(() => ops.asBool(ops.int(1)))).toBe('VALUE_KIND');
-    expect(invariantCode(() => ops.asStr(ops.constant(1)))).toBe('VALUE_KIND');
-    expect(invariantCode(() => ops.asConstantId(ops.int(1)))).toBe('VALUE_KIND');
+    expect(invariantCode(() => ops.asInt(ops.none))).toBe('LANG-VALUE-KIND');
+    expect(invariantCode(() => ops.asInt(ops.str('1')))).toBe('LANG-VALUE-KIND');
+    expect(invariantCode(() => ops.asBool(ops.int(1)))).toBe('LANG-VALUE-KIND');
+    expect(invariantCode(() => ops.asStr(ops.constant(1)))).toBe('LANG-VALUE-KIND');
+    expect(invariantCode(() => ops.asConstantId(ops.int(1)))).toBe('LANG-VALUE-KIND');
   });
 });
