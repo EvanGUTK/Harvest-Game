@@ -29,10 +29,8 @@ import {
   reservedName,
   unknownName,
 } from './diagnostics';
-import { boundedDistance } from './levenshtein';
+import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
 
-/** language-spec.md / errors-and-diagnostics.md: suggestions are names within Levenshtein distance 2. */
-const MAX_SUGGESTION_DISTANCE = 2;
 const RANGE = 'range';
 
 /** How a NameExpr is used: called, as the `range` of a `for` header, or as a plain value. */

@@ -123,11 +123,38 @@ describe('E-WRONG-ARG-COUNT for methods (chief ruling 2026-10-11: arity by metho
     ]);
   });
 
-  it('accepts the valid forms and leaves unknown method names to the runtime (R-TYPE)', () => {
+  it('accepts the valid forms', () => {
     expect(
-      messages(
-        'lst = []\nlst.append(1)\nlst.pop()\nlst.pop(0)\nd = {}\nd.get(1)\nd.get(1, 2)\nlst.sort(1, 2, 3)\n',
-      ),
+      messages('lst = []\nlst.append(1)\nlst.pop()\nlst.pop(0)\nd = {}\nd.get(1)\nd.get(1, 2)\n'),
     ).toEqual([]);
+  });
+});
+
+describe('E-UNKNOWN-METHOD (chief ruling 2026-10-11: "`.sort` isn\'t a method in Sprout. Lists have `.append` and `.pop`; dicts have `.get`.")', () => {
+  it('reports a method no Sprout value has, at the method name, with the catalogue wording', () => {
+    expect(checkSources('lst = []\nlst.sort(1, 2, 3)\n')).toEqual([
+      {
+        code: 'E-UNKNOWN-METHOD',
+        severity: 'error',
+        range: span(2, 5, 2, 9),
+        message: "`.sort` isn't a method in Sprout. Lists have `.append` and `.pop`; dicts have `.get`.",
+      },
+    ]);
+  });
+
+  it('suggests a close method with a fix-it that replaces the name', () => {
+    expect(checkSources('lst = []\nlst.apend(1)\n')).toEqual([
+      {
+        code: 'E-UNKNOWN-METHOD',
+        severity: 'error',
+        range: span(2, 5, 2, 10),
+        message: "`.apend` isn't a method in Sprout. Did you mean `.append`?",
+        help: 'Lists have `.append` and `.pop`; dicts have `.get`.',
+        fix: { label: 'Change to `.append`', edits: [{ span: span(2, 5, 2, 10), newText: 'append' }] },
+      },
+    ]);
+    expect(messages('d = {}\nd.gett(1)\n')).toEqual([
+      "`.gett` isn't a method in Sprout. Did you mean `.get`?",
+    ]);
   });
 });

@@ -120,3 +120,20 @@ function countPhrase(min: number, max: number | null): string {
 function things(n: number): string {
   return n === 1 ? '1 thing' : `${String(n)} things`;
 }
+
+/** A method name no Sprout value has; the catalogue sentence names the three that exist. */
+export function unknownMethod(range: Span, name: string, suggestion: string | null): Diagnostic {
+  const methods = 'Lists have `.append` and `.pop`; dicts have `.get`.';
+  if (suggestion === null) {
+    return error('E-UNKNOWN-METHOD', range, `\`.${name}\` isn't a method in Sprout. ${methods}`);
+  }
+  return {
+    ...error(
+      'E-UNKNOWN-METHOD',
+      range,
+      `\`.${name}\` isn't a method in Sprout. Did you mean \`.${suggestion}\`?`,
+    ),
+    help: methods,
+    fix: { label: `Change to \`.${suggestion}\``, edits: [{ span: range, newText: suggestion }] },
+  };
+}

@@ -13,7 +13,8 @@ import type { ScopeInfo } from '../scope/scope';
 import { bindingName, scopeStatements } from '../scope/bindings';
 import type { Diagnostic, Span } from '../types';
 import type { CheckOptions } from './check';
-import { wrongArgCount } from './diagnostics';
+import { unknownMethod, wrongArgCount } from './diagnostics';
+import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
 
 /** An accepted argument count: `max: null` means any number from `min` up. */
 type Arity = { readonly min: number; readonly max: number | null };
@@ -56,10 +57,29 @@ export function checkArity(program: Program, scopes: ScopeInfo, opts: CheckOptio
   return diagnostics;
 }
 
+/**
+ * Arity by method name, and E-UNKNOWN-METHOD for any other name: no Sprout value has another method, so
+ * such a call could only fail (chief ruling 2026-10-11, superseding "unknown methods are the runtime's").
+ */
 function checkMethod(call: MethodCallExpr): Diagnostic | null {
-  const arity = METHOD_ARITY.get(call.method.name);
-  if (arity === undefined) return null;
-  return mismatch(call.span, `\`.${call.method.name}\``, arity, call.args.length, null);
+  const name = call.method.name;
+  const arity = METHOD_ARITY.get(name);
+  if (arity === undefined) return unknownMethod(call.method.span, name, closestMethod(name));
+  return mismatch(call.span, `\`.${name}\``, arity, call.args.length, null);
+}
+
+/** The known method within the suggestion distance of `name`, the first one in METHOD_ARITY order on a tie. */
+function closestMethod(name: string): string | null {
+  let best: string | null = null;
+  let bestDistance = MAX_SUGGESTION_DISTANCE + 1;
+  for (const candidate of METHOD_ARITY.keys()) {
+    const distance = boundedDistance(name, candidate, MAX_SUGGESTION_DISTANCE);
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
 }
 
 /** The diagnostic for `given` arguments against `arity`, or `null` when the count is accepted. */
