@@ -9,7 +9,7 @@
 import type { CropId } from '@harvest/content';
 import { advanceTileDetailed, type AdvanceRules } from './advance';
 import { InvariantError } from '../invariant';
-import type { Coord, Tile } from './types';
+import type { Coord, Tile } from '../types';
 
 export type Farm = {
   readonly credits: number;
