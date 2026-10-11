@@ -112,10 +112,15 @@ export const WAIT_BOUNDS = { min: 1, max: 5_000 } as const;
 export const CYCLES_PER_SECOND = 100;
 export const FREE_FARM_MAX_SPEED = 16;
 
+/** Denominator for every basis-point value in this file and in `sim` (1 % = 100). */
+export const BASIS_POINTS = 10_000;
+
 // ---------- World rules ----------
 
 export const WORLD = {
   moistureDecayEvery: 50,
+  /** Moisture is an integer in 0..moistureMax; `water` caps at it and starting ranges stay inside it. */
+  moistureMax: 100,
   waterAmount: 40,
   waterCapacity: 60,
   wellTile: [0, 0] as const,
