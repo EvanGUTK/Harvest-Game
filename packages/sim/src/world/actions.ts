@@ -8,6 +8,7 @@
  */
 
 import { ACTION_COSTS, CROPS, WORLD, type CropId } from '@harvest/content';
+import { floorMod } from '@harvest/lang';
 import { assertNever } from '../invariant';
 import type { AdvanceRules } from './advance';
 import { tileIndex, touchTile, withTile, type Farm } from './farm';
@@ -148,9 +149,9 @@ function stepOf(dir: Direction): Coord {
   }
 }
 
-/** Wrap one coordinate step on a gridSize-wide axis without a negative modulo. */
+/** Wrap one coordinate step on a gridSize-wide axis (Python-style modulo, so a step of −1 from 0 gives gridSize − 1). */
 function wrap(value: number, step: number, gridSize: number): number {
-  return (value + step + gridSize) % gridSize;
+  return floorMod(value + step, gridSize);
 }
 
 /** `move(dir)`: one tile, wrapping at the edges. Always succeeds, even onto rock. */
