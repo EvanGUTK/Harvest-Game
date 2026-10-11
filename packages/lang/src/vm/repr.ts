@@ -196,7 +196,10 @@ class Printer {
       this.fail(strTooLong(this.ctx.limits));
       return;
     }
-    this.parts.push(text.slice(0, this.policy.maxLength - this.length), ELLIPSIS);
+    this.parts.push(
+      withoutTrailingHighSurrogate(text.slice(0, this.policy.maxLength - this.length)),
+      ELLIPSIS,
+    );
     this.stopped = true;
   }
 
@@ -208,4 +211,13 @@ class Printer {
 
 function dictFrame(entries: ReadonlyMap<unknown, DictEntry>): Frame {
   return { kind: 'dict', entries: [...entries.values()], next: 0 };
+}
+
+const HIGH_SURROGATE_MIN = 0xd800;
+const HIGH_SURROGATE_MAX = 0xdbff;
+
+/** A cut must not split a surrogate pair, which would leave half a character before the "…". */
+function withoutTrailingHighSurrogate(text: string): string {
+  const last = text.charCodeAt(text.length - 1);
+  return last >= HIGH_SURROGATE_MIN && last <= HIGH_SURROGATE_MAX ? text.slice(0, -1) : text;
 }

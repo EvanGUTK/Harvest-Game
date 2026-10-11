@@ -17,7 +17,7 @@ Public custom rooms are browsable and are the only joinable listing in the room 
 - 4 FFA gives a clear 1st/2nd/3rd/4th, a short queue and a readable finale. *(D-10: add a 1v1 Duel queue once concurrent ranked players exceed ~200.)*
 
 ### Bots
-Bots are named `[BOT] Scarecrow`, `[BOT] Tractor`, etc. and always shown with the bot tag. Each bot runs a handwritten Sprout program from `packages/content/bots/` at a difficulty: Seedling (naive loop), Grower (conditionals) or Agronomist (market-aware). Bots double as **reference solutions** and as balance-harness players.
+Bots are named `[BOT] Scarecrow`, `[BOT] Tractor`, etc. and always shown with the bot tag. Each bot runs a handwritten Sprout program, exported as a string from `packages/content/src/bots/` at a difficulty: Seedling (naive loop), Grower (conditionals) or Agronomist (market-aware). Bots double as **reference solutions** and as balance-harness players.
 
 Bots never appear in ranked. In casual, if the queue can't find 2 humans in 90 s, the player is offered *"Play now with bots?"*. The match is then labelled casual-with-bots and pays 50 % of the Casual credits and no daily first-win bonus (see [scoring-and-judging](scoring-and-judging.md)).
 
