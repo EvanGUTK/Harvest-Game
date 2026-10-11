@@ -147,13 +147,14 @@ export function fromPublic(v: Value): RtValue {
 }
 
 function kindError(expected: string, v: RtValue): InvariantError {
-  return new InvariantError('VALUE_KIND', `expected ${expected}, got ${kindOf(v)}`);
+  return new InvariantError('LANG-VALUE-KIND', `expected ${expected}, got ${kindOf(v)}`);
 }
 
 /** Host-facing constructors and readers (interpreter-vm.md §Public API). */
 export const valueOps: ValueOps = {
   int(n) {
-    if (!Number.isSafeInteger(n)) throw new InvariantError('VALUE_RANGE', `not a safe integer: ${String(n)}`);
+    if (!Number.isSafeInteger(n))
+      throw new InvariantError('LANG-VALUE-RANGE', `not a safe integer: ${String(n)}`);
     return toPublic(n === 0 ? 0 : n);
   },
   bool(b) {

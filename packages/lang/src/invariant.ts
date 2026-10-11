@@ -5,7 +5,12 @@
  */
 
 export type InvariantCode =
-  'LANG-INT-DIV-ZERO' | 'LANG-INT-NOT-SAFE' | 'VALUE_KIND' | 'VALUE_RANGE' | 'HEAP_REFCOUNT' | 'HEAP_INDEX';
+  | 'LANG-INT-DIV-ZERO'
+  | 'LANG-INT-NOT-SAFE'
+  | 'LANG-VALUE-KIND'
+  | 'LANG-VALUE-RANGE'
+  | 'LANG-HEAP-REFCOUNT'
+  | 'LANG-HEAP-INDEX';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;
