@@ -10,7 +10,7 @@
 import { ACTION_COSTS, WAIT_BOUNDS } from '@harvest/content';
 import { sell } from '../market/sell';
 import { harvest, move, plant, refill, till, water } from '../world/actions';
-import { decodeCrop, decodeDirection, decodeInt } from './args';
+import { decodeCrop, decodeDirection, decodeFunction, decodeInt } from './args';
 import { actionContext, arg, farmOf, fail, ok, position, withFarm, type CallContext } from './call-context';
 import type { HostOutcome } from './state';
 
@@ -94,8 +94,10 @@ export function callWait(ctx: CallContext): HostOutcome {
 
 export function callSpawn(ctx: CallContext): HostOutcome {
   if (!ctx.world.config.spawnEnabled) {
-    return fail(ctx, { code: LOCKED, message: '`spawn` is single-player only in this version.' });
+    return fail(ctx, { code: LOCKED, message: '`spawn()` is single-player only in v1.' });
   }
+  const fn = decodeFunction(ctx.values, 'spawn', arg(ctx, 0));
+  if (!fn.ok) return fail(ctx, fn.error);
   const at = position(ctx);
   const already = ctx.world.secondDroneSpawned[ctx.agent.slot] === true;
   if (already) {
@@ -109,7 +111,7 @@ export function callSpawn(ctx: CallContext): HostOutcome {
   return ok(ctx, ctx.values.bool(true), ACTION_COSTS.spawn, {
     world: { ...ctx.world, secondDroneSpawned },
     events: [{ k: 'spawn', at, ok: true }],
-    spawned: { ...ctx.agent, droneNo: 1 },
+    spawned: { agent: { ...ctx.agent, droneNo: 1 }, fn: fn.value },
   });
 }
 

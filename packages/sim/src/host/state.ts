@@ -70,8 +70,8 @@ export type HostOutcome =
       readonly world: HostWorld;
       readonly agent: HostAgent;
       readonly events: readonly HostEvent[];
-      /** Drone 1's initial state after a successful `spawn`; the scheduler creates the agent. */
-      readonly spawned?: HostAgent;
+      /** After a successful `spawn`: drone 1's initial state and the function it runs; the scheduler creates the agent. */
+      readonly spawned?: { readonly agent: HostAgent; readonly fn: Value };
       /** `halt()` was called: the calling drone stops. */
       readonly halted: boolean;
     }

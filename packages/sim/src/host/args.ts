@@ -2,7 +2,7 @@
  * Argument decoding for host calls: turns a `Value` into a crop, a direction or an int, or into R-BAD-ARG.
  * Design: docs/02-language/errors-and-diagnostics.md §Runtime errors (R-BAD-ARG wording), standard-library.md.
  * Invariants: expected failures are values, never exceptions; the wording is "`<builtin>` needs <hint>, but got
- * <what>" with the hint taken from the content metadata; a bool is never an int; crops and directions are decoded
+ * <what>" with the hint taken from the content metadata; a bool counts as 0 or 1; crops and directions are decoded
  * by constant id so a constant of the wrong group is rejected, not misread.
  */
 
@@ -69,6 +69,14 @@ export function decodeDirection(values: ValueOps, builtin: string, v: Value): De
   return dir === undefined ? bad(builtin, paramHint(builtin, 0), values, v) : { ok: true, value: dir };
 }
 
+/** A whole number: an int, or a bool as 0 or 1 ("a bool is also an int, as in Python"); undefined otherwise. */
+function intOf(values: ValueOps, v: Value): number | undefined {
+  const kind = values.kindOf(v);
+  if (kind === 'int') return values.asInt(v);
+  if (kind === 'bool') return values.asBool(v) ? 1 : 0;
+  return undefined;
+}
+
 /**
  * A whole number, optionally inside `range` (both bounds inclusive). `hintOverride` replaces the metadata hint when
  * the range depends on the world (`goto` coordinates depend on the farm size).
@@ -81,9 +89,18 @@ export function decodeInt(
   range: IntRange = {},
   hintOverride?: string,
 ): Decoded<number> {
-  const isInt = values.kindOf(v) === 'int';
-  const n = isInt ? values.asInt(v) : 0;
-  const inRange = (range.min === undefined || n >= range.min) && (range.max === undefined || n <= range.max);
-  if (isInt && inRange) return { ok: true, value: n };
+  const n = intOf(values, v);
+  const inRange =
+    n !== undefined &&
+    (range.min === undefined || n >= range.min) &&
+    (range.max === undefined || n <= range.max);
+  if (n !== undefined && inRange) return { ok: true, value: n };
   return bad(builtin, hintOverride ?? paramHint(builtin, index), values, v);
+}
+
+/** A function value (`spawn`'s argument); whether it takes no parameters is the VM seam's to check. */
+export function decodeFunction(values: ValueOps, builtin: string, v: Value): Decoded<Value> {
+  return values.kindOf(v) === 'function'
+    ? { ok: true, value: v }
+    : bad(builtin, paramHint(builtin, 0), values, v);
 }

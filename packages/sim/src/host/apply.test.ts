@@ -308,15 +308,48 @@ describe('applyHostCall: spawn (standard-library.md §Second drone)', () => {
     expect(run(worldWith(tile()), callOf('spawn', FN))).toMatchObject({
       kind: 'error',
       cost: 0,
-      error: { code: 'E-LOCKED-FEATURE' },
+      error: { code: 'E-LOCKED-FEATURE', message: '`spawn()` is single-player only in v1.' },
     });
+  });
+
+  it('rejects a non-function argument with R-BAD-ARG instead of spawning', () => {
+    const world = worldWith(tile(), {}, { spawnEnabled: true });
+    const out = run(world, callOf('spawn', values.int(5)));
+    expect(out).toMatchObject({
+      kind: 'error',
+      cost: 0,
+      error: { code: 'R-BAD-ARG', message: '`spawn` needs a function that takes no arguments, but got `5`' },
+    });
+  });
+
+  it('hands the function to run to the scheduler with the new agent', () => {
+    const world = worldWith(tile(), {}, { spawnEnabled: true });
+    const out = okOf(run(world, callOf('spawn', FN)));
+    expect(out.spawned?.fn).toBe(FN);
+    expect(out.spawned?.agent).toMatchObject({ slot: 0, droneNo: 1, x: 1, y: 2 });
+  });
+
+  it('allows one extra drone per slot: a second spawn from slot 1 still works after slot 0 spawned', () => {
+    const base = worldWith(tile(), {}, { spawnEnabled: true });
+    const world: HostWorld = {
+      ...base,
+      farms: [...base.farms, ...base.farms],
+      streams: createStreams(7, 2),
+      secondDroneSpawned: [true, false],
+    };
+    const slot1 = { ...agentAt(), slot: 1 };
+    const out = okOf(run(world, callOf('spawn', FN), slot1));
+    expect([bool(out.value), out.cost]).toEqual([true, ACTION_COSTS.spawn]);
+    expect(out.world.secondDroneSpawned).toEqual([true, true]);
+    const slot0 = okOf(run(world, callOf('spawn', FN)));
+    expect([bool(slot0.value), slot0.cost]).toEqual([false, ACTION_COSTS.spawnFailed]);
   });
 
   it('starts drone 1 at the caller position for 200, then a second spawn is False and costs 5', () => {
     const world = worldWith(tile(), {}, { spawnEnabled: true });
     const first = okOf(run(world, callOf('spawn', FN)));
     expect([bool(first.value), first.cost]).toEqual([true, ACTION_COSTS.spawn]);
-    expect(first.spawned).toMatchObject({ slot: 0, droneNo: 1, x: 1, y: 2 });
+    expect(first.spawned?.agent).toMatchObject({ slot: 0, droneNo: 1, x: 1, y: 2 });
     expect(first.events).toEqual([{ k: 'spawn', at: [1, 2], ok: true }]);
     const second = okOf(run(first.world, callOf('spawn', FN)));
     expect([bool(second.value), second.cost, second.spawned]).toEqual([

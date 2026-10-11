@@ -69,8 +69,18 @@ describe('decodeInt', () => {
     });
   });
 
-  it('rejects a bool, None and text where an int is needed', () => {
-    for (const bad of [values.bool(true), values.none, values.str('3')]) {
+  it('accepts a bool as 0 or 1, as in Python, and still checks the range (language-spec.md: a bool is also an int)', () => {
+    expect(decodeInt(values, 'sell', 1, values.bool(true))).toEqual({ ok: true, value: 1 });
+    expect(decodeInt(values, 'sell', 1, values.bool(false))).toEqual({ ok: true, value: 0 });
+    expect(decodeInt(values, 'wait', 0, values.bool(true), { min: 1, max: 5_000 })).toEqual({
+      ok: true,
+      value: 1,
+    });
+    expect(decodeInt(values, 'wait', 0, values.bool(false), { min: 1, max: 5_000 }).ok).toBe(false);
+  });
+
+  it('rejects None and text where an int is needed', () => {
+    for (const bad of [values.none, values.str('3')]) {
       expect(decodeInt(values, 'wait', 0, bad, { min: 1, max: 5_000 }).ok).toBe(false);
     }
   });

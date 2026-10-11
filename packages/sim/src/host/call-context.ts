@@ -26,7 +26,7 @@ export type Patch = {
   readonly world?: HostWorld;
   readonly agent?: HostAgent;
   readonly events?: readonly HostEvent[];
-  readonly spawned?: HostAgent;
+  readonly spawned?: { readonly agent: HostAgent; readonly fn: Value };
   readonly halted?: boolean;
 };
 
