@@ -15,6 +15,7 @@
  */
 
 import type { Span } from '../types';
+import { assertNever } from '../invariant';
 
 // ---------- expressions ----------
 
@@ -305,6 +306,8 @@ export function childNodes(node: AstNode): readonly AstNode[] {
       return [node.count, ...node.body];
     case 'DefStmt':
       return [node.name, ...node.params, ...node.body];
+    default:
+      return assertNever(node);
   }
 }
 

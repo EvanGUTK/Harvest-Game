@@ -36,6 +36,7 @@ import {
   reportUnexpected,
   type Expectation,
 } from './diagnostics';
+import { assertNever } from '../invariant';
 
 /** Operator token text → AST operator, per EBNF level (typed lookups instead of casts). */
 const COMPARE_OPS: ReadonlyMap<string, CompareOp> = new Map<string, CompareOp>([
@@ -366,6 +367,8 @@ export class ExpressionParser {
       case 'ERROR':
         reportUnexpected(this.c, EXPECT_VALUE, this.innermostBracket());
         return null;
+      default:
+        return assertNever(token.kind);
     }
   }
 
