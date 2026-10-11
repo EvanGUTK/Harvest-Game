@@ -38,7 +38,7 @@ function programResult(rules: ScoringRules, stats: PlayerStats): PlayerResult {
       programTokens: stats.programTokens,
       cropsHarvested: stats.cropsHarvested,
       awards: [],
-      output: stats.output,
+      output: [...stats.output],
     },
     stats.error,
   );

@@ -95,9 +95,26 @@ describe('buildPlayerResult', () => {
       expect(result.error).toEqual({ code: 'E-MISSING-COLON', line: 3 });
     });
 
-    it('ignores any stray stats on an idle entry: score stays 0', () => {
-      const result = buildPlayerResult(RULES, { ...idle, credits: 500, cropsHarvested: 4, logicCycles: 9 });
-      expect(result).toMatchObject({ score: 0, cropsHarvested: 0, logicCycles: 0, programTokens: 0 });
+    it('ignores any stray stats on an idle entry: score stays 0 and nothing leaks into the result', () => {
+      const result = buildPlayerResult(RULES, {
+        ...idle,
+        credits: 500,
+        lastSaleAt: 100,
+        cropsHarvested: 4,
+        logicCycles: 9,
+        programTokens: 33,
+        output: ['x'],
+      });
+      expect(result).toEqual({
+        slot: 0,
+        score: 0,
+        cyclesLastChange: 30_000,
+        logicCycles: 0,
+        programTokens: 0,
+        cropsHarvested: 0,
+        awards: [],
+        output: [],
+      });
     });
   });
 });

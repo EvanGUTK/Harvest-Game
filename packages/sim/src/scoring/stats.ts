@@ -7,36 +7,36 @@
 
 /** The match rules scoring reads; both come from `SimConfig`. */
 export type ScoringRules = {
-  startCredits: number;
-  cycleBudget: number;
+  readonly startCredits: number;
+  readonly cycleBudget: number;
 };
 
 export type PlayerStats = {
-  slot: number;
+  readonly slot: number;
   /** The player runs the idle program (no compiled module). All other stats are ignored. */
-  idle: boolean;
+  readonly idle: boolean;
   /** Final credits after liquidation. */
-  credits: number;
+  readonly credits: number;
   /** Start cycle of the last `sell` that sold at least one unit; null when the player never sold. */
-  lastSaleAt: number | null;
+  readonly lastSaleAt: number | null;
   /** 1-cycle VM instructions executed, summed over the slot's drones (scoring-and-judging.md §Tiebreakers). */
-  logicCycles: number;
+  readonly logicCycles: number;
   /** `countTokens` over the locked program. */
-  programTokens: number;
+  readonly programTokens: number;
   /** Ripe crops harvested into the silo. */
-  cropsHarvested: number;
+  readonly cropsHarvested: number;
   /** Maximum over the slot's drones of `min(agent.clock, budget)`. */
-  cyclesUsed: number;
+  readonly cyclesUsed: number;
   /** Units sold across all `sell` lots. */
-  unitsSold: number;
+  readonly unitsSold: number;
   /** Σ over sell lots of `units × floorDiv(price × BASIS_POINTS, basePrice)`; Market Timer divides it by `unitsSold`. */
-  saleBpUnits: number;
+  readonly saleBpUnits: number;
   /** Crops successfully planted. */
-  cropsPlanted: number;
+  readonly cropsPlanted: number;
   /** Some crop of this player had growth paused for lack of moisture while unripe (Never Thirsty). */
-  everDryPaused: boolean;
+  readonly everDryPaused: boolean;
   /** First 200 `print` lines. */
-  output: string[];
+  readonly output: readonly string[];
   /** Runtime error of a real program, or the compile diagnostic that made the player idle. */
-  error?: { code: string; line: number };
+  readonly error?: { readonly code: string; readonly line: number };
 };
