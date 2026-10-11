@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LIMITS } from '../types';
 import { InvariantError } from '../invariant';
-import { kindNoun } from './describe';
+import { capitalise, kindNoun } from './describe';
 import { Heap } from './heap';
 import { constantTable } from './op-context';
 import { constValue, fnValue, literalStr } from './value';
@@ -28,5 +28,13 @@ describe('kindNoun (errors-and-diagnostics.md §Runtime R-TYPE, chief ruling 202
 
   it('throws LANG-VALUE-UNKNOWN-CONST for a constant id the module does not define', () => {
     expect(() => kindNoun(constValue(99), constants)).toThrow(InvariantError);
+  });
+});
+
+describe('capitalise', () => {
+  it('capitalises a noun that starts a sentence', () => {
+    expect(capitalise('a list')).toBe('A list');
+    expect(capitalise('text')).toBe('Text');
+    expect(capitalise('')).toBe('');
   });
 });

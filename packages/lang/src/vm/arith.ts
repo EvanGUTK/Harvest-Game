@@ -11,9 +11,7 @@ import { floorDiv, floorMod } from '../int-math';
 import { kindNoun } from './describe';
 import type { OpContext } from './op-context';
 import { DIV_ZERO, OVERFLOW, fail, succeed, typeError, type OpResult } from './runtime-error';
-import type { ListObj, RtValue, StrObj } from './value';
-
-type IntLike = number | boolean;
+import { isIntLike, isList, isStr, toInt, type ListObj, type RtValue, type StrObj } from './value';
 
 export function add(ctx: OpContext, a: RtValue, b: RtValue): OpResult {
   if (isIntLike(a) && isIntLike(b)) return intResult(toInt(a) + toInt(b));
@@ -58,23 +56,6 @@ export function modulo(ctx: OpContext, a: RtValue, b: RtValue): OpResult {
 export function negate(ctx: OpContext, a: RtValue): OpResult {
   if (!isIntLike(a)) return fail(typeError(`Can't make ${kindNoun(a, ctx.constants)} negative.`, [a]));
   return intResult(0 - toInt(a));
-}
-
-function isIntLike(v: RtValue): v is IntLike {
-  return typeof v === 'number' || typeof v === 'boolean';
-}
-
-function toInt(v: IntLike): number {
-  if (typeof v === 'number') return v;
-  return v ? 1 : 0;
-}
-
-function isStr(v: RtValue): v is StrObj {
-  return typeof v === 'object' && v !== null && v.tag === 'str';
-}
-
-function isList(v: RtValue): v is ListObj {
-  return typeof v === 'object' && v !== null && v.tag === 'list';
 }
 
 /** Every int op result passes through here: R-OVERFLOW outside the safe range, and -0 becomes 0. */
