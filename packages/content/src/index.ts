@@ -114,6 +114,9 @@ export const FREE_FARM_MAX_SPEED = 16;
 
 // ---------- World rules ----------
 
+/** Basis points per whole (1% = 100): the denominator of every `*Bp` rate and the modulus of rolls against one. */
+export const BASIS_POINTS = 10_000;
+
 export const WORLD = {
   moistureDecayEvery: 50,
   waterAmount: 40,
