@@ -10,15 +10,15 @@ import type { CropId } from '@harvest/content';
 export type Soil = 'grass' | 'tilled' | 'rock';
 
 export type Tile = {
-  soil: Soil;
-  moisture: number; // 0..100
-  lastUpdated: number; // cycle
-  crop: null | {
-    kind: CropId;
-    plantedAt: number;
-    growth: number;
+  readonly soil: Soil;
+  readonly moisture: number; // 0..100
+  readonly lastUpdated: number; // cycle
+  readonly crop: null | {
+    readonly kind: CropId;
+    readonly plantedAt: number;
+    readonly growth: number;
     /** First cycle at which growth reached growCycles; null until ripe. Wither is measured from here. */
-    ripeAt: number | null;
-    withered: boolean;
+    readonly ripeAt: number | null;
+    readonly withered: boolean;
   };
 };

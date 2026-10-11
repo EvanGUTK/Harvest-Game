@@ -14,7 +14,7 @@ import type { Tile } from './types';
 
 export type AdvanceRules = {
   /** false until the campaign Water node is owned: moisture never decrements (SimConfig.moistureDecay). */
-  moistureDecay: boolean;
+  readonly moistureDecay: boolean;
 };
 
 export type TileAdvance = {
