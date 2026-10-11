@@ -6,7 +6,7 @@
  */
 
 import type { Limits } from '../types';
-import { floorDiv, floorMod } from '../int-math';
+import { formatCount } from '../format';
 
 export type RuntimeCode =
   | 'R-TYPE'
@@ -25,16 +25,6 @@ export type RuntimeCode =
   | 'R-WRONG-ARG-COUNT';
 
 export type RuntimeError = { readonly code: RuntimeCode; readonly message: string };
-
-const DIGIT_GROUP = 1_000;
-const DIGITS_PER_GROUP = 3;
-
-/** Formats a non-negative integer with thousands separators, as the catalogue writes limits: 16384 → "16,384". */
-export function formatCount(n: number): string {
-  if (n < DIGIT_GROUP) return String(n);
-  const group = String(floorMod(n, DIGIT_GROUP)).padStart(DIGITS_PER_GROUP, '0');
-  return `${formatCount(floorDiv(n, DIGIT_GROUP))},${group}`;
-}
 
 export function outOfMemory(limits: Limits): RuntimeError {
   return {
