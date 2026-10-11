@@ -49,8 +49,9 @@ export function fail(error: RuntimeError): OpResult {
   return { ok: false, error };
 }
 
-export function typeError(message: string, operands: readonly RtValue[]): RuntimeError {
-  return { code: 'R-TYPE', message, operands };
+/** R-TYPE; `operands` only where the VM may add the "`x` is `5`" sentence (arithmetic, chief ruling Q7). */
+export function typeError(message: string, operands?: readonly RtValue[]): RuntimeError {
+  return operands === undefined ? { code: 'R-TYPE', message } : { code: 'R-TYPE', message, operands };
 }
 
 export const DIV_ZERO: RuntimeError = { code: 'R-DIV-ZERO', message: "Can't divide by zero (`//` or `%`)." };

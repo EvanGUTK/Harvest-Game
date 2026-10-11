@@ -7,6 +7,7 @@
 
 import { assertNever } from '../invariant';
 import { constantDef, type ConstantTable } from './op-context';
+import { typeError, type RuntimeError } from './runtime-error';
 import type { RtValue } from './value';
 
 export function kindNoun(v: RtValue, constants: ConstantTable): string {
@@ -26,4 +27,16 @@ export function kindNoun(v: RtValue, constants: ConstantTable): string {
     default:
       return assertNever(v);
   }
+}
+
+/** Upper-cases the first letter, for a noun that starts a sentence ("A list can't be a dict key."). */
+export function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** R-TYPE for a list, dict or function used as a dict key (chief ruling 2026-10-11). */
+export function unusableKeyError(v: RtValue, constants: ConstantTable): RuntimeError {
+  return typeError(
+    `${capitalise(kindNoun(v, constants))} can't be a dict key. Use a number, text, None or a constant.`,
+  );
 }
