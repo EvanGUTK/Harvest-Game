@@ -148,6 +148,27 @@ describe('plant (standard-library.md §Outcome matrix)', () => {
     expect(atTile(out.farm).crop?.withered).toBe(true);
   });
 
+  it('catches a stored ripe crop up to t before checking it: past ripeAt + witherCycles it has withered and is replaced', () => {
+    const storedRipe = tileWith('grass', ripe('radish', 400), 100, 400);
+    const out = plant(farmWith(storedRipe), AT, 'radish', {
+      ...CTX,
+      t: 400 + CROPS.radish.witherCycles,
+      rules: { moistureDecay: false },
+    });
+    expect(out).toMatchObject({ ok: true, cost: ACTION_COSTS.plant });
+    expect(atTile(out.farm).crop).toMatchObject({
+      kind: 'radish',
+      plantedAt: 400 + CROPS.radish.witherCycles,
+      ripeAt: null,
+    });
+  });
+
+  it('stamps the planted tile with t and leaves its moisture decayed to t (empty grass, moisture 50 at cycle 0)', () => {
+    const out = plant(farmWith(grass(50, 0)), AT, 'radish', CTX);
+    expect(atTile(out.farm).lastUpdated).toBe(1_000);
+    expect(atTile(out.farm).moisture).toBe(30);
+  });
+
   it('advances the tile to t first, so a crop that ripened while the drone was away blocks the plant', () => {
     // Planted at 100 with plenty of moisture: ripe at 400 < t = 1_000 even though it is stored unripe.
     const stale = tileWith(
