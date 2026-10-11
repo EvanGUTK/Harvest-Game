@@ -22,3 +22,6 @@ export type Tile = {
     readonly withered: boolean;
   };
 };
+
+/** A tile position; (0,0) is the south-west corner, x grows east and y grows north. */
+export type Coord = readonly [x: number, y: number];

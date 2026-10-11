@@ -41,13 +41,14 @@ describe('buildPlayerResult', () => {
     expect(buildPlayerResult(RULES, stats({ lastSaleAt: null })).cyclesLastChange).toBe(30_000);
   });
 
-  it('copies logicCycles, programTokens, cropsHarvested and output through unchanged', () => {
+  it('copies logicCycles, programTokens, cropsHarvested, cyclesUsed and output through unchanged', () => {
     const result = buildPlayerResult(RULES, stats());
     expect(result).toMatchObject({
       slot: 0,
       logicCycles: 2_050,
       programTokens: 120,
       cropsHarvested: 31,
+      cyclesUsed: 29_990,
       output: ['hello'],
     });
   });
@@ -85,6 +86,7 @@ describe('buildPlayerResult', () => {
         logicCycles: 0,
         programTokens: 0,
         cropsHarvested: 0,
+        cyclesUsed: 0,
         awards: [],
         output: [],
       });
@@ -102,6 +104,7 @@ describe('buildPlayerResult', () => {
         lastSaleAt: 100,
         cropsHarvested: 4,
         logicCycles: 9,
+        cyclesUsed: 777,
         programTokens: 33,
         output: ['x'],
       });
@@ -112,6 +115,7 @@ describe('buildPlayerResult', () => {
         logicCycles: 0,
         programTokens: 0,
         cropsHarvested: 0,
+        cyclesUsed: 0,
         awards: [],
         output: [],
       });
