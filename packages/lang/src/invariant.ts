@@ -12,7 +12,8 @@ export type InvariantCode =
   | 'LANG-HEAP-REFCOUNT'
   | 'LANG-HEAP-INDEX'
   | 'LANG-HOST-STR-TOO-LONG'
-  | 'LANG-UNREACHABLE';
+  | 'LANG-UNREACHABLE'
+  | 'LANG-VALUE-UNKNOWN-CONST';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;

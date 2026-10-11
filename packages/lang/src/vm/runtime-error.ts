@@ -7,6 +7,7 @@
 
 import type { Limits } from '../types';
 import { floorDiv, floorMod } from '../int-math';
+import type { RtValue } from './value';
 
 export type RuntimeCode =
   | 'R-TYPE'
@@ -24,7 +25,37 @@ export type RuntimeCode =
   | 'R-NOT-CALLABLE'
   | 'R-WRONG-ARG-COUNT';
 
-export type RuntimeError = { readonly code: RuntimeCode; readonly message: string };
+/**
+ * `operands` lets the VM add the approved second sentence of an R-TYPE message ("`x` is `5`, `y` is
+ * `RADISH`.") when its debug info names an operand; semantic functions never format it themselves.
+ */
+export type RuntimeError = {
+  readonly code: RuntimeCode;
+  readonly message: string;
+  readonly operands?: readonly RtValue[];
+};
+
+/**
+ * Outcome of one semantic operation. `cost` is the surcharge only (interpreter-vm.md §Op cost table):
+ * the VM charges 1 + cost. A failure carries no cost because a failed op charges only its base cycle.
+ */
+export type OpResult = { ok: true; value: RtValue; cost: number } | { ok: false; error: RuntimeError };
+
+export function succeed(value: RtValue, cost: number): OpResult {
+  return { ok: true, value, cost };
+}
+
+export function fail(error: RuntimeError): OpResult {
+  return { ok: false, error };
+}
+
+export function typeError(message: string, operands: readonly RtValue[]): RuntimeError {
+  return { code: 'R-TYPE', message, operands };
+}
+
+export const DIV_ZERO: RuntimeError = { code: 'R-DIV-ZERO', message: "Can't divide by zero (`//` or `%`)." };
+
+export const OVERFLOW: RuntimeError = { code: 'R-OVERFLOW', message: 'That number got too big.' };
 
 const DIGIT_GROUP = 1_000;
 const DIGITS_PER_GROUP = 3;
