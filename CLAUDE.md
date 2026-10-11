@@ -38,7 +38,7 @@ Read this fully, then `STATE.md`, before doing anything. Together they are the h
 1. Read `CLAUDE.md`, `STATE.md`. Check `git status` and the branch.
 2. Pick the next item from `STATE.md` → "Next steps" (backlog IDs). One task per commit where possible.
 3. Before coding a package feature, re-read its design doc section. If the doc and the code must diverge, update the doc in the same commit.
-4. Run `pnpm check` (typecheck + lint + format check + test) before every commit. Red is never committed; the committed pre-commit hook (`.githooks/`, installed by `pnpm install`) enforces it. Never bypass it with `--no-verify`.
+4. Run `pnpm check` (typecheck + lint + format check + test) before every commit. Red is never committed; the committed pre-commit and pre-merge-commit hooks (`.githooks/`, installed by `pnpm install`) enforce it, merge commits included. Never bypass it with `--no-verify`.
 5. Commit format: `type(ID): summary`, e.g. `feat(LANG-02.1): parse chained comparisons`. Types: feat, fix, refactor, test, docs, chore, perf.
 6. End of session: run `/handoff` (updates `STATE.md`, verifies clean tree, commits, pushes).
 

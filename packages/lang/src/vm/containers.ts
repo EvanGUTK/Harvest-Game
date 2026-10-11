@@ -13,7 +13,8 @@ import { InvariantError } from '../invariant';
 import { capitalise, kindNoun, unusableKeyError } from './describe';
 import type { OpContext } from './op-context';
 import { reprForMessage } from './repr';
-import { fail, formatCount, succeed, typeError, type OpResult, type RuntimeError } from './runtime-error';
+import { formatCount } from '../format';
+import { fail, succeed, typeError, type OpResult, type RuntimeError } from './runtime-error';
 import {
   dictKeyOf,
   isDict,

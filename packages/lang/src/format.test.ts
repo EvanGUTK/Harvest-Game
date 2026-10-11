@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCount } from './runtime-error';
+import { formatCount } from './format';
 
 describe('formatCount (errors-and-diagnostics.md §Runtime writes limits as 16,384)', () => {
   it('groups digits in threes with commas, keeping zero-padded inner groups', () => {

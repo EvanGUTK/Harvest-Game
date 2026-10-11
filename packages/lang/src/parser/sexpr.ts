@@ -6,6 +6,7 @@
  */
 
 import type { Expression, FileNode, Program, Statement } from './ast';
+import { assertNever } from '../invariant';
 
 export function sexprProgram(program: Program): string {
   return program.files.map(sexprFile).join('\n');
@@ -46,6 +47,8 @@ export function sexprStatement(stmt: Statement): string {
       return `(repeat ${sexpr(stmt.count)}${body(stmt.body)})`;
     case 'DefStmt':
       return `(def ${stmt.name.name} (${stmt.params.map((p) => p.name).join(' ')})${body(stmt.body)})`;
+    default:
+      return assertNever(stmt);
   }
 }
 
@@ -84,6 +87,8 @@ export function sexpr(expr: Expression): string {
       return list(`method ${sexpr(expr.object)} ${expr.method.name}`, expr.args.map(sexpr));
     case 'IndexExpr':
       return `(index ${sexpr(expr.object)} ${sexpr(expr.index)})`;
+    default:
+      return assertNever(expr);
   }
 }
 
