@@ -5,6 +5,7 @@
  * function → "a function", constant → "a " + its ConstantDef group.
  */
 
+import { assertNever } from '../invariant';
 import { constantDef, type ConstantTable } from './op-context';
 import type { RtValue } from './value';
 
@@ -22,5 +23,7 @@ export function kindNoun(v: RtValue, constants: ConstantTable): string {
       return 'a function';
     case 'const':
       return `a ${constantDef(constants, v.id).group}`;
+    default:
+      return assertNever(v);
   }
 }

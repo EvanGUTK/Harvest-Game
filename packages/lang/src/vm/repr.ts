@@ -10,6 +10,7 @@
 import { constantDef, functionName, type OpContext } from './op-context';
 import { deepNesting, strTooLong, type RuntimeError } from './runtime-error';
 import { floorDiv, floorMod } from '../int-math';
+import { assertNever } from '../invariant';
 import type { DictEntry, DictObj, ListObj, RtValue } from './value';
 
 type Scalar = Exclude<RtValue, ListObj | DictObj>;
@@ -179,6 +180,8 @@ class Printer {
         return constantDef(this.ctx.constants, v.id).name;
       case 'fn':
         return `<function ${functionName(this.ctx, v.index)}>`;
+      default:
+        return assertNever(v);
     }
   }
 
