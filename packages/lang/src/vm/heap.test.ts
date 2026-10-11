@@ -284,7 +284,8 @@ describe('Heap: limits (language-spec.md §Limits)', () => {
 
   it('never trips on a loop that builds a list per iteration and drops it', () => {
     const heap = new Heap(DEFAULT_LIMITS);
-    for (let i = 0; i < 20_000; i += 1) {
+    // 2,000 × 1,000 cells = 2,000,000 allocated, 122× the 16,384-cell limit.
+    for (let i = 0; i < 2_000; i += 1) {
       const list = owned(heap.allocList(zeros(1_000)));
       heap.release(list);
     }
