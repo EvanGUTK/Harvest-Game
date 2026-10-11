@@ -4,11 +4,14 @@
  */
 
 export type InvariantCode =
+  | 'SIM-BAD-GRID'
+  | 'SIM-BAD-MOISTURE-RANGE'
   | 'SIM-BAD-RANDOM-BOUND'
   | 'SIM-BAD-SEED'
   | 'SIM-BAD-SLOT'
   | 'SIM-BAD-SLOT-COUNT'
-  | 'SIM-MARKET-TIME-REVERSED';
+  | 'SIM-MARKET-TIME-REVERSED'
+  | 'SIM-UNREACHABLE';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;
@@ -18,4 +21,9 @@ export class InvariantError extends Error {
     this.name = 'InvariantError';
     this.code = code;
   }
+}
+
+/** Ends every `switch` over a union: a missed case is a compile error, and a smuggled value throws at run time. */
+export function assertNever(value: never): never {
+  throw new InvariantError('SIM-UNREACHABLE', `unreachable value: ${String(value)}`);
 }
