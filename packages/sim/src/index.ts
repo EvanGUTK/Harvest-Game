@@ -22,21 +22,7 @@ export type DroneNo = 0 | 1;
 export type AwardId =
   'top_earner' | 'most_efficient' | 'bumper_crop' | 'market_timer' | 'clean_code' | 'never_thirsty';
 
-export type Soil = 'grass' | 'tilled' | 'rock';
-
-export type Tile = {
-  soil: Soil;
-  moisture: number; // 0..100
-  lastUpdated: number; // cycle
-  crop: null | {
-    kind: CropId;
-    plantedAt: number;
-    growth: number;
-    /** First cycle at which growth reached growCycles; null until ripe. Wither is measured from here. */
-    ripeAt: number | null;
-    withered: boolean;
-  };
-};
+export type { Soil, Tile } from './world/types';
 
 export type Coord = readonly [x: number, y: number];
 
