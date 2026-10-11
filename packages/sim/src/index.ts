@@ -158,3 +158,10 @@ export { generateLayout, type LayoutConfig } from './world/layout';
 
 export { advanceTile, advanceTileDetailed, type AdvanceRules, type TileAdvance } from './world/advance';
 export { advanceFarm, type Farm } from './world/farm';
+
+// ---------- Scoring (SIM-07) ----------
+
+export { buildPlayerResult } from './scoring/result';
+export { rankPlayers, type Placement, type RankEntry } from './scoring/ranking';
+export { scorePlayers, type MatchScore } from './scoring/score';
+export type { PlayerStats, ScoringRules } from './scoring/stats';
