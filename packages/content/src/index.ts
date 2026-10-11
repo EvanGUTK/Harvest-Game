@@ -131,3 +131,14 @@ export const RANKS: readonly Rank[] = DIVISIONS.flatMap((division, d) =>
 );
 
 export const RP_PER_TIER = 100;
+
+// ---------- Stdlib metadata (CNT-02) ----------
+
+export {
+  BUILTINS,
+  CONSTANTS,
+  type BuiltinMeta,
+  type ConstantMeta,
+  type ParamKind,
+  type Unlock,
+} from './stdlib';
