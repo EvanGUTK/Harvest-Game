@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { checkSources, TEST_OPTIONS } from '../test-support/check-options';
+import { checkErrors, TEST_OPTIONS } from '../test-support/check-options';
 import type { Span } from '../types';
 
 const messages = (text: string, options = TEST_OPTIONS): string[] =>
-  checkSources(text, options).map((d) => d.message);
+  checkErrors(text, options).map((d) => d.message);
 
 const span = (line: number, col: number, endLine: number, endCol: number): Span => ({
   file: 'main.sprout',
@@ -15,7 +15,7 @@ const span = (line: number, col: number, endLine: number, endCol: number): Span 
 
 describe('E-WRONG-ARG-COUNT for host builtins (errors-and-diagnostics.md: "`move` needs 1 thing in the brackets: a direction like `NORTH`.")', () => {
   it('uses the catalogue sentence with the parameter hints, over the whole call, and says how many were given', () => {
-    expect(checkSources('move()\n')).toEqual([
+    expect(checkErrors('move()\n')).toEqual([
       {
         code: 'E-WRONG-ARG-COUNT',
         severity: 'error',
@@ -64,7 +64,7 @@ describe('E-WRONG-ARG-COUNT for host builtins (errors-and-diagnostics.md: "`move
 
 describe('E-WRONG-ARG-COUNT for intrinsics (standard-library.md §Pure helpers)', () => {
   it("uses the checker's own hint table", () => {
-    expect(checkSources('len()\n')).toMatchObject([
+    expect(checkErrors('len()\n')).toMatchObject([
       {
         code: 'E-WRONG-ARG-COUNT',
         message: '`len` needs 1 thing in the brackets: a list, a dict or text.',
@@ -93,7 +93,7 @@ describe('E-WRONG-ARG-COUNT for direct calls of user functions (language-spec.md
       '`f` needs 2 things in the brackets, but got 1.',
     ]);
     expect(
-      checkSources([
+      checkErrors([
         { name: 'main.sprout', text: 'tend(1)\n' },
         { name: 'helpers.sprout', text: 'def tend():\n    pass\n' },
       ]).map((d) => d.message),
@@ -132,7 +132,7 @@ describe('E-WRONG-ARG-COUNT for methods (chief ruling 2026-10-11: arity by metho
 
 describe('E-UNKNOWN-METHOD (chief ruling 2026-10-11: "`.sort` isn\'t a method in Sprout. Lists have `.append` and `.pop`; dicts have `.get`.")', () => {
   it('reports a method no Sprout value has, at the method name, with the catalogue wording', () => {
-    expect(checkSources('lst = []\nlst.sort(1, 2, 3)\n')).toEqual([
+    expect(checkErrors('lst = []\nlst.sort(1, 2, 3)\n')).toEqual([
       {
         code: 'E-UNKNOWN-METHOD',
         severity: 'error',
@@ -143,7 +143,7 @@ describe('E-UNKNOWN-METHOD (chief ruling 2026-10-11: "`.sort` isn\'t a method in
   });
 
   it('suggests a close method with a fix-it that replaces the name', () => {
-    expect(checkSources('lst = []\nlst.apend(1)\n')).toEqual([
+    expect(checkErrors('lst = []\nlst.apend(1)\n')).toEqual([
       {
         code: 'E-UNKNOWN-METHOD',
         severity: 'error',

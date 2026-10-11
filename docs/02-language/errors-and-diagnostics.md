@@ -63,10 +63,10 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-BAD-TARGET` | `f() = 1`, `1 = x` | You can only store a value in a name or a list/dict slot. |
 | `E-TOO-MANY-FILES` | an 11th file in the campaign, or a second file in a showdown | Your program can have at most 10 files. In a showdown: A showdown program can have only 1 file. |
 | `E-TOO-DEEP` / `E-PROGRAM-TOO-BIG` / `E-SRC-TOO-BIG` | limits | Tells you the limit and suggests using functions to simplify. `E-TOO-DEEP` covers both block nesting and expression tree height (language-spec §Limits); for an expression it says: This expression is nested more than 64 levels deep. |
-| `W-UNREACHABLE` | code after `while True:` with no `break` | warning: This code will never run because the loop above never ends. |
+| `W-UNREACHABLE` | code after `while True:` with no `break`; code after `return`, `break` or `continue` in the same block | warning: This code will never run because the loop above never ends. After a leaving statement: This code will never run because `return` above always leaves this block. |
 | `W-PURE-INFINITE-LOOP` | `while True:` that only does arithmetic, with no `break`, `return`, `halt()`, action or sensor, directly or in any function it calls | warning: This loop never ends and never touches the farm, so it will use up all your cycles doing nothing. |
 | `W-USE-BEFORE-DEF` | `tend()` at the top level above `def tend():` | warning: `tend` isn't defined yet at this line. Move the `def` above. |
-| `W-UNUSED-VAR` | assigned, never read | hint |
+| `W-UNUSED-VAR` | assigned, never read (`x += 1` alone does not count as a read; `for` targets, parameters and `_` names are exempt) | hint: `total` is given a value but never used. |
 
 **Locked names.** A reference to a locked builtin or constant name (for example `sell` before Chapter 8, or before the Sell node is bought) is `E-LOCKED-FEATURE`, and it takes precedence over `E-UNKNOWN-NAME`: the player sees "`sell` isn't unlocked yet", never "I don't know `sell`". The compiler is driven by `CompileOptions.lockedNames`; see the Feature gating map in [curriculum](curriculum.md#feature-gating-map-normative).
 
