@@ -26,7 +26,7 @@ describe('kindNoun (errors-and-diagnostics.md §Runtime R-TYPE, chief ruling 202
     expect(list.ok && kindNoun(list.value, constants)).toBe('a list');
   });
 
-  it('throws VALUE_UNKNOWN_CONST for a constant id the module does not define', () => {
+  it('throws LANG-VALUE-UNKNOWN-CONST for a constant id the module does not define', () => {
     expect(() => kindNoun(constValue(99), constants)).toThrow(InvariantError);
   });
 });

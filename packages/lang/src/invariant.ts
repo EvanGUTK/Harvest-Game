@@ -11,7 +11,7 @@ export type InvariantCode =
   | 'LANG-VALUE-RANGE'
   | 'LANG-HEAP-REFCOUNT'
   | 'LANG-HEAP-INDEX'
-  | 'VALUE_UNKNOWN_CONST';
+  | 'LANG-VALUE-UNKNOWN-CONST';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;

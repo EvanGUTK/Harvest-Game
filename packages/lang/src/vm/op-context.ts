@@ -21,6 +21,7 @@ export function constantTable(defs: readonly ConstantDef[]): ConstantTable {
 /** The ConstantDef of a constant the module produced; an unknown id means a host or compiler bug. */
 export function constantDef(constants: ConstantTable, id: number): ConstantDef {
   const def = constants.get(id);
-  if (def === undefined) throw new InvariantError('VALUE_UNKNOWN_CONST', `no constant with id ${String(id)}`);
+  if (def === undefined)
+    throw new InvariantError('LANG-VALUE-UNKNOWN-CONST', `no constant with id ${String(id)}`);
   return def;
 }
