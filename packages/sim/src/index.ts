@@ -145,3 +145,13 @@ export interface Simulation {
 
 export { splitmix32, type Splitmix32 } from './prng/splitmix32';
 export { createSfc32, type Sfc32, type Sfc32State } from './prng/sfc32';
+export { InvariantError, type InvariantCode } from './invariant';
+export {
+  createStreams,
+  randomBelow,
+  seedStream,
+  streamName,
+  type MatchStreams,
+  type NamedStream,
+  type StreamId,
+} from './prng/streams';

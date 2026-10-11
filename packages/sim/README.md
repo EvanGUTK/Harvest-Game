@@ -7,3 +7,7 @@ Deterministic farm world, host functions (actions/sensors), shared market, and t
 - Backlog: `SIM-01` … `SIM-08`, `SIM-BAL` (milestone M0)
 
 **Purity:** integers only; no `Date`, `Math.random`, DOM or Node APIs.
+
+## Public API so far
+
+- **PRNG (SIM-05):** `splitmix32`, `createSfc32`, `seedStream`, `createStreams`, `randomBelow` (FNV-1a comes from `@harvest/lang`). Streams `layout`, `weather` and `player:<slot>` are seeded from the match seed as in [§PRNG seeding](../../docs/03-architecture/simulation-engine.md#determinism).
