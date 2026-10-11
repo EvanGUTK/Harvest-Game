@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assignAwards } from './awards';
-import { rankPlayers } from './ranking';
+import { scorePlayers } from './score';
 import type { PlayerStats, ScoringRules } from './stats';
 
 const RULES: ScoringRules = { startCredits: 100, cycleBudget: 30_000 };
@@ -24,21 +24,10 @@ function stats(slot: number, over: Partial<PlayerStats> = {}): PlayerStats {
   };
 }
 
-/** Awards per slot for a lobby, ranked the way scorePlayers ranks it. */
-function awardsFor(lobby: readonly PlayerStats[]): Record<number, string[]> {
-  const placements = rankPlayers(
-    lobby.map((s) => ({
-      slot: s.slot,
-      idle: s.idle,
-      score: s.idle ? 0 : s.credits,
-      cyclesLastChange: s.lastSaleAt ?? RULES.cycleBudget,
-      logicCycles: s.idle ? 0 : s.logicCycles,
-      programTokens: s.idle ? 0 : s.programTokens,
-    })),
-  );
-  const awards = assignAwards(RULES, lobby, placements);
-  const out: Record<number, string[]> = {};
-  for (const s of lobby) out[s.slot] = awards.get(s.slot) ?? [];
+/** Awards per slot for a lobby, read from the results `scorePlayers` produces. */
+function awardsFor(lobby: readonly PlayerStats[]): Record<number, readonly string[]> {
+  const out: Record<number, readonly string[]> = {};
+  for (const result of scorePlayers(RULES, lobby).results) out[result.slot] = result.awards;
   return out;
 }
 
@@ -196,13 +185,12 @@ describe('clean_code (fewest tokens among places 1 to ⌈n ÷ 2⌉ of n players)
     expect(holders(lobby, 'clean_code')).toEqual([1]);
   });
 
-  it('counts idle players in n: 4 slots with 1 idle makes the top half places 1 and 2', () => {
+  it('counts idle players in n: with 1 idle among 3 slots the top half is places 1 and 2, so both programs compete', () => {
     const lobby = [
       stats(0, { credits: 400, programTokens: 90 }), // 1st
-      stats(1, { credits: 300, programTokens: 70 }), // 2nd
-      stats(2, { credits: 200, programTokens: 5 }), // 3rd
-      stats(3, { idle: true }), // 4th
-    ];
+      stats(1, { credits: 300, programTokens: 40 }), // 2nd
+      stats(2, { idle: true }), // 3rd
+    ]; // counting only the 2 programs would make the top half place 1 alone and give the award to slot 0
     expect(holders(lobby, 'clean_code')).toEqual([1]);
   });
 
@@ -236,8 +224,12 @@ describe('clean_code (fewest tokens among places 1 to ⌈n ÷ 2⌉ of n players)
     expect(holders(lobby, 'clean_code')).toEqual([0, 1]);
   });
 
-  it('never goes to an idle player, even with 0 tokens in the top half of a tiny lobby', () => {
-    const lobby = [stats(0, { credits: 400, programTokens: 80 }), stats(1, { idle: true })];
+  it('never goes to an idle player, even one placed inside the top half: [program, idle, idle] puts both idle at =2nd of ⌈3 ÷ 2⌉ = 2', () => {
+    const lobby = [
+      stats(0, { credits: 400, programTokens: 80 }),
+      stats(1, { idle: true }),
+      stats(2, { idle: true }),
+    ];
     expect(holders(lobby, 'clean_code')).toEqual([0]);
   });
 
