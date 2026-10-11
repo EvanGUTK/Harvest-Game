@@ -30,7 +30,7 @@
 │   ├── sim/         world state, actions, market, scheduler, event log, PRNG
 │   ├── protocol/    zod schemas for WS + REST payloads, shared types
 │   ├── content/     crops, stdlib metadata (costs, unlocks), skill tree, contracts,
-│   │                cosmetics catalogue, bot programs (.sprout)
+│   │                cosmetics catalogue, bot programs (Sprout source strings)
 │   └── db/          Drizzle schema, `migrations/`, `drizzle.config`, seed scripts (`seed`, `seed:e2e`)
 ├── assets/          source art/audio + MANIFEST.csv (licenses)
 ├── tools/           voxel bake, asset manifest check, balance harness CLI,
