@@ -28,6 +28,8 @@ export type RuntimeCode =
 /**
  * `operands` lets the VM add the approved second sentence of an R-TYPE message ("`x` is `5`, `y` is
  * `RADISH`.") when its debug info names an operand; semantic functions never format it themselves.
+ * The operands are borrowed: the VM must format that sentence before it releases the operand slots,
+ * because releasing a container's last reference empties it in place (Heap.free).
  */
 export type RuntimeError = {
   readonly code: RuntimeCode;
