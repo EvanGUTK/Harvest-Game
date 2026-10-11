@@ -52,6 +52,9 @@ export const MARKET = {
   liquidationBp: 5_000,
 } as const;
 
+/** A showdown has 2 to 8 players (simulation-engine.md: world state for 1..8 farms); 1 is a solo test run. */
+export const MAX_SHOWDOWN_PLAYERS = 8;
+
 export const SHOWDOWN_DEFAULTS = {
   gridSize: 8,
   cycleBudget: 30_000,
