@@ -28,6 +28,7 @@ export type Limits = {
   maxSourceBytes: number; // 16_384
   maxAstNodes: number; // 5_000
   maxNesting: number; // 12
+  maxExpressionDepth: number; // 64
   maxCallDepth: number; // 64
   maxCollectionSize: number; // 1_024
   maxHeapCells: number; // 16_384
@@ -41,6 +42,7 @@ export const DEFAULT_LIMITS: Limits = {
   maxSourceBytes: 16_384,
   maxAstNodes: 5_000,
   maxNesting: 12,
+  maxExpressionDepth: 64,
   maxCallDepth: 64,
   maxCollectionSize: 1_024,
   maxHeapCells: 16_384,

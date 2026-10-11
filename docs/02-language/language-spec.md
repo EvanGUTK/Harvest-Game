@@ -149,6 +149,7 @@ The program compiles to bytecode for a stack VM (see [interpreter-vm](../03-arch
 | Files per program | 10 (campaign), 1 (showdown v1) | compile | `E-TOO-MANY-FILES` |
 | AST nodes | 5,000 per program (all files together) | compile | `E-PROGRAM-TOO-BIG` |
 | Nesting depth (blocks) | 12 | compile | `E-TOO-DEEP` |
+| Expression nesting depth | 64 | compile | `E-TOO-DEEP` |
 | Call depth (recursion) | 64 | runtime | `R-STACK-OVERFLOW` |
 | List / dict size | 1,024 | runtime | `R-COLLECTION-FULL` |
 | Total live heap cells | 16,384 | runtime | `R-OUT-OF-MEMORY` |
@@ -158,6 +159,8 @@ The program compiles to bytecode for a stack VM (see [interpreter-vm](../03-arch
 **Code prefixes:** `E-` compile-time error, `W-` compile-time warning or hint, `R-` runtime error raised by the VM. The canonical list of codes is [errors-and-diagnostics](errors-and-diagnostics.md); this table must match it.
 
 **Heap cells.** A heap cell is one list slot or one dict entry. A `str` value costs `ceil(len / 16)` cells (a full 256-unit string is 16 cells; literals in the constant pool are free). Ints, bools, `None`, constants and functions are free. Call frames and the value stack are not heap cells; they are bounded by the call-depth limit (64) and the AST limit. By design, 64 frames each holding a full 1,024-element list exceed 16,384 cells, so `R-OUT-OF-MEMORY` fires first.
+
+**Expression nesting depth.** A whole expression is level 1. Every expression nested inside brackets (a parenthesised group, a list or dict element, a call argument, an index) and every prefix `-` or `not` adds one level. The limit keeps the parser's recursion bounded, so input like ten thousand `(` gets a diagnostic instead of crashing the compiler.
 
 **Two size counters.** Sprout code averages roughly 0.3 AST nodes per source byte, so the 5,000-node and 16 KB limits sit close together, and dense code can reach the node limit first. The AST limit is a parser safety net, not a gameplay target: the editor status bar shows `bytes / 16,384` and `nodes / 5,000` side by side so a player is never surprised by `E-PROGRAM-TOO-BIG`.
 
