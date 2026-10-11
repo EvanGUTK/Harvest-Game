@@ -13,9 +13,8 @@
  * (`+`, `*`, `str()`) are ordinary heap strings.
  */
 
-import type { Value, ValueKind, ValueOps } from '../index';
 import { floorDiv } from '../int-math';
-import { DEFAULT_LIMITS } from '../types';
+import { DEFAULT_LIMITS, type Value, type ValueKind, type ValueOps } from '../types';
 import { InvariantError, assertNever } from '../invariant';
 
 export type StrObj = {
