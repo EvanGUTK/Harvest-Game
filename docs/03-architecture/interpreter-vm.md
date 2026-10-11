@@ -66,8 +66,10 @@ interface ValueOps {              // Value is opaque outside lang
 }
 
 interface VM {
-  /** Run pure instructions until: a host call needs the world, the program halts,
-   *  a runtime error occurs, or `maxCycles` elapse. With `stopAtLine`, also yield at the
+  /** Run instructions until: a host call, the program halts, a runtime error occurs,
+   *  or `maxCycles` elapse. EVERY CALL_HOST yields `host` (lang has no host table, so it can
+   *  compute no builtin, `random` included); `touchesWorld` only tells the scheduler whether to
+   *  advance the world to the call's cycle first. With `stopAtLine`, also yield at the
    *  next statement boundary (debugger Step).
    *  A pure instruction executes only while `remaining >= 1`. A CALL_HOST yields `host` whenever
    *  `remaining >= 1`, regardless of `host.cost`; at `remaining = 0` the VM yields `budget`. */
@@ -86,7 +88,7 @@ type VMYield =
   // atCycle: the clock after argument evaluation and after the 1-cycle CALL_HOST base.
   // cost: the baked host.cost only; it excludes the base cycle.
   | { kind: 'host'; fn: HostId; args: readonly Value[]; cost: number; atCycle: number }
-  | { kind: 'line'; line: number; atCycle: number }        // only with stopAtLine
+  | { kind: 'line'; file: string; line: number; atCycle: number }   // only with stopAtLine
   | { kind: 'halt'; atCycle: number }
   | { kind: 'error'; error: Diagnostic; atCycle: number }  // runtime diagnostics use the same shape, R- codes
   | { kind: 'budget'; atCycle: number };
@@ -130,15 +132,17 @@ Stack machine, compact `Int32Array` code with a constant pool.
 
 | Group | Ops |
 |---|---|
-| Stack | `CONST k`, `POP`, `DUP` |
+| Stack | `CONST k`, `POP`, `DUP`, `SWAP`, `ROT3` (top three `a b c` become `c a b`), `DUP2` (duplicates the top two) |
 | Vars | `LOAD_LOCAL i`, `STORE_LOCAL i`, `LOAD_GLOBAL i`, `STORE_GLOBAL i` |
 | Arith | `ADD SUB MUL FLOORDIV MOD NEG` |
 | Compare/logic | `EQ NE LT LE GT GE IN NOT` (`and`/`or` compile to jumps) |
 | Control | `JUMP a`, `JUMP_IF_FALSE a`, `JUMP_IF_TRUE_KEEP a`, `JUMP_IF_FALSE_KEEP a` |
-| Loops | `ITER_INIT`, `ITER_NEXT a` (range is lazy), `REPEAT_INIT`, `REPEAT_NEXT a` |
-| Calls | `CALL argc`, `CALL_HOST id argc`, `RETURN`, `HALT` |
+| Loops | `ITER_INIT k` (`k = 0`: the iterable is on the stack; `k = 1..3`: that many `range` arguments, so `range` is lazy and never a value), `ITER_NEXT a`, `REPEAT_INIT`, `REPEAT_NEXT a` |
+| Calls | `CALL argc`, `CALL_HOST id argc cost touchesWorld`, `CALL_INTRINSIC id argc`, `RETURN`, `HALT` |
 | Data | `BUILD_LIST n`, `BUILD_DICT n`, `INDEX_GET`, `INDEX_SET`, `CALL_METHOD m argc` |
-| Debug | `LINE n` (0 cycles; marks statement boundaries for step/breakpoints/cost lens) |
+| Debug | `LINE s` (0 cycles; marks statement boundaries for step/breakpoints/cost lens; `s` indexes the module's statement table of file, line and span) |
+
+**Module layout.** One `Int32Array` holds the code: an opcode word followed by its operand words. Function 0 is the module body (every file's top level, in run order); each other function records its name, arity, local-slot count, entry pc and file. The constant pool holds ints, strings (pinned literals, no heap cells), `True`/`False`/`None`, function indices and game constant ids. Globals are numbered in the scope resolver's slot order. Debug tables stay off the hot path: the statement table for `LINE`, a span per instruction that can fail, and the plain variable names of operands where a message can name them. A `VMSnapshot` carries the module, so it is self-contained.
 
 **Compilation rules the VM relies on** (the player-facing behaviour is in [language-spec](../02-language/language-spec.md)):
 
@@ -146,6 +150,10 @@ Stack machine, compact `Int32Array` code with a constant pool.
 - `and` / `or` compile to `JUMP_IF_FALSE_KEEP` / `JUMP_IF_TRUE_KEEP`, which leave the deciding operand on the stack, so they return an operand, not a bool. `NOT` always yields a bool. Only `0`, `None`, `""`, `[]`, `{}` and `False` are falsy ([Truthiness](../02-language/language-spec.md#truthiness-and-and--or)).
 - `def` compiles to a function constant plus `STORE_GLOBAL`, executed in program order, so calling a function before its `def` has run is `R-UNBOUND-GLOBAL`.
 - A name assigned anywhere in a `def` body (and not declared `global`) is a local slot for the whole body. Reading an empty slot is `R-UNBOUND-LOCAL` ([Scoping](../02-language/language-spec.md#scoping)).
+- A chained comparison evaluates each middle operand once: `a < b < c` is `a, b, DUP, ROT3, LT, JUMP_IF_FALSE_KEEP Lf, POP, c, LT, JUMP Le; Lf: SWAP, POP; Le:`.
+- `a[i] op= v` evaluates `a` and `i` once: `a, i, DUP2, INDEX_GET, v, op, INDEX_SET`. `x op= v` is `LOAD x, v, op, STORE x`.
+- `x not in y` is `IN` then `NOT`: 2 base cycles plus the `IN` surcharge.
+- Language intrinsics (`len`, `abs`, `min`, `max`, `str`, `int`, `print`) compile to `CALL_INTRINSIC`, which never yields. Host builtins compile to `CALL_HOST` with the baked `cost` and `touchesWorld` operands, and every `CALL_HOST` yields, `halt()` included.
 
 ### Op cost table (normative, single source of truth)
 
@@ -162,17 +170,20 @@ World time is cycles, so every implementation must charge exactly these costs. [
 | `IN` on `str` | 1 + len(haystack) |
 | `IN` on `dict` | 1 |
 | `BUILD_LIST n`, `BUILD_DICT n` | 1 + n (`n` elements, or `n` key/value entries) |
-| `ITER_INIT` over a `dict` (takes the key snapshot) | 1 + len(dict) |
-| `ITER_INIT` over a `range`, `list` or `str` | 1 |
+| `ITER_INIT 0` over a `dict` (takes the key snapshot) | 1 + len(dict) |
+| `ITER_INIT 0` over a `list` or `str`; `ITER_INIT 1..3` over a `range` | 1. For `range` this is the stdlib's "1 for the call": there is no separate call cycle. Non-int `range` arguments or a step of 0 are `R-BAD-ARG` here |
 | `ITER_NEXT` (every iterable kind) | 1 per call, including the final call that ends the loop |
 | `INDEX_GET`, `INDEX_SET` | 1 |
 | `CALL_HOST` | 1 here (the call). The builtin's `host.cost` is added by `sim`: `agent.clock = atCycle + the applied cost` (see [Clock arithmetic](simulation-engine.md#clock-arithmetic-normative)). `halt()` has `host.cost` 0, so it costs 1 in total |
+| `CALL_INTRINSIC` | 1 here (the call), plus the intrinsic's cost from the stdlib and the builtin rows below (`len(x)` is 2 in total). It never yields |
 | `CALL_METHOD` | 1 here (the call), plus the method's cost from the builtin rows below |
-| every other op (`CONST`, `POP`, `DUP`, loads, stores, int `ADD SUB MUL FLOORDIV MOD`, `NEG`, `NOT`, `LT LE GT GE`, `EQ`/`NE` on scalars, jumps, `REPEAT_*`, `CALL`, `RETURN`, `HALT`) | 1 |
+| every other op (`CONST`, `POP`, `DUP`, `SWAP`, `ROT3`, `DUP2`, loads, stores, int `ADD SUB MUL FLOORDIV MOD`, `NEG`, `NOT`, `LT LE GT GE`, `EQ`/`NE` on scalars, jumps, `REPEAT_*`, `CALL`, `RETURN`, `HALT`) | 1 |
 
 **Structural `==` surcharge.** For two `list`s or two `dict`s of different length the surcharge is 0 (the length check is part of the base cycle). Otherwise visit the pairs in order (list: index order; dict: the left operand's insertion order, looking each key up in the right operand) and **stop at the first pair that differs**. Each pair visited costs 1, plus the surcharge of comparing its two members: `min(len, len)` for two `str`s, the same rule recursively for nested `list`/`dict`, and 0 for scalars. A missing key counts as the differing pair.
 
-**Argument-dependent builtins and methods.** These costs are added to the 1-cycle call (`CALL_HOST` or `CALL_METHOD`). Fixed builtin costs stay in the stdlib table; only the costs that depend on the arguments are defined here:
+**Loop exits.** `ITER_NEXT` and `REPEAT_NEXT` pop their own iterator or counter when the loop ends normally. `break` in a `for` or `repeat` loop is `JUMP` + `POP` (2 cycles); in a `while` loop it is `JUMP` (1). `continue` is `JUMP` (1). `RETURN` discards the whole frame, iterators included, at no extra cost.
+
+**Argument-dependent builtins and methods.** These costs are added to the 1-cycle call (`CALL_HOST`, `CALL_INTRINSIC` or `CALL_METHOD`). Fixed builtin costs stay in the stdlib table; only the costs that depend on the arguments are defined here:
 
 | Call | Cost (on top of the call cycle) |
 |---|---|

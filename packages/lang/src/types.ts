@@ -143,7 +143,7 @@ export type CompileResult =
 
 export type VMYield =
   | { kind: 'host'; fn: HostId; args: readonly Value[]; cost: number; atCycle: number }
-  | { kind: 'line'; line: number; atCycle: number }
+  | { kind: 'line'; file: string; line: number; atCycle: number }
   | { kind: 'halt'; atCycle: number }
   | { kind: 'error'; error: Diagnostic; atCycle: number }
   | { kind: 'budget'; atCycle: number };
@@ -153,7 +153,8 @@ export type VMSnapshot = { readonly __brand: 'VMSnapshot'; readonly languageVers
 
 export interface VM {
   /**
-   * Run pure instructions until a world-touching host call, halt, error, or maxCycles.
+   * Run instructions until a host call, halt, error, or maxCycles. Every CALL_HOST yields (lang has
+   * no host table); `touchesWorld` only tells the scheduler to advance the world first.
    * With `stopAtLine`, also yields `{ kind: 'line' }` at the next statement boundary (debugger Step).
    */
   run(maxCycles: number, opts?: { stopAtLine?: boolean }): VMYield;
