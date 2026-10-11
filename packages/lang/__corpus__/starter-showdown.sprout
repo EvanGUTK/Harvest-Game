@@ -1,0 +1,22 @@
+# Starter program shown in the coding phase.
+# Inefficient but profitable: it farms only the 2 bottom rows (16 tiles),
+# waters when the soil is dry, and refills and sells after every pass.
+def tend():
+    if moisture() < 10:
+        water()
+    if crop() == None:
+        plant(RADISH)
+    elif is_ripe():
+        harvest()
+        plant(RADISH)
+
+while True:
+    for y in range(2):
+        for x in range(world_size()):
+            tend()
+            move(EAST)
+        move(NORTH)
+    move(SOUTH)
+    move(SOUTH)
+    refill()
+    sell(RADISH, inventory(RADISH))

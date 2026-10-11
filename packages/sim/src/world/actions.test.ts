@@ -11,7 +11,7 @@ import {
   type ActionContext,
 } from './actions';
 import type { Farm } from './farm';
-import type { Tile } from './types';
+import type { Tile } from '../types';
 
 const SIZE = 3;
 const CTX: ActionContext = {
