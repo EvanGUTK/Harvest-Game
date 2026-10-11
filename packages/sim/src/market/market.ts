@@ -8,7 +8,7 @@
 import { BASIS_POINTS, CROP_IDS } from '@harvest/content';
 import type { CropId, MARKET } from '@harvest/content';
 import { floorDiv } from '@harvest/lang';
-import type { SimConfig } from '../index';
+import type { SimConfig } from '../types';
 import { InvariantError } from '../invariant';
 
 /** The tunable market numbers: every key of content's MARKET, as plain numbers so a run can shadow them. */

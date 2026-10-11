@@ -8,7 +8,7 @@ import {
   sensorMoisture,
   sensorSoil,
 } from './sensors';
-import type { Tile } from './types';
+import type { Tile } from '../types';
 
 function tile(crop: Tile['crop'], soil: Tile['soil'] = 'grass', moisture = 42): Tile {
   return { soil, moisture, lastUpdated: 0, crop };

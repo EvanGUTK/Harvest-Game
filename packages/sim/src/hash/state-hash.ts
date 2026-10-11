@@ -14,7 +14,7 @@ import { advanceMarket, marketPressures, type MarketEnv, type MarketState } from
 import type { MatchStreams } from '../prng/streams';
 import type { AdvanceRules } from '../world/advance';
 import { advanceFarm, type Farm } from '../world/farm';
-import type { Soil, Tile } from '../world/types';
+import type { Soil, Tile } from '../types';
 
 /** The rules the hash needs to force-advance the world: tile moisture decay and the market numbers. */
 export type HashRules = AdvanceRules & MarketEnv;

@@ -7,7 +7,7 @@
  */
 
 import type { CropId } from '@harvest/content';
-import type { SimEvent } from '../index';
+import type { SimEvent } from '../types';
 import { advanceMarket, marketPrice } from './market';
 import type { MarketEnv, MarketState } from './market';
 
