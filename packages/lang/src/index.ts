@@ -48,6 +48,11 @@ export { utf8Length } from './lexer/utf8';
 export { countTokens } from './lexer/count-tokens';
 export { KEYWORDS, OPERATORS, isCountedToken, type Token, type TokenKind } from './lexer/token';
 
+// ---------- Integer math ----------
+
+export { floorDiv, floorMod } from './int-math';
+export { InvariantError, type InvariantCode } from './invariant';
+
 // ---------- Parser (LANG-02) ----------
 
 export { parse, type ParseResult } from './parser/parser';

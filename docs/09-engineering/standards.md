@@ -15,7 +15,7 @@ The point of these rules: code that a stranger (or Claude on another machine, ne
 
 ## Purity (lang, sim, content)
 
-- Integers only. Use `floorDiv(a, b)` and `floorMod(a, b)` helpers from `lang` (Python semantics). The `/` operator and `/=` are banned by lint.
+- Integers only. Use `floorDiv(a, b)` and `floorMod(a, b)` helpers from `lang` (Python semantics). The `/` operator and `/=` are banned by lint. The single exception is the helper module itself, `packages/lang/src/int-math.ts`, whose exactness is proven in its tests.
 - No ambient state: no `Date`, `Math.random`, `performance`, `crypto`, timers, `globalThis` and other globals (`window`, `document`, `process`, `fetch`, `localStorage`…), module-level mutable variables.
 - All randomness through the seeded PRNG passed in explicitly.
 - Iteration only over arrays and `Map` (insertion order). Never iterate object keys for anything that affects results; lint bans `for…in` and `Object.keys/values/entries`.

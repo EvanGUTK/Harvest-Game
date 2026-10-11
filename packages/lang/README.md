@@ -7,8 +7,9 @@ The Sprout language: lexer → parser → checker → compiler → resumable, cy
 - Backlog: `LANG-01` … `LANG-06` (milestone M0)
 
 - **Hashing:** `fnv1a32Bytes`, `fnv1a32Ascii`, `fnv1a32Words` (FNV-1a, 32-bit; `FNV1A_OFFSET_BASIS`, `FNV1A_PRIME`, `HashInputError`). The `lang` goldens hash UTF-8 bytes with it; `sim` imports it for PRNG stream ids and the state hash (`lang` cannot import `sim`).
+- **Integer math:** `floorDiv`, `floorMod` (`src/int-math.ts`, Python floor semantics; the one module where lint allows `/`). Invariant violations throw `InvariantError` with a stable `code`.
 
-**Status:** LANG-01 lexer done (`src/lexer/`). LANG-02 parser in progress (`src/parser/`).
+**Status:** LANG-01 lexer done (`src/lexer/`). LANG-02 parser in progress (`src/parser/`). Next: LANG-05 value model.
 
 **Purity:** no dependencies, no DOM/Node APIs, no `Date`, `Math.random`, floats or `eval`.
 

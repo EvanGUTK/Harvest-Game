@@ -24,7 +24,7 @@ Read this fully, then `STATE.md`, before doing anything. Together they are the h
 
 ## Hard rules
 
-1. `packages/lang` and `packages/sim` are **pure and deterministic**: integers only, no `/`, no `Date`, `Math.random`, `performance`, `crypto`, timers, DOM or Node APIs. ESLint enforces this; never disable the rule.
+1. `packages/lang` and `packages/sim` are **pure and deterministic**: integers only, no `/` (except inside `packages/lang/src/int-math.ts`, the one floorDiv helper), no `Date`, `Math.random`, `performance`, `crypto`, timers, DOM or Node APIs. ESLint enforces this; never disable the rule.
 2. Player code is **never** turned into or executed as JavaScript. Only our VM runs it.
 3. The server is authoritative for scores, credits, ranks, deadlines. Clients send source text and intents only.
 4. Dependency direction: `lang`, `content` → `sim` → `protocol` → `db`; `web` never imports `db`. Public API is `src/index.ts` only.
