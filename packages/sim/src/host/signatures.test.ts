@@ -57,13 +57,13 @@ describe('hostSignatures', () => {
     expect(signature('plant', 9).cost).toBe(ACTION_COSTS.plant);
   });
 
-  it('renders the unlock as the editor lock text: chapter, skill node, or both', () => {
-    expect(signature('move').unlock).toBe('Ch 1');
-    expect(signature('till').unlock).toBe('Skill: till');
-    expect(signature('sell').unlock).toBe('Ch 8 · Skill: sell');
-    expect(signature('goto').unlock).toBe('Ch 5');
-    for (const s of hostSignatures()) {
-      expect(s.unlock?.length).toBeGreaterThan(0);
+  it('passes the unlock through as fields (chapter, skill node, or both) and renders no text', () => {
+    expect(signature('move').unlock).toEqual({ chapter: 1 });
+    expect(signature('till').unlock).toEqual({ node: 'till' });
+    expect(signature('sell').unlock).toEqual({ chapter: 8, node: 'sell' });
+    expect(signature('goto').unlock).toEqual({ chapter: 5 });
+    for (const [index, meta] of BUILTINS.entries()) {
+      expect(hostSignatures()[index]?.unlock).toEqual(meta.unlock);
     }
   });
 
