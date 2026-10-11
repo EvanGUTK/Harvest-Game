@@ -82,7 +82,7 @@ export type {
   LogicalOp,
   MethodCallExpr,
   NameExpr,
-  Node,
+  AstNode,
   NoneLiteral,
   PassStmt,
   Program,

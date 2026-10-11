@@ -67,7 +67,7 @@ describe('E-SLASH-DIVISION (errors-and-diagnostics.md: "Sprout uses whole number
   });
 });
 
-describe('E-NO-POWER', () => {
+describe('E-NO-POWER (errors-and-diagnostics.md: "Sprout has no `**`. Multiply the number by itself instead.")', () => {
   it('reports `**` as one diagnostic over both stars', () => {
     expect(only('a ** 2')).toMatchObject({
       code: 'E-NO-POWER',
@@ -85,7 +85,7 @@ describe('E-NO-POWER', () => {
   });
 });
 
-describe('E-NO-FLOAT', () => {
+describe('E-NO-FLOAT (errors-and-diagnostics.md: "Sprout uses whole numbers, so `1.5` can\'t be used.")', () => {
   it('reports `1.5` (lexed INT `.` INT) as one diagnostic over the whole literal', () => {
     expect(only('x + 1.5')).toMatchObject({
       code: 'E-NO-FLOAT',
@@ -99,7 +99,7 @@ describe('E-NO-FLOAT', () => {
   });
 });
 
-describe('E-UNEXPECTED-TOKEN', () => {
+describe('E-UNEXPECTED-TOKEN (errors-and-diagnostics.md: "I didn\'t expect `)` here.")', () => {
   it('names the unexpected token and says what should come instead', () => {
     expect(only('a + )')).toMatchObject({
       code: 'E-UNEXPECTED-TOKEN',
@@ -154,7 +154,7 @@ describe('E-UNEXPECTED-TOKEN', () => {
   });
 });
 
-describe('E-UNCLOSED-BRACKET', () => {
+describe('E-UNCLOSED-BRACKET (errors-and-diagnostics.md: "This `(` is never closed.")', () => {
   it('points at the bracket that is never closed when the file ends inside it', () => {
     expect(only('f(1,\n2')).toEqual({
       code: 'E-UNCLOSED-BRACKET',

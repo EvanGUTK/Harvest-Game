@@ -251,10 +251,10 @@ export type FileNode = {
 export type Program = { readonly type: 'Program'; readonly files: readonly FileNode[] };
 
 /** Every counted node kind (see the counting rule in the header). */
-export type Node = Expression | Statement | ElifClause | Identifier;
+export type AstNode = Expression | Statement | ElifClause | Identifier;
 
 /** The direct child nodes of `node`, in source order. */
-export function childNodes(node: Node): readonly Node[] {
+export function childNodes(node: AstNode): readonly AstNode[] {
   switch (node.type) {
     case 'Identifier':
     case 'NameExpr':
@@ -309,7 +309,7 @@ export function childNodes(node: Node): readonly Node[] {
 /** Counts every node under `program` by the rule in the header (Program and FileNode excluded). */
 export function countNodes(program: Program): number {
   let count = 0;
-  const pending: Node[] = program.files.flatMap((file) => file.body);
+  const pending: AstNode[] = program.files.flatMap((file) => file.body);
   for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
     count += 1;
     pending.push(...childNodes(next));
