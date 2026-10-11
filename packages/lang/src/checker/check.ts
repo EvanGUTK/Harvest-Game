@@ -6,10 +6,9 @@
  * parse nor the check produced an error-severity diagnostic.
  */
 
-import type { ConstantDef, Feature, HostSignature } from '../index';
 import type { Program } from '../parser/ast';
 import type { ResolveOptions, ScopeInfo } from '../scope/scope';
-import type { Diagnostic, Limits } from '../types';
+import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits } from '../types';
 import { checkDuplicateDefs, checkFileCount } from './files';
 import { checkNames } from './names';
 

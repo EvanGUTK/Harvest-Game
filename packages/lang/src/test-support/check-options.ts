@@ -6,8 +6,7 @@
 
 import { parse } from '../parser/parser';
 import { resolveScopes } from '../scope/resolve';
-import { DEFAULT_LIMITS, type Diagnostic, type SourceFile } from '../types';
-import type { HostSignature } from '../index';
+import { DEFAULT_LIMITS, type Diagnostic, type HostSignature, type SourceFile } from '../types';
 import { check, scopeNames, type CheckOptions } from '../checker/check';
 
 function host(
