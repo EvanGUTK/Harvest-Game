@@ -8,6 +8,7 @@
  */
 
 import { childNodes, type AstNode, type CallExpr, type MethodCallExpr, type Program } from '../parser/ast';
+import { assertNever } from '../invariant';
 import type { ScopeInfo } from '../scope/scope';
 import { bindingName, scopeStatements } from '../scope/bindings';
 import type { Diagnostic, Span } from '../types';
@@ -108,7 +109,8 @@ class CallTargets {
     const name = call.callee.name;
     const who = `\`${name}\``;
     const given = call.args.length;
-    switch (scopes.resolutions.get(call.callee)?.kind) {
+    const kind = scopes.resolutions.get(call.callee)?.kind;
+    switch (kind) {
       case 'builtin': {
         const host = this.hosts.get(name);
         return host === undefined ? null : mismatch(call.span, who, host.arity, given, host.hint);
@@ -130,6 +132,8 @@ class CallTargets {
       case 'unknown':
       case undefined:
         return null;
+      default:
+        return assertNever(kind);
     }
   }
 }
