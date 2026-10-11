@@ -142,3 +142,8 @@ export {
   type StreamId,
 } from './prng/streams';
 export { generateLayout, type LayoutConfig } from './world/layout';
+
+// ---------- Scoring (SIM-07) ----------
+
+export { buildPlayerResult } from './scoring/result';
+export type { PlayerStats, ScoringRules } from './scoring/stats';
