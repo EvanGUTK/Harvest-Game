@@ -48,6 +48,11 @@ export { utf8Length } from './lexer/utf8';
 export { countTokens } from './lexer/count-tokens';
 export { KEYWORDS, OPERATORS, isCountedToken, type Token, type TokenKind } from './lexer/token';
 
+// ---------- Integer math ----------
+
+export { floorDiv, floorMod } from './int-math';
+export { InvariantError, type InvariantCode } from './invariant';
+
 // ---------- Features ----------
 
 /** Language features the campaign unlocks one by one (curriculum.md §Feature gating map is the source). */
