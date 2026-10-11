@@ -109,7 +109,10 @@ export type HostSignature = {
   returns: ValueKind | 'any';
   /** Extra cycles on top of the 1-cycle CALL_HOST instruction. Baked into bytecode at compile time. */
   cost: number;
-  /** True if the call reads or mutates the world (forces a scheduler yield). */
+  /**
+   * True if the scheduler must advance the world to t before applying the call. Every CALL_HOST yields
+   * to the scheduler regardless; only `random` is false.
+   */
   touchesWorld: boolean;
   /** Campaign gating: chapter number or skill-node id that unlocks this builtin (editor 🔒 text). */
   unlock?: string;
