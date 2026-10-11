@@ -24,7 +24,7 @@ The score starts at ₵100 (starting money, `startCredits`), so a player who did
 A player runs the **idle program** when the server has no compiled program for them at lock: they never saved a draft, or their draft did not compile. The server passes `PlayerInput.module = null` to `sim`.
 
 - The drone halts at `t = 0`, and `sim` emits `{ t: 0, slot, drone: 0, k: 'halt', info: 'idle' }`.
-- `sim` reports `score = 0` (**not** `startCredits`), `cyclesLastChange = budget`, `logicCycles = 0`, `programTokens = 0`, `cropsHarvested = 0` and no awards. Nothing is liquidated. `error` carries the first compile diagnostic's `{ code, line }` when a compile error caused it, and is absent when there was no draft. The server supplies that diagnostic to `sim` alongside the null module.
+- `sim` reports `score = 0` (**not** `startCredits`), `cyclesLastChange = budget`, `logicCycles = 0`, `programTokens = 0`, `cropsHarvested = 0`, `cyclesUsed = 0` and no awards. Nothing is liquidated. `error` carries the first compile diagnostic's `{ code, line }` when a compile error caused it, and is absent when there was no draft. The server supplies that diagnostic to `sim` alongside the null module.
 - The player is placed **below every player who has a program**, whatever the scores. A real program that ends at ₵0 still beats idle. Several idle players share the last place.
 - **Any program that compiles is valid**, even `pass` or one that halts immediately. It keeps its real credits (₵100 if it does nothing). Doing nothing on purpose therefore beats failing to compile.
 
