@@ -17,7 +17,7 @@ import type { Coord, Tile } from './types';
 export type Direction = 'north' | 'south' | 'east' | 'west';
 
 /** Per-drone stats that campaign upgrades change (Rotor, Sprayer); showdowns use the defaults. */
-export type DroneStats = { moveCost: number; waterAmount: number };
+export type DroneStats = { readonly moveCost: number; readonly waterAmount: number };
 
 export const DEFAULT_DRONE_STATS: DroneStats = {
   moveCost: ACTION_COSTS.move,
@@ -25,23 +25,28 @@ export const DEFAULT_DRONE_STATS: DroneStats = {
 };
 
 export type ActionContext = {
-  gridSize: number;
+  readonly gridSize: number;
   /** Start cycle of the action. */
-  t: number;
-  rules: AdvanceRules;
-  drone: DroneStats;
+  readonly t: number;
+  readonly rules: AdvanceRules;
+  readonly drone: DroneStats;
 };
 
 /** The event body of an action; the scheduler adds `t`, `slot` and `drone` (simulation-engine.md §Event log). */
 export type ActionEvent =
-  | { k: 'move'; to: Coord }
-  | { k: 'plant'; at: Coord; crop: CropId; ok: boolean }
-  | { k: 'harvest'; at: Coord; crop: CropId | null; ok: boolean }
-  | { k: 'till' | 'water' | 'refill'; at: Coord; ok: boolean };
+  | { readonly k: 'move'; readonly to: Coord }
+  | { readonly k: 'plant'; readonly at: Coord; readonly crop: CropId; readonly ok: boolean }
+  | { readonly k: 'harvest'; readonly at: Coord; readonly crop: CropId | null; readonly ok: boolean }
+  | { readonly k: 'till' | 'water' | 'refill'; readonly at: Coord; readonly ok: boolean };
 
-export type ActionOutcome = { ok: boolean; cost: number; farm: Farm; event: ActionEvent };
+export type ActionOutcome = {
+  readonly ok: boolean;
+  readonly cost: number;
+  readonly farm: Farm;
+  readonly event: ActionEvent;
+};
 
-export type MoveOutcome = { cost: number; to: Coord; event: ActionEvent };
+export type MoveOutcome = { readonly cost: number; readonly to: Coord; readonly event: ActionEvent };
 
 type Crop = NonNullable<Tile['crop']>;
 
