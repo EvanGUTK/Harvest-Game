@@ -15,6 +15,17 @@ import type { CropId } from '@harvest/content';
 import type { Coord } from './world/types';
 import type { BytecodeModule } from '@harvest/lang';
 
+// ---------- Market (SIM-04) ----------
+
+export {
+  advanceMarket,
+  cloneMarket,
+  createMarket,
+  marketPressures,
+  marketPrice,
+  type MarketState,
+} from './market/market';
+
 /** Drones per farm. agentIndex = slot × MAX_DRONES + droneNo; N = nSlots × MAX_DRONES is constant per match. */
 export const MAX_DRONES = 2;
 

@@ -12,15 +12,15 @@ import { InvariantError } from '../invariant';
 import type { Coord, Tile } from './types';
 
 export type Farm = {
-  credits: number;
+  readonly credits: number;
   /** Harvested units per crop. */
-  silo: Record<CropId, number>;
+  readonly silo: Readonly<Record<CropId, number>>;
   /** Units left in the one tank both drones draw from. */
-  water: number;
+  readonly water: number;
   /** Row-major (y then x). */
-  tiles: Tile[];
+  readonly tiles: readonly Tile[];
   /** True once an advance found a dry gap on an unripe, unwithered crop; never reset. */
-  everDryPaused: boolean;
+  readonly everDryPaused: boolean;
 };
 
 /** The farm with every tile advanced to cycle `t`; `everDryPaused` becomes true if any tile paused dry. */

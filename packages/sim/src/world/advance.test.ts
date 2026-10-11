@@ -55,6 +55,14 @@ describe('advanceTile', () => {
     expect(advanceTile(tile, 120, DECAY)).toEqual(tile);
   });
 
+  it('rejects a non-integer cycle with or without moisture decay (SIM-BAD-CYCLE), so a config flag cannot decide between throwing and corrupting state', () => {
+    for (const rules of [DECAY, NO_DECAY]) {
+      for (const bad of [10.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+        expect(() => advanceTile(growing('radish', 6, 0, 1), bad, rules)).toThrow(/SIM-BAD-CYCLE/);
+      }
+    }
+  });
+
   it('refuses to move time backwards', () => {
     expect(() => advanceTile(bare(10, 100), 99, DECAY)).toThrow(/SIM-TIME-BACKWARDS/);
   });
@@ -294,11 +302,21 @@ describe('advanceTileDetailed dry pause (everDryPaused, scoring Never Thirsty)',
     expect(advanceTileDetailed({ ...ripe, moisture: 0 }, 3_000, DECAY).dryPaused).toBe(false);
   });
 
-  it('separates ripening just before the first dry cycle from one cycle short of it', () => {
-    // Moisture 7 from cycle 0 first goes dry at cycle 350: the radish ripened at 300, so that gap does not count.
+  it('does not count the dry cycle right after a crop ripens on its last moist cycle (ripeAt = stop − 1)', () => {
+    // Moisture 6, growth 1 at cycle 0: the 299 remaining growing cycles run 1..299, so it ripens at 299, and cycle
+    // 300 (the first dry one) comes after ripeAt.
+    const ripeOnLastMoistCycle = advanceTileDetailed(growing('radish', 6, 0, 1), 300, DECAY);
+    expect(ripeOnLastMoistCycle.tile.crop?.ripeAt).toBe(299);
+    expect(ripeOnLastMoistCycle.dryPaused).toBe(false);
+  });
+
+  it('does not count a gap that starts 50 cycles after the crop ripened (moisture 7, ripe at 300, dry from 350)', () => {
     const ripened = advanceTileDetailed(growing('radish', 7, 0), 400, DECAY);
     expect(ripened.tile.crop?.ripeAt).toBe(300);
     expect(ripened.dryPaused).toBe(false);
+  });
+
+  it('counts the dry cycle when the crop is one growing cycle short of ripe (moisture 6, growth 0)', () => {
     // Moisture 6 is dry from cycle 300, the very cycle that would have ripened it: growth stops at 299.
     const short = advanceTileDetailed(growing('radish', 6, 0), 300, DECAY);
     expect(short.tile.crop?.growth).toBe(299);
