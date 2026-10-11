@@ -140,3 +140,19 @@ export interface Simulation {
   create(config: SimConfig, players: readonly PlayerInput[]): SimRun;
   restore(snapshot: SimSnapshot): SimRun;
 }
+
+// ---------- PRNG (SIM-05) ----------
+
+export { FNV1A_OFFSET_BASIS, FNV1A_PRIME, fnv1a32Ascii, fnv1a32Words } from './hash/fnv1a';
+export { InvariantError, type InvariantCode } from './invariant';
+export { splitmix32, type Splitmix32 } from './prng/splitmix32';
+export { createSfc32, type Sfc32, type Sfc32State } from './prng/sfc32';
+export {
+  createStreams,
+  randomBelow,
+  seedStream,
+  streamName,
+  type MatchStreams,
+  type NamedStream,
+  type StreamId,
+} from './prng/streams';
