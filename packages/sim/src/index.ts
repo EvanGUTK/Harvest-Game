@@ -25,6 +25,8 @@ export {
   marketPrice,
   type MarketState,
 } from './market/market';
+export { liquidate } from './market/liquidate';
+export { sell, type FarmLedger, type SaleLot, type SaleOutcome } from './market/sell';
 
 /** Drones per farm. agentIndex = slot × MAX_DRONES + droneNo; N = nSlots × MAX_DRONES is constant per match. */
 export const MAX_DRONES = 2;
