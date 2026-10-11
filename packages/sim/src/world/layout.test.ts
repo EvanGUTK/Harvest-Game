@@ -102,7 +102,33 @@ describe('generateLayout', () => {
     expect(total).toBe(2880);
   });
 
-  it('rejects a grid size below 1 as an invariant violation (farm-simulation.md §Grid)', () => {
-    expect(() => layoutOf(1, { ...SHOWDOWN, gridSize: 0 })).toThrow(/SIM-BAD-GRID/);
+  it('rejects a grid size that is not a positive integer (farm-simulation.md §Grid)', () => {
+    for (const gridSize of [0, -1, 2.5, Number.NaN]) {
+      expect(() => layoutOf(1, { ...SHOWDOWN, gridSize })).toThrow(/SIM-BAD-GRID/);
+    }
+  });
+
+  it('rejects a starting-moisture range that is not integers with 0 ≤ min ≤ max ≤ 100 (§PRNG seeding: Layout)', () => {
+    const bad = [
+      { min: 41, max: 40 },
+      { min: -1, max: 40 },
+      { min: 0, max: 101 },
+      { min: 0.5, max: 40 },
+      { min: 0, max: 40.5 },
+      { min: Number.NaN, max: 40 },
+    ];
+    for (const startMoisture of bad) {
+      expect(() => layoutOf(1, { ...SHOWDOWN, startMoisture })).toThrow(/SIM-BAD-MOISTURE-RANGE/);
+    }
+  });
+
+  it('accepts the extreme ranges 0..0 and 0..100 and the campaign 100..100 (WORLD.moistureMax)', () => {
+    for (const startMoisture of [
+      { min: 0, max: 0 },
+      { min: 0, max: WORLD.moistureMax },
+      { min: 100, max: 100 },
+    ]) {
+      expect(() => layoutOf(1, { ...SHOWDOWN, startMoisture })).not.toThrow();
+    }
   });
 });

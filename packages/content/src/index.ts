@@ -119,6 +119,8 @@ export const BASIS_POINTS = 10_000;
 
 export const WORLD = {
   moistureDecayEvery: 50,
+  /** Moisture is an integer in 0..moistureMax; `water` caps at it and starting ranges stay inside it. */
+  moistureMax: 100,
   waterAmount: 40,
   waterCapacity: 60,
   wellTile: [0, 0] as const,
