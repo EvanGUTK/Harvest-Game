@@ -146,3 +146,4 @@ export { generateLayout, type LayoutConfig } from './world/layout';
 // ---------- World (SIM-01) ----------
 
 export { advanceTile, advanceTileDetailed, type AdvanceRules, type TileAdvance } from './world/advance';
+export { advanceFarm, type Farm } from './world/farm';
