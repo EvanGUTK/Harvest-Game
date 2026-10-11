@@ -2,11 +2,12 @@
  * Scores a finished match: one `PlayerResult` per slot plus the placements.
  * Design: docs/01-game-design/scoring-and-judging.md §Official score, §Tiebreakers.
  * Invariants: results are ordered by slot; placements are ordered by place then slot; awards are
- * assigned separately (awards.ts) because they compare players with each other.
+ * assigned last (awards.ts) because they compare players with each other and use the placements.
  */
 
 import type { PlayerResult } from '../index';
 import { InvariantError } from '../invariant';
+import { assignAwards } from './awards';
 import { rankPlayers } from './ranking';
 import type { Placement } from './ranking';
 import { buildPlayerResult } from './result';
@@ -35,5 +36,7 @@ export function scorePlayers(rules: ScoringRules, stats: readonly PlayerStats[])
   assertSlotsAreDense(bySlot);
   const entries = bySlot.map((s) => ({ result: buildPlayerResult(rules, s), idle: s.idle }));
   const placements = rankPlayers(entries.map(({ result, idle }) => ({ ...result, idle })));
-  return { results: entries.map((e) => e.result), placements };
+  const awards = assignAwards(rules, bySlot, placements);
+  const results = entries.map(({ result }) => ({ ...result, awards: awards.get(result.slot) ?? [] }));
+  return { results, placements };
 }

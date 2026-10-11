@@ -161,6 +161,7 @@ export { advanceFarm, type Farm } from './world/farm';
 
 // ---------- Scoring (SIM-07) ----------
 
+export { assignAwards } from './scoring/awards';
 export { buildPlayerResult } from './scoring/result';
 export { rankPlayers, type Placement, type RankEntry } from './scoring/ranking';
 export { scorePlayers, type MatchScore } from './scoring/score';

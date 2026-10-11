@@ -60,6 +60,16 @@ describe('scorePlayers', () => {
     expect(outcome.results[0]?.score).toBe(0);
   });
 
+  it('puts each player\u2019s awards on their result: the richer farm earns top_earner, the idle player none', () => {
+    const outcome = scorePlayers(RULES, [
+      stats(0, { credits: 300, cropsPlanted: 4 }),
+      stats(1, { credits: 120, cropsPlanted: 2 }),
+      stats(2, { idle: true }),
+    ]);
+    expect(outcome.results.map((r) => r.awards.includes('top_earner'))).toEqual([true, false, false]);
+    expect(outcome.results[2]?.awards).toEqual([]);
+  });
+
   it('rejects a duplicate slot (SIM-BAD-SLOT)', () => {
     expect(() => scorePlayers(RULES, [stats(0), stats(0)])).toThrow(InvariantError);
     expect(() => scorePlayers(RULES, [stats(0), stats(0)])).toThrow(/SIM-BAD-SLOT/);
