@@ -4,6 +4,8 @@
  * Invariant: every token knows its file, 1-based line/col and 0-based offset/length.
  */
 
+import { assertNever } from '../invariant';
+
 export type TokenKind =
   'NAME' | 'KEYWORD' | 'INT' | 'STRING' | 'OP' | 'NEWLINE' | 'INDENT' | 'DEDENT' | 'EOF' | 'ERROR';
 
@@ -92,5 +94,7 @@ export function isCountedToken(kind: TokenKind): boolean {
     case 'EOF':
     case 'ERROR':
       return false;
+    default:
+      return assertNever(kind);
   }
 }
