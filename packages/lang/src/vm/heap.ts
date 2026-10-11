@@ -27,13 +27,25 @@ import {
 
 export type Alloc<T> = { ok: true; value: T } | { ok: false; error: RuntimeError };
 
+/** The heap's own counters: what a snapshot must carry besides the objects themselves. */
+export type HeapCounters = { readonly liveCells: number; readonly nextId: number };
+
 export class Heap {
   private readonly limits: Limits;
   private live = 0;
   private nextId = 1;
 
-  constructor(limits: Limits) {
+  /** A fresh heap, or one restored from a snapshot's counters (its objects are rebuilt by the caller). */
+  constructor(limits: Limits, counters?: HeapCounters) {
     this.limits = limits;
+    if (counters !== undefined) {
+      this.live = counters.liveCells;
+      this.nextId = counters.nextId;
+    }
+  }
+
+  get counters(): HeapCounters {
+    return { liveCells: this.live, nextId: this.nextId };
   }
 
   /** Cells held by every object that is still referenced (language-spec.md §Limits). */
