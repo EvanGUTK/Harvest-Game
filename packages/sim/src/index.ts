@@ -105,3 +105,13 @@ export {
 // ---------- Host table (SIM-02) ----------
 
 export { constantDefs, hostSignatures, type SignatureUpgrades } from './host/signatures';
+export { applyHostCall } from './host/apply';
+export type {
+  HostAgent,
+  HostCall,
+  HostConfig,
+  HostError,
+  HostEvent,
+  HostOutcome,
+  HostWorld,
+} from './host/state';
