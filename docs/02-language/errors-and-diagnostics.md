@@ -37,7 +37,7 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-WRONG-ARG-COUNT` | `move()` | `move` needs 1 thing in the brackets: a direction like `NORTH`. |
 | `E-SLASH-DIVISION` | `a / 2` | Sprout uses whole numbers. Use `//` for division. *(fix-it)* |
 | `E-ASSIGN-IN-IF` | `if x = 3:` | Use `==` to compare. A single `=` stores a value. *(fix-it)* |
-| `E-NESTED-DEF` | `def` inside `def` | Define functions at the top level, not inside other functions. |
+| `E-NESTED-DEF` | `def` inside another `def` or inside any block | Define functions at the top level, not inside other functions or blocks. |
 | `E-RETURN-OUTSIDE` | `return` at top level | `return` only works inside a function made with `def`. |
 | `E-BREAK-OUTSIDE` | `break` outside a loop | `break` only works inside a loop. |
 | `E-CONTINUE-OUTSIDE` | `continue` outside a loop | `continue` only works inside a loop. |
@@ -57,7 +57,7 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-NO-POWER` | `a ** 2`, `a **= 2` | Sprout has no `**`. Multiply the number by itself instead. |
 | `E-BAD-TARGET` | `f() = 1`, `1 = x` | You can only store a value in a name or a list/dict slot. |
 | `E-TOO-MANY-FILES` | an 11th file in the campaign, or a second file in a showdown | Your program can have at most 10 files (1 in a showdown). |
-| `E-TOO-DEEP` / `E-PROGRAM-TOO-BIG` / `E-SRC-TOO-BIG` | limits | Tells you the limit and suggests using functions to simplify. `E-TOO-DEEP` covers both block nesting and expression nesting; for an expression it says: This expression is nested more than 64 levels deep. |
+| `E-TOO-DEEP` / `E-PROGRAM-TOO-BIG` / `E-SRC-TOO-BIG` | limits | Tells you the limit and suggests using functions to simplify. `E-TOO-DEEP` covers both block nesting and expression tree height (language-spec §Limits); for an expression it says: This expression is nested more than 64 levels deep. |
 | `W-UNREACHABLE` | code after `while True:` with no `break` | warning: This code will never run because the loop above never ends. |
 | `W-PURE-INFINITE-LOOP` | `while True:` that only does arithmetic, with no `break`, `return`, `halt()`, action or sensor, directly or in any function it calls | warning: This loop never ends and never touches the farm, so it will use up all your cycles doing nothing. |
 | `W-USE-BEFORE-DEF` | `tend()` at the top level above `def tend():` | warning: `tend` isn't defined yet at this line. Move the `def` above. |
