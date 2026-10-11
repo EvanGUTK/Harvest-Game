@@ -175,3 +175,7 @@ export const RANKS: readonly Rank[] = DIVISIONS.flatMap((division, d) =>
 );
 
 export const RP_PER_TIER = 100;
+
+// ---------- Bots (CNT-03) ----------
+
+export { BOTS, type BotId, type BotProgram } from './bots';
