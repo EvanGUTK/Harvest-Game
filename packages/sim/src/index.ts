@@ -101,3 +101,7 @@ export {
   type DroneStatus,
   type HashableState,
 } from './hash/state-hash';
+
+// ---------- Host table (SIM-02) ----------
+
+export { constantDefs, hostSignatures, type SignatureUpgrades } from './host/signatures';
