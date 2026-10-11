@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ACTION_COSTS, CROP_IDS, PURE_COSTS, SENSOR_COSTS, WAIT_BOUNDS } from './index';
+import {
+  ACTION_COSTS,
+  CROP_IDS,
+  CROPS,
+  PURE_COSTS,
+  SENSOR_COSTS,
+  WAIT_BOUNDS,
+  WAIT_CYCLES_PER_UNIT,
+} from './index';
 import { BUILTINS, CONSTANTS } from './stdlib';
 import type { BuiltinMeta, Unlock } from './stdlib';
 
@@ -72,7 +80,7 @@ describe('BUILTINS', () => {
       refill: ACTION_COSTS.refill,
       goto: ACTION_COSTS.move,
       sell: ACTION_COSTS.sell,
-      wait: WAIT_BOUNDS.min,
+      wait: WAIT_CYCLES_PER_UNIT,
       spawn: ACTION_COSTS.spawn,
       halt: ACTION_COSTS.halt,
       pos_x: SENSOR_COSTS.pos_x,
@@ -113,6 +121,16 @@ describe('BUILTINS', () => {
 
   it('marks everything as touching the world except the pure helper random', () => {
     expect(BUILTINS.filter((b) => !b.touchesWorld).map((b) => b.name)).toEqual(['random']);
+  });
+
+  it('states the wait bounds in the catalogue phrasing: from 1 to 5,000 (standard-library.md)', () => {
+    expect([WAIT_BOUNDS.min, WAIT_BOUNDS.max]).toEqual([1, 5_000]);
+    expect(find('wait').paramHints).toEqual(['a whole number of cycles from 1 to 5,000']);
+  });
+
+  it('charges wait one cycle per unit of n', () => {
+    expect(WAIT_CYCLES_PER_UNIT).toBe(1);
+    expect(find('wait').cost).toBe(WAIT_CYCLES_PER_UNIT);
   });
 
   it('gives each builtin one hint per parameter', () => {
@@ -185,6 +203,11 @@ describe('CONSTANTS', () => {
     const crops = CONSTANTS.filter((c) => c.group === 'crop');
     expect(crops.map((c) => c.name.toLowerCase())).toEqual([...CROP_IDS]);
     expect(crops.map((c) => c.id)).toEqual(CROP_IDS.map((_, i) => 10 + i));
+  });
+
+  it('names each crop constant as CROPS says: RADISH, CORN, MELON', () => {
+    const crops = CONSTANTS.filter((c) => c.group === 'crop');
+    expect(crops.map((c) => c.name)).toEqual(CROP_IDS.map((id) => CROPS[id].constant));
   });
 
   it('groups constants as direction, crop and soil', () => {
