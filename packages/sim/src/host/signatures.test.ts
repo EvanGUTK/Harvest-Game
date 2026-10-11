@@ -1,4 +1,4 @@
-import { ACTION_COSTS, BUILTINS, CONSTANTS, SENSOR_COSTS, WAIT_BOUNDS } from '@harvest/content';
+import { ACTION_COSTS, BUILTINS, CONSTANTS, SENSOR_COSTS, WAIT_CYCLES_PER_UNIT } from '@harvest/content';
 import { describe, expect, it } from 'vitest';
 import { constantDefs, hostSignatures } from './signatures';
 
@@ -39,7 +39,7 @@ describe('hostSignatures', () => {
     expect(signature('halt').cost).toBe(0);
     expect(signature('crop').cost).toBe(SENSOR_COSTS.crop);
     expect(signature('price').cost).toBe(SENSOR_COSTS.price);
-    expect(signature('wait').cost).toBe(WAIT_BOUNDS.min);
+    expect(signature('wait').cost).toBe(WAIT_CYCLES_PER_UNIT);
   });
 
   it('applies the drone move cost to move and to goto, per step, and to nothing else (Rotor upgrades)', () => {
@@ -57,13 +57,13 @@ describe('hostSignatures', () => {
     expect(signature('plant', 9).cost).toBe(ACTION_COSTS.plant);
   });
 
-  it('renders the unlock as the editor lock text: chapter, skill node, or both, and nothing when always open', () => {
+  it('renders the unlock as the editor lock text: chapter, skill node, or both', () => {
     expect(signature('move').unlock).toBe('Ch 1');
     expect(signature('till').unlock).toBe('Skill: till');
     expect(signature('sell').unlock).toBe('Ch 8 · Skill: sell');
     expect(signature('goto').unlock).toBe('Ch 5');
     for (const s of hostSignatures()) {
-      expect(s.unlock === undefined || s.unlock.length > 0).toBe(true);
+      expect(s.unlock?.length).toBeGreaterThan(0);
     }
   });
 

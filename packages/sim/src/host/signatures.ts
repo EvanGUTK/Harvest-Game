@@ -27,9 +27,8 @@ function nodeText(node: string): string {
   return `Skill: ${node}`;
 }
 
-/** The lock text the editor shows: "Ch 1", "Skill: till" or "Ch 8 · Skill: sell"; undefined when always open. */
-function unlockText(unlock: Unlock): string | undefined {
-  if ('always' in unlock) return undefined;
+/** The lock text the editor shows: "Ch 1", "Skill: till" or "Ch 8 · Skill: sell". */
+function unlockText(unlock: Unlock): string {
   if ('chapter' in unlock) {
     return unlock.node === undefined
       ? chapterText(unlock.chapter)
@@ -43,7 +42,6 @@ function bakedCost(meta: BuiltinMeta, upgrades: SignatureUpgrades): number {
 }
 
 function toSignature(meta: BuiltinMeta, id: number, upgrades: SignatureUpgrades): HostSignature {
-  const unlock = unlockText(meta.unlock);
   return {
     id,
     name: meta.name,
@@ -52,7 +50,7 @@ function toSignature(meta: BuiltinMeta, id: number, upgrades: SignatureUpgrades)
     returns: meta.returns,
     cost: bakedCost(meta, upgrades),
     touchesWorld: meta.touchesWorld,
-    ...(unlock === undefined ? {} : { unlock }),
+    unlock: unlockText(meta.unlock),
   };
 }
 
