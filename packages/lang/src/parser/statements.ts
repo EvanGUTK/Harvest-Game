@@ -372,12 +372,16 @@ export class StatementParser extends ExpressionParser {
     reportAssignInCondition(this.c, equals);
     const right = this.parseExpression();
     if (right === null) return null;
-    return {
-      type: 'CompareExpr',
-      span: this.c.spanFrom(start),
-      operands: [left, right],
-      operators: [{ op: '==', span: tokenSpan(equals) }],
-    };
+    const operands = [left, right];
+    return this.built(
+      {
+        type: 'CompareExpr',
+        span: this.c.spanFrom(start),
+        operands,
+        operators: [{ op: '==', span: tokenSpan(equals) }],
+      },
+      operands,
+    );
   }
 
   /** After a header: when it failed, skips what is left of the line so the block can still be parsed. */

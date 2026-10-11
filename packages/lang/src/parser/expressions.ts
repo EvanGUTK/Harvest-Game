@@ -4,11 +4,14 @@
  * Spec: docs/02-language/language-spec.md §Grammar (EBNF), §Limits (expression nesting depth).
  * Invariants: never throws; a method returns `null` only after a diagnostic was recorded (or the lexer
  * already reported the ERROR token it stopped at), and callers pass `null` straight up without
- * reporting again. Nesting is bounded by `limits.maxExpressionDepth`, so recursion depth is too: the whole
- * expression is level 1, and every nested expression (inside any bracket) and every prefix `-` or `not`
- * adds a level.
+ * reporting again. The height of every expression tree is at most `limits.maxExpressionDepth`
+ * (language-spec.md §Limits): a leaf is height 1, a node is one more than its tallest child, and a pair of
+ * parentheses adds one. Heights are computed as nodes are built, so left-deep chains (`a + b + …`,
+ * `f()()…`) are caught; recursion is bounded because every nested `parseExpression` or prefix operator
+ * sits inside a construct that adds at least one to the height, so the descent depth is checked too.
  *
- * A class because one parse has lifecycle state (depth, open brackets); the statement parser extends it.
+ * A class because one parse has lifecycle state (depth, heights, open brackets); the statement parser
+ * extends it.
  */
 
 import type { Token } from '../lexer/token';
@@ -54,7 +57,10 @@ const TERM_OPS: ReadonlyMap<string, BinaryOp> = new Map<string, BinaryOp>([
 ]);
 
 export class ExpressionParser {
+  /** Nested `parseExpression` and prefix-operator levels currently open (never more than the height). */
   private depth = 0;
+  /** Height of each expression built so far in this file (bounded by the file's size). */
+  private readonly heights = new Map<Expression, number>();
   private readonly openBrackets: Token[] = [];
 
   constructor(
@@ -79,6 +85,30 @@ export class ExpressionParser {
     return { type: 'Identifier', span: tokenSpan(token), name: token.text };
   }
 
+  /**
+   * Records the height of a newly built node (one more than its tallest child), or reports E-TOO-DEEP
+   * once, at the token that completed it, and returns `null`.
+   */
+  protected built<T extends Expression>(node: T, children: readonly Expression[]): T | null {
+    let tallest = 0;
+    for (const child of children) tallest = Math.max(tallest, this.heightOf(child));
+    return this.withHeight(node, tallest + 1);
+  }
+
+  private withHeight<T extends Expression>(node: T, height: number): T | null {
+    if (height > this.limits.maxExpressionDepth) {
+      reportExpressionTooDeep(this.c, this.c.lastSignificant, this.limits);
+      return null;
+    }
+    this.heights.set(node, height);
+    return node;
+  }
+
+  private heightOf(expr: Expression): number {
+    return this.heights.get(expr) ?? 1;
+  }
+
+  /** Descending into a nested expression or a prefix operator; the result is at least this tall. */
   private enterLevel(): boolean {
     if (this.depth >= this.limits.maxExpressionDepth) {
       reportExpressionTooDeep(this.c, this.c.peek(), this.limits);
@@ -96,14 +126,19 @@ export class ExpressionParser {
     for (let opToken = this.c.eatKeyword(op); opToken !== null; opToken = this.c.eatKeyword(op)) {
       const right = operand();
       if (right === null) return null;
-      left = {
-        type: 'LogicalExpr',
-        span: this.c.spanFrom(start),
-        op,
-        operatorSpan: tokenSpan(opToken),
-        left,
-        right,
-      };
+      const node: Expression | null = this.built(
+        {
+          type: 'LogicalExpr',
+          span: this.c.spanFrom(start),
+          op,
+          operatorSpan: tokenSpan(opToken),
+          left,
+          right,
+        },
+        [left, right],
+      );
+      if (node === null) return null;
+      left = node;
     }
     return left;
   }
@@ -127,7 +162,7 @@ export class ExpressionParser {
       operands.push(right);
     }
     if (operators.length === 0) return first;
-    return { type: 'CompareExpr', span: this.c.spanFrom(start), operands, operators };
+    return this.built({ type: 'CompareExpr', span: this.c.spanFrom(start), operands, operators }, operands);
   }
 
   private takeCompareOperator(): CompareOperator | null {
@@ -179,14 +214,19 @@ export class ExpressionParser {
       if (taken === null) return left;
       const right = operand();
       if (right === null) return null;
-      left = {
-        type: 'BinaryExpr',
-        span: this.c.spanFrom(start),
-        op: taken.op,
-        operatorSpan: tokenSpan(taken.token),
-        left,
-        right,
-      };
+      const node: Expression | null = this.built(
+        {
+          type: 'BinaryExpr',
+          span: this.c.spanFrom(start),
+          op: taken.op,
+          operatorSpan: tokenSpan(taken.token),
+          left,
+          right,
+        },
+        [left, right],
+      );
+      if (node === null) return null;
+      left = node;
     }
   }
 
@@ -232,7 +272,7 @@ export class ExpressionParser {
     const operand = operandParser();
     this.depth -= 1;
     if (operand === null) return null;
-    return { type: 'UnaryExpr', span: this.c.spanFrom(start), op, operand };
+    return this.built({ type: 'UnaryExpr', span: this.c.spanFrom(start), op, operand }, [operand]);
   }
 
   /** EBNF `postfix`: calls, indexing and method calls, applied left to right. */
@@ -241,12 +281,19 @@ export class ExpressionParser {
     let expr = this.parseAtom();
     while (expr !== null) {
       if (this.c.isOp('(')) {
+        const callee: Expression = expr;
         const args = this.parseList(this.c.next(), ')', () => this.parseExpression());
-        expr = args === null ? null : { type: 'CallExpr', span: this.c.spanFrom(start), callee: expr, args };
+        expr =
+          args === null
+            ? null
+            : this.built({ type: 'CallExpr', span: this.c.spanFrom(start), callee, args }, [callee, ...args]);
       } else if (this.c.isOp('[')) {
+        const object: Expression = expr;
         const index = this.parseIndex(this.c.next());
         expr =
-          index === null ? null : { type: 'IndexExpr', span: this.c.spanFrom(start), object: expr, index };
+          index === null
+            ? null
+            : this.built({ type: 'IndexExpr', span: this.c.spanFrom(start), object, index }, [object, index]);
       } else if (this.c.isOp('.')) {
         expr = this.parseMethodCall(start, expr);
       } else {
@@ -288,13 +335,10 @@ export class ExpressionParser {
     }
     const args = this.parseList(this.c.next(), ')', () => this.parseExpression());
     if (args === null) return null;
-    return {
-      type: 'MethodCallExpr',
-      span: this.c.spanFrom(start),
-      object,
-      method: this.identifier(name),
-      args,
-    };
+    return this.built(
+      { type: 'MethodCallExpr', span: this.c.spanFrom(start), object, method: this.identifier(name), args },
+      [object, ...args],
+    );
   }
 
   /** EBNF `atom`. */
@@ -343,22 +387,29 @@ export class ExpressionParser {
     if (token.text === '(') return this.parseParenthesized(this.c.next());
     if (token.text === '[') {
       const elements = this.parseList(this.c.next(), ']', () => this.parseExpression());
-      return elements === null ? null : { type: 'ListLiteral', span: this.c.spanFrom(token), elements };
+      return elements === null
+        ? null
+        : this.built({ type: 'ListLiteral', span: this.c.spanFrom(token), elements }, elements);
     }
     if (token.text === '{') {
       const entries = this.parseList(this.c.next(), '}', () => this.parseDictEntry());
-      return entries === null ? null : { type: 'DictLiteral', span: this.c.spanFrom(token), entries };
+      return entries === null
+        ? null
+        : this.built(
+            { type: 'DictLiteral', span: this.c.spanFrom(token), entries },
+            entries.flatMap((e) => [e.key, e.value]),
+          );
     }
     reportUnexpected(this.c, EXPECT_VALUE, this.innermostBracket());
     return null;
   }
 
-  /** `( expr )`: no node of its own; the inner expression keeps its own span. */
+  /** `( expr )`: no node of its own; the inner expression keeps its own span, and the parentheses add 1 to its height. */
   private parseParenthesized(open: Token): Expression | null {
     return this.inBrackets(open, () => {
       const inner = this.parseExpression();
       if (inner === null) return null;
-      return this.expectCloser(')', open, false) ? inner : null;
+      return this.expectCloser(')', open, false) ? this.withHeight(inner, this.heightOf(inner) + 1) : null;
     });
   }
 
