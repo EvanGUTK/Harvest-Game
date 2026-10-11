@@ -60,6 +60,9 @@ export const CROPS: Readonly<Record<CropId, CropDef>> = {
   },
 };
 
+/** Crop ids in `CROPS` order. Every per-crop iteration uses this array, never Object.keys. */
+export const CROP_IDS: readonly CropId[] = ['radish', 'corn', 'melon'];
+
 // ---------- Builtin cycle costs (on top of the 1-cycle CALL_HOST) ----------
 
 export const ACTION_COSTS = {
@@ -111,6 +114,9 @@ export const WAIT_BOUNDS = { min: 1, max: 5_000 } as const;
 /** Real-time pacing of the editor's 1× speed. Free Farm receipts are capped from this. */
 export const CYCLES_PER_SECOND = 100;
 export const FREE_FARM_MAX_SPEED = 16;
+
+/** Denominator for every basis-point value in this file and in `sim` (1 % = 100). */
+export const BASIS_POINTS = 10_000;
 
 // ---------- World rules ----------
 
