@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LIMITS, type Span } from '../types';
-import { childNodes, countNodes, type Expression, type Node } from './ast';
+import { childNodes, countNodes, type Expression, type AstNode } from './ast';
 import { parse } from './parser';
 import { sexpr } from './sexpr';
 
@@ -197,7 +197,7 @@ describe('parse: expression spans (errors-and-diagnostics.md §Principles: point
   });
 
   it("keeps every child's span inside its parent's span", () => {
-    const check = (node: Node): void => {
+    const check = (node: AstNode): void => {
       for (const child of childNodes(node)) {
         expect(within(child.span, node.span)).toBe(true);
         check(child);
