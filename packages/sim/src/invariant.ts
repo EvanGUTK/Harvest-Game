@@ -4,12 +4,14 @@
  */
 
 export type InvariantCode =
+  | 'SIM-BAD-CYCLE'
   | 'SIM-BAD-GRID'
   | 'SIM-BAD-MOISTURE-RANGE'
   | 'SIM-BAD-RANDOM-BOUND'
   | 'SIM-BAD-SEED'
   | 'SIM-BAD-SLOT'
   | 'SIM-BAD-SLOT-COUNT'
+  | 'SIM-TIME-BACKWARDS'
   | 'SIM-UNREACHABLE';
 
 export class InvariantError extends Error {

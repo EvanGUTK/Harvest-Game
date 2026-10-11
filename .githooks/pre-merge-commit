@@ -1,0 +1,6 @@
+#!/bin/sh
+# Hard rule (CLAUDE.md workflow step 4): red is never committed, merge commits included.
+# git skips pre-commit for a merge that needs no manual resolution, so this hook closes that gap;
+# a conflicted merge goes through pre-commit instead. Installed with core.hooksPath by `pnpm install`.
+echo "pre-merge-commit: pnpm check"
+exec pnpm check

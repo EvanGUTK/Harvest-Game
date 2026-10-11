@@ -30,7 +30,7 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | Code | Example trigger | Message (beginner wording) |
 |---|---|---|
 | `E-MISSING-COLON` | `if is_ripe()` | This `if` line needs a `:` at the end. *(fix: add `:`)* |
-| `E-BAD-INDENT` | block body not indented | The lines inside this `while` should be indented one step further. |
+| `E-BAD-INDENT` | block body not indented (or written on the `:` line); an indented line with no `:` line above it | The lines inside this `while` should be indented one step further. For a line indented with no block to belong to: This line is indented, but no `:` line above starts a block. |
 | `E-MIXED-INDENT` | 2 and 4 spaces in one block | These lines are indented by different amounts. Pick one (4 spaces is standard). |
 | `E-UNKNOWN-NAME` | `harvset()` | I don't know `harvset`. Did you mean `harvest`? *(Levenshtein ≤ 2 suggestion, fix-it)* |
 | `E-LOCKED-FEATURE` | `while` in Ch 2; `sell` before its chapter, or before the Sell node is bought; `random()` in ranked; `spawn()` in a showdown | `while` isn't unlocked yet. You'll get it in Chapter 4. For a command node whose chapter is reached: "`sell` isn't unlocked yet. Buy the Sell node in the skill tree." *(Chapter and node gating are campaign only. The two multiplayer cases are `spawn()`, single-player only in v1 (D-24), and `random()`, off in ranked (D-18).)* Where a builtin is turned off for a mode, the message says why: "`random()` is turned off in ranked matches so replays stay clean." |
@@ -55,6 +55,7 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-UNCLOSED-BRACKET` | `f(1, 2` at the end of the file | This `(` is never closed. Add a `)` where the brackets should end. |
 | `E-NO-FLOAT` | `1.5` | Sprout uses whole numbers, so `1.5` can't be used. |
 | `E-NO-POWER` | `a ** 2`, `a **= 2` | Sprout has no `**`. Multiply the number by itself instead. |
+| `E-BAD-TARGET` | `f() = 1`, `1 = x` | You can only store a value in a name or a list/dict slot. |
 | `E-TOO-MANY-FILES` | an 11th file in the campaign, or a second file in a showdown | Your program can have at most 10 files (1 in a showdown). |
 | `E-TOO-DEEP` / `E-PROGRAM-TOO-BIG` / `E-SRC-TOO-BIG` | limits | Tells you the limit and suggests using functions to simplify. `E-TOO-DEEP` covers both block nesting and expression nesting; for an expression it says: This expression is nested more than 64 levels deep. |
 | `W-UNREACHABLE` | code after `while True:` with no `break` | warning: This code will never run because the loop above never ends. |
