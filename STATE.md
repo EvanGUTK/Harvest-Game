@@ -4,22 +4,35 @@
 
 ## Now
 
-- **Resuming at home?** Read [`HANDOFF.md`](HANDOFF.md) first (one-off note for the 2026-10-07 cloud session).
-- **Phase:** M0 (Foundations) in progress. LANG-01 (lexer, `countTokens`) is done; LANG-02 (parser) is next.
-- **Branch:** `claude/sleepy-gauss-gxgilk`, PR [EvanGUTK/Harvest-Game#1](https://github.com/EvanGUTK/Harvest-Game/pull/1) to `main` is open. New M0 work lands on this branch until the PR merges; after that, `feat/LANG-xx-*` branches from `main`.
-- **Blocking decisions:** none for the design. All 28 rows in `docs/00-overview/decisions-needed.md` have assumed defaults and the docs are written against them. D-22 defaults to "Start M0 now". Before M0 code, Evan ticks D-02, D-03, D-04, D-06, D-07, D-17, D-18, D-20 and D-24 (the rows M0 content values depend on) and accepts ADR-0001, 0002 and 0003; all seven ADRs are still `proposed`.
-- **Owner inputs:** the single checklist of accounts, credentials, DNS records, OAuth settings, CI secrets and repo settings is [`docs/06-infrastructure/connections.md`](docs/06-infrastructure/connections.md) (36 connections, per-environment variable matrix, console steps, rotation, verification). Nothing there blocks M0 code. Do the **M0 section** (GitHub 2FA, branch protection with the `check` job, secret scanning with push protection, Dependabot) before the first merge to `main`; everything else is M2 or later.
+- **Phase:** M0 (Foundations) in progress. LANG-01 (lexer, `countTokens`) is done. PR #1 merged to `main` on 2026-10-11; every change now lands through a `<type>/<ID>-<slug>` branch and a reviewed PR to `main`.
+- **Decisions:** Evan accepted the recommended defaults for D-02, D-03, D-04, D-06, D-07, D-17, D-18, D-20, D-22 and D-24, and ADR-0001, 0002 and 0003 (2026-10-11; see the Status column in `docs/00-overview/decisions-needed.md`). The other rows keep their assumed defaults and are decided at the milestone that needs them.
+- **Team:** M0 is built by several Claude Code sessions, one per git worktree under `../worktrees/`, coordinated by a chief session that owns this file and every merge to `main`; a reviewer session approves every PR before it merges. Protocol and briefs live in `../team/`, outside the repo. Engineers: `lang-parser` (LANG-02, then LANG-03), `lang-vm` (integer math, LANG-05 values, LANG-04, LANG-05 VM), `sim-world` (SIM-05, SIM-01, SIM-06), `sim-market` (SIM-04, SIM-07).
+- **Owner inputs:** the checklist is [`docs/06-infrastructure/connections.md`](docs/06-infrastructure/connections.md). Nothing there blocks M0 code. Do the **M0 section** (OPS-00: GitHub 2FA, branch protection with the `check` job, secret scanning with push protection, Dependabot) soon: `main` is unprotected today, so the review-before-merge rule is enforced only by the team protocol.
 
 ## Next steps (in order)
 
-1. **LANG-02 Parser**: recursive descent per `docs/02-language/language-spec.md`, recovery to the next statement, fix-it diagnostics (`E-MISSING-COLON`, `E-ASSIGN-IN-IF`, `E-SLASH-DIVISION`).
-2. **LANG-03 Checker** (features, `lockedNames`, arity), **LANG-04 Compiler** (op-cost table in `interpreter-vm.md` is normative), **LANG-05 VM** (resumable `run`/`resume(value, cost?)`, `line` yields, snapshots).
-3. **SIM-01..07**: world with lazy advancement and `ripeAt`, host table (costs from `content`, failed actions cost 5), discrete-event scheduler with the normative tie-break, shared market, PRNG streams, event log + state hash, scoring/awards/idle program.
-4. **SIM-08** golden tests + Playwright cross-engine determinism; **CNT-03** three bot programs; **SIM-BAL** balance harness (first question: does the 2-row starter reach ~₵250 solo and ~30 % of Agronomist?).
-5. **OPS-01.3** SHA-pin CI actions + licence check (M1), then M0 exit check (`docs/07-roadmap/milestones.md`), `/handoff`, open M1.
+1. **LANG-05.1 Integer math** (`floorDiv`, `floorMod` exported from `lang`; lang-vm): unblocks every `sim` formula.
+2. **LANG-02 Parser** (lang-parser): AST types first (the contract the compiler builds against), then statements, recovery and fix-its, then corpus snapshots (LANG-06.1).
+3. **LANG-05.1/05.2 value model and heap** (lang-vm), then **LANG-04 bytecode + compiler** against the merged AST, then **LANG-05.3 to 05.5 VM** (resumable `run`/`resume(value, cost?)`, `line` yields, snapshots, cost goldens per op-table row).
+4. **LANG-03 Checker** (lang-parser, after LANG-02): features, `lockedNames`, arity, warnings incl. the transitive `W-PURE-INFINITE-LOOP`.
+5. **SIM-05 PRNG + layout, SIM-01 world and tiles, SIM-06 state hash** (sim-world); **SIM-04 market, SIM-07 scoring and awards** (sim-market).
+6. **SIM-02 host table, SIM-03 scheduler** (assigned once SIM-01 and the VM yield contract exist), then **SIM-08** golden + Playwright cross-engine determinism, **CNT-03** bots, **SIM-BAL** harness, `tools/run`.
+7. **OPS-01.3** SHA-pin CI actions + licence check (M1), M0 exit check (`docs/07-roadmap/milestones.md`), `/handoff`, open M1.
 
 ## Known gaps / debt
 
+- Architect rulings of 2026-10-11, each written into the doc section it affects by the PR that implements it:
+  - `/` is allowed only inside `packages/lang/src/int-math.ts`, the floorDiv/floorMod helper (owner-approved; ESLint override, CLAUDE.md rule 1, standards.md §Purity).
+  - FNV-1a 32 lives in `lang` (`packages/lang/src/hash/fnv1a.ts`), shared by the sim state hash and the lang goldens.
+  - splitmix32 and sfc32 are pinned to the bryc JS reference variants; constants recorded in `simulation-engine.md` §PRNG seeding with known-answer tests.
+  - `SimConfig.sharedMarket = false` (campaign) means no pressure dynamics at all (prices stay at base); `true` means one market for the match, and a player's own sales move it even in a solo test run.
+  - A `def` is legal only at the top level of a file; a `def` inside any block is `E-NESTED-DEF`.
+  - New limit `maxExpressionDepth = 64` (reported as `E-TOO-DEEP`); new parser codes `E-UNEXPECTED-TOKEN`, `E-UNCLOSED-BRACKET`, `E-NO-FLOAT`, `E-NO-POWER`, `E-BAD-TARGET`; `E-BAD-INDENT` also covers an unexpected INDENT. The catalogue gains the rows with the code that emits them.
+  - Name resolution is one shared module, `packages/lang/src/scope/` (owner: lang-parser); the compiler consumes its `ScopeInfo`.
+  - Clean Code award: `n` counts every slot including idle players and "place" is the shared placement. Never Thirsty: growth paused for lack of moisture below the crop's minimum while unripe, tracked by a per-farm `everDryPaused` flag that is not hashed.
+  - `BASIS_POINTS = 10_000` and `CROP_IDS` (in `CROPS` order) are added to `packages/content`.
+- Architect ruling (2026-10-11): the layout rock roll is `next() % 10_000 < WORLD.rockDensityBp` (basis points, straight from `content`) instead of the doc's `% 100` and `< 8`; sim-world updates `simulation-engine.md` §PRNG seeding in the SIM-05 commit. No golden hash existed yet, so nothing changes retroactively.
+- `HANDOFF.md` was deleted on 2026-10-11: its instructions (check out the PR branch) were obsolete once PR #1 merged. `STATE.md` is the only handoff.
 - `packages/*/src/index.ts` are **interface stubs**; `LangEngine` and `Simulation` have no implementation. `packages/protocol` is types only (zod in M3); it covers the M3 subset of the catalogue (spectate/party/friend envelopes arrive with SRV-08/09).
 - `packages/db` is an empty placeholder until M2. `tools/` are documented but not created (first: `tools/run`, `tools/balance` in M0). `assets/` is empty apart from the manifest header.
 - CI (`ci.yml`, one `check` job) runs audit, typecheck, lint, format check and test; action SHA-pinning and the licence check are OPS-01.3; determinism/bench/asset/e2e/preview-db/smoke/release/backup/engines workflows arrive with the code they test.
@@ -29,6 +42,11 @@
 - Owner-confirmation items recorded in docs: age-gate boundary rule (month + year, pass at 13 full years) for the lawyer; placement doubling applies to gains only; bot-match 4th place pays ₵7 (floorDiv).
 
 ## Done
+
+### Session 4 (2026-10-11, home, chief session)
+- Merged PR #1 to `main` with a merge commit (`c1eb8af`). On Evan's decision, accepted D-02, D-03, D-04, D-06, D-07, D-17, D-18, D-20, D-22, D-24 and ADR-0001, 0002, 0003; `decisions-needed.md` gained a Status column.
+- Set up the multi-session build: five worktrees under `../worktrees/` (`lang-parser`, `lang-vm`, `sim-world`, `sim-market`, `reviewer`) with dependencies and the pre-commit hook installed; team protocol and per-agent briefs in `../team/` (outside the repo); every PR is reviewed before the chief merges it.
+- Deleted the obsolete `HANDOFF.md`.
 
 ### Session 3 (2026-10-07, cloud): LANG-01
 - `packages/lang/src/lexer/`: hand-written lexer (no regex), reviewed by the `reviewer` agent (one real bug found and fixed: indentation after a mid-line bracket close), Python-style INDENT/DEDENT/NEWLINE with tab = 4, implicit line joining, every diagnostic in the lexical section of the spec (`E-SRC-TOO-BIG`, `E-IDENT-TOO-LONG`, `E-LEADING-ZERO`, `E-INT-TOO-BIG`, `E-UNTERMINATED-STRING`, `E-STRING-TOO-LONG`, `E-BAD-ESCAPE`, `E-UNEXPECTED-CHAR`, `E-MIXED-INDENT` with fix-its), ERROR-token recovery, `countTokens`. 47 tests incl. alphabet-driven fast-check properties (never throws, exact text slices, no overlap, line/col from offset, INDENT/DEDENT only at line start).
