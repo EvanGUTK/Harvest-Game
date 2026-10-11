@@ -36,6 +36,53 @@ export { utf8Length } from './lexer/utf8';
 export { countTokens } from './lexer/count-tokens';
 export { KEYWORDS, OPERATORS, isCountedToken, type Token, type TokenKind } from './lexer/token';
 
+// ---------- Parser (LANG-02) ----------
+
+export { parse, type ParseResult } from './parser/parser';
+export type {
+  AssignStmt,
+  AssignTarget,
+  AugAssignStmt,
+  BinaryExpr,
+  BinaryOp,
+  BoolLiteral,
+  BreakStmt,
+  CallExpr,
+  CompareExpr,
+  CompareOp,
+  CompareOperator,
+  ContinueStmt,
+  DefStmt,
+  DictEntry,
+  DictLiteral,
+  ElifClause,
+  Expression,
+  ExprStmt,
+  FileNode,
+  ForStmt,
+  GlobalStmt,
+  Identifier,
+  IfStmt,
+  IndexExpr,
+  IntLiteral,
+  ListLiteral,
+  LogicalExpr,
+  LogicalOp,
+  MethodCallExpr,
+  NameExpr,
+  Node,
+  NoneLiteral,
+  PassStmt,
+  Program,
+  RepeatStmt,
+  ReturnStmt,
+  Statement,
+  StringLiteral,
+  UnaryExpr,
+  UnaryOp,
+  WhileStmt,
+} from './parser/ast';
+
 // ---------- Features ----------
 
 /** Language features the campaign unlocks one by one (curriculum.md §Feature gating map is the source). */
