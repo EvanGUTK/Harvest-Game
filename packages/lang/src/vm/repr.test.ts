@@ -140,6 +140,13 @@ describe('reprForMessage: reprs inside error messages (chief ruling 2026-10-11, 
     expect(reprForMessage(ctx, long)).toBe(`${'[7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7'.slice(0, 40)}…`);
   });
 
+  it('never cuts a surrogate pair in half before the …', () => {
+    const ctx = context();
+    // "'xx" is 3 units, then 18 emoji make 39; the 19th emoji's high surrogate would be unit 40.
+    const text = reprForMessage(ctx, literalStr(`xx${'😀'.repeat(30)}`));
+    expect(text).toBe(`'xx${'😀'.repeat(18)}…`);
+  });
+
   it('never raises, even for a list that contains itself', () => {
     const ctx = context();
     const a = list(ctx, []);
