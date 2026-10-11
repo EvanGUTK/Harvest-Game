@@ -11,6 +11,7 @@ export type InvariantCode =
   | 'LANG-VALUE-RANGE'
   | 'LANG-HEAP-REFCOUNT'
   | 'LANG-HEAP-INDEX'
+  | 'LANG-HOST-STR-TOO-LONG'
   | 'LANG-UNREACHABLE';
 
 export class InvariantError extends Error {

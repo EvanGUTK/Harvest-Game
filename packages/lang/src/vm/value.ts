@@ -8,13 +8,14 @@
  * and ignore reference counting. Constants and functions compare by id, never by object identity.
  *
  * Host-built strings (`valueOps.str`) are pinned because ValueOps has no VM or heap to count them
- * against. That is safe today: no v1 builtin returns a str, and any host string is bounded by the
- * 256-unit limit. Revisit this if a builtin ever returns text. Strings a program derives from one
+ * against. That is safe today: no v1 builtin returns a str, and `valueOps.str` rejects anything
+ * above the 256-unit string limit (LANG-HOST-STR-TOO-LONG). Revisit this if a builtin ever returns text. Strings a program derives from one
  * (`+`, `*`, `str()`) are ordinary heap strings.
  */
 
 import type { Value, ValueKind, ValueOps } from '../index';
 import { floorDiv } from '../int-math';
+import { DEFAULT_LIMITS } from '../types';
 import { InvariantError, assertNever } from '../invariant';
 
 export type StrObj = {
@@ -167,6 +168,9 @@ export const valueOps: ValueOps = {
     return toPublic(b);
   },
   str(s) {
+    if (s.length > DEFAULT_LIMITS.maxStringLength) {
+      throw new InvariantError('LANG-HOST-STR-TOO-LONG', `host string of ${String(s.length)} UTF-16 units`);
+    }
     return toPublic(literalStr(s));
   },
   constant(id) {

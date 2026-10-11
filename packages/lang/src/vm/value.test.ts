@@ -158,6 +158,13 @@ describe('valueOps (interpreter-vm.md §Public API: the only way hosts build and
     expect(v).toMatchObject({ tag: 'str', text: 'abc', pinned: true, cells: 0 });
   });
 
+  it('accepts host strings up to 256 UTF-16 units and throws LANG-HOST-STR-TOO-LONG above', () => {
+    expect(valueOps.asStr(valueOps.str('x'.repeat(256)))).toHaveLength(256);
+    expect(valueOps.asStr(valueOps.str('😀'.repeat(128)))).toHaveLength(256);
+    expect(invariantCode(() => valueOps.str('x'.repeat(257)))).toBe('LANG-HOST-STR-TOO-LONG');
+    expect(invariantCode(() => valueOps.str('😀'.repeat(129)))).toBe('LANG-HOST-STR-TOO-LONG');
+  });
+
   it('normalises -0 to 0 when a host builds an int', () => {
     expect(Object.is(valueOps.asInt(valueOps.int(-0)), 0)).toBe(true);
   });
