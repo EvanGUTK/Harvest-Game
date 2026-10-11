@@ -140,3 +140,8 @@ export interface Simulation {
   create(config: SimConfig, players: readonly PlayerInput[]): SimRun;
   restore(snapshot: SimSnapshot): SimRun;
 }
+
+// ---------- PRNG (SIM-05) ----------
+
+export { splitmix32, type Splitmix32 } from './prng/splitmix32';
+export { createSfc32, type Sfc32, type Sfc32State } from './prng/sfc32';
