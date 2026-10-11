@@ -1,21 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LIMITS, type Limits } from '../types';
 import { add, floorDivide, modulo, multiply, negate, subtract } from './arith';
-import { Heap } from './heap';
-import { constantTable, type OpContext } from './op-context';
+import { createOpContext, type OpContext } from './op-context';
 import type { OpResult } from './runtime-error';
 import { constValue, fnValue, literalStr, type ListObj, type RtValue, type StrObj } from './value';
 
 const MAX = Number.MAX_SAFE_INTEGER;
 const MIN = Number.MIN_SAFE_INTEGER;
 
-const context = (limits: Limits = DEFAULT_LIMITS): OpContext => ({
-  heap: new Heap(limits),
-  constants: constantTable([
-    { name: 'RADISH', id: 10, group: 'crop' },
-    { name: 'NORTH', id: 1, group: 'direction' },
-  ]),
-});
+const context = (limits: Limits = DEFAULT_LIMITS): OpContext =>
+  createOpContext(
+    limits,
+    [
+      { name: 'RADISH', id: 10, group: 'crop' },
+      { name: 'NORTH', id: 1, group: 'direction' },
+    ],
+    ['tend'],
+  );
 
 const value = (r: OpResult): RtValue => {
   if (!r.ok) throw new Error(`unexpected ${r.error.code}: ${r.error.message}`);

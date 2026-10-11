@@ -87,3 +87,11 @@ export function strTooLong(limits: Limits): RuntimeError {
     message: `Text can be at most ${formatCount(limits.maxStringLength)} characters long.`,
   };
 }
+
+/** R-STACK-OVERFLOW from == or a repr nested beyond the call-depth limit (chief ruling 2026-10-11). */
+export function deepNesting(limits: Limits): RuntimeError {
+  return {
+    code: 'R-STACK-OVERFLOW',
+    message: `A value is nested too deeply to compare or print (${formatCount(limits.maxCallDepth)} levels max), for example a list that contains itself.`,
+  };
+}
