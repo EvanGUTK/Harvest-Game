@@ -108,7 +108,7 @@ export function popMethod(ctx: OpContext, receiver: RtValue, args: readonly RtVa
   if (!isList(receiver)) return fail(noSuchMethod(ctx, receiver, 'pop'));
   assertArity('pop', args, 0, 1);
   const length = receiver.items.length;
-  const requested = args[0] ?? length - 1;
+  const requested = args.length === 0 ? length - 1 : (args[0] ?? null);
   if (!isIntLike(requested)) return fail(indexTypeError(ctx, LIST_INDEX, requested));
   if (length === 0)
     return fail({ code: 'R-INDEX', message: 'The list is empty, so there is nothing to pop.' });
@@ -125,7 +125,9 @@ export function getMethod(ctx: OpContext, receiver: RtValue, args: readonly RtVa
   const keyValue = args[0] ?? null;
   const key = dictKeyOf(keyValue);
   if (key === undefined) return fail(unusableKeyError(keyValue, ctx.constants));
-  const found = receiver.entries.get(key)?.value ?? args[1] ?? null;
+  // None is JS null, so presence is tested on the entry, never with `??` on the stored value.
+  const entry = receiver.entries.get(key);
+  const found = entry === undefined ? (args[1] ?? null) : entry.value;
   ctx.heap.retain(found);
   return succeed(found, METHOD_COST);
 }

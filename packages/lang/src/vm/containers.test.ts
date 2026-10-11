@@ -291,6 +291,26 @@ describe('list.append, list.pop, dict.get (standard-library.md §Pure helpers; i
     expect(errorOf(getMethod(ctx, d, [list(ctx, []), 0])).code).toBe('R-TYPE');
   });
 
+  it('returns a stored None rather than the default (None is a value, not a missing key)', () => {
+    const ctx = context();
+    const d = dict(ctx, [
+      [1, null],
+      [2, 7],
+    ]);
+    expect(outcome(getMethod(ctx, d, [1, 5]))).toEqual([null, 1]);
+    expect(outcome(getMethod(ctx, d, [2, 5]))).toEqual([7, 1]);
+  });
+
+  it('raises R-TYPE for pop(None) instead of popping the last element', () => {
+    const ctx = context();
+    const xs = list(ctx, [1, 2]);
+    expect(errorOf(popMethod(ctx, xs, [null]))).toEqual({
+      code: 'R-TYPE',
+      message: 'A list index must be a whole number, but got None.',
+    });
+    expect(xs.items).toEqual([1, 2]);
+  });
+
   it('raises R-TYPE when the receiver has no such method (proposed wording, Q12)', () => {
     const ctx = context();
     expect(errorOf(appendMethod(ctx, 5, [1]))).toEqual({
