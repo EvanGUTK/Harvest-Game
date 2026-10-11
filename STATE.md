@@ -4,9 +4,9 @@
 
 ## Now
 
-- **Phase:** M0 (Foundations) in progress. LANG-01 (lexer, `countTokens`) is done. PR #1 merged to `main` on 2026-10-11; every change now lands through a `<type>/<ID>-<slug>` branch and a reviewed PR to `main`.
+- **Phase:** M0 (Foundations) in progress. On `main` (469 passed): LANG-01 lexer; LANG-02.1/02.2 AST, expression and statement parser; LANG-05.1 integer math, value model and refcounted heap; FNV-1a (in `lang`); SIM-05 PRNG streams and layout; SIM-01 lazy tile advancement and `Farm`; SIM-04 market state and price curve; SIM-07 scoring, tiebreakers, placements and awards; CNT-02 stdlib metadata (`BUILTINS`, `CONSTANTS`). Every change lands through a `<type>/<ID>-<slug>` branch and a reviewed PR to `main`.
 - **Decisions:** Evan accepted the recommended defaults for D-02, D-03, D-04, D-06, D-07, D-17, D-18, D-20, D-22 and D-24, and ADR-0001, 0002 and 0003 (2026-10-11; see the Status column in `docs/00-overview/decisions-needed.md`). The other rows keep their assumed defaults and are decided at the milestone that needs them.
-- **Team:** M0 is built by several Claude Code sessions, one per git worktree under `../worktrees/`, coordinated by a chief session that owns this file and every merge to `main`; a reviewer session approves every PR before it merges. Protocol and briefs live in `../team/`, outside the repo. Engineers: `lang-parser` (LANG-02, then LANG-03), `lang-vm` (integer math, LANG-05 values, LANG-04, LANG-05 VM), `sim-world` (SIM-05, SIM-01, SIM-06), `sim-market` (SIM-04, SIM-07).
+- **Team:** M0 is built by several Claude Code sessions, one per git worktree under `../worktrees/`, coordinated by a chief session that owns this file and every merge to `main`; two reviewer sessions approve every PR before it merges (`reviewer` for `lang`, `reviewer-2` for `sim` and `content`). Protocol and briefs live in `../team/`, outside the repo. Engineers: `lang-parser` (LANG-02, then LANG-03), `lang-vm` (integer math, LANG-05 values, LANG-04, LANG-05 VM), `sim-world` (SIM-05, SIM-01, SIM-06), `sim-market` (SIM-04, SIM-07).
 - **Owner inputs:** the checklist is [`docs/06-infrastructure/connections.md`](docs/06-infrastructure/connections.md). Nothing there blocks M0 code. Do the **M0 section** (OPS-00: GitHub 2FA, branch protection with the `check` job, secret scanning with push protection, Dependabot) soon: `main` is unprotected today, so the review-before-merge rule is enforced only by the team protocol.
 
 ## Next steps (in order)
@@ -31,6 +31,18 @@
   - Name resolution is one shared module, `packages/lang/src/scope/` (owner: lang-parser); the compiler consumes its `ScopeInfo`.
   - Clean Code award: `n` counts every slot including idle players and "place" is the shared placement. Never Thirsty: growth paused for lack of moisture below the crop's minimum while unripe, tracked by a per-farm `everDryPaused` flag that is not hashed.
   - `BASIS_POINTS = 10_000` and `CROP_IDS` (in `CROPS` order) are added to `packages/content`.
+  - `Limits.maxExpressionDepth` (64) is the height of an expression tree, every nested node counted, so all AST walkers may be plainly recursive.
+  - Every `switch` over a union ends in `assertNever`; each package has one `InvariantError` class with a string-literal code union (`LANG-*`, `SIM-*`) in `src/invariant.ts`.
+  - Shared types are defined in each package's `src/types.ts`; `index.ts` re-exports; no module imports its own package entry point. `packages/lang/src/hash/` is owned by lang-vm.
+  - World and market state are values: `advanceFarm`, `advanceMarket`, `sell` and `liquidate` return new state and never write their inputs.
+  - Every `CALL_HOST` yields to the scheduler; `touchesWorld` only says whether the world must be advanced to `t` before the call is applied (false only for `random`).
+  - Builtins are not first-class values (`E-BUILTIN-NOT-VALUE`); binding a builtin, intrinsic or constant name is `E-RESERVED-NAME`; `HostSignature.paramHints` carries the per-parameter wording for `E-WRONG-ARG-COUNT`; method arity (`append` 1, `pop` 0–1, `get` 1–2) is checked at compile time by name.
+  - `CompileOptions.lockedFeatures` and `lockedNames` become `ReadonlyMap<…, LockReason>` (chapter | node | mode) so `E-LOCKED-FEATURE` can say why.
+  - `WORLD.moistureMax` (100) is the named moisture cap in `content`; `SIM-TIME-BACKWARDS` is the one code for a clock moving backwards.
+  - Commit hygiene: a merge commit contains only conflict resolution; review-fix commits may bundle one round's nits, but a behaviour-changing must-fix gets its own commit; first-round offences (subject > 72, mixed changes, missing why body, wrong scope) are re-cut on a fresh branch.
+  - The `assertNever` retrofit: every merged file gains the `default: return assertNever(x)` form in the next PR that touches it; codes `LANG-UNREACHABLE`, `SIM-UNREACHABLE`.
+  - Content's skill-node ids in `BUILTINS[].unlock` (`till`, `water`, `sell`, …) are provisional until CNT-05 (M2) fixes the skill tree.
+  - The `VM` interface gains `raise(error, cost?)` for host-side runtime errors (R-BAD-ARG from the host table), mirroring `resume`.
 - Architect ruling (2026-10-11): the layout rock roll is `next() % 10_000 < WORLD.rockDensityBp` (basis points, straight from `content`) instead of the doc's `% 100` and `< 8`; sim-world updates `simulation-engine.md` §PRNG seeding in the SIM-05 commit. No golden hash existed yet, so nothing changes retroactively.
 - `HANDOFF.md` was deleted on 2026-10-11: its instructions (check out the PR branch) were obsolete once PR #1 merged. `STATE.md` is the only handoff.
 - `packages/*/src/index.ts` are **interface stubs**; `LangEngine` and `Simulation` have no implementation. `packages/protocol` is types only (zod in M3); it covers the M3 subset of the catalogue (spectate/party/friend envelopes arrive with SRV-08/09).
@@ -47,6 +59,8 @@
 - Merged PR #1 to `main` with a merge commit (`c1eb8af`). On Evan's decision, accepted D-02, D-03, D-04, D-06, D-07, D-17, D-18, D-20, D-22, D-24 and ADR-0001, 0002, 0003; `decisions-needed.md` gained a Status column.
 - Set up the multi-session build: five worktrees under `../worktrees/` (`lang-parser`, `lang-vm`, `sim-world`, `sim-market`, `reviewer`) with dependencies and the pre-commit hook installed; team protocol and per-agent briefs in `../team/` (outside the repo); every PR is reviewed before the chief merges it.
 - Deleted the obsolete `HANDOFF.md`.
+- Merged, each after review: #7 `/` allowed only in the floorDiv helper, #10 FNV-1a and PRNG streams, #12 `floorDiv`/`floorMod`, #13 layout generator, #9 and #25 AST + expression and statement parser, #21 value model and heap, #22 lang types in `types.ts`, #15 market state, #16 tile advancement and `Farm`, #19 and #20 scoring and awards, #26 stdlib metadata, #24 pre-merge-commit hook, #32 heap-test hotfix, #8 and this file.
+- Added a second reviewer session for `sim`/`content` once one reviewer became the bottleneck.
 
 ### Session 3 (2026-10-07, cloud): LANG-01
 - `packages/lang/src/lexer/`: hand-written lexer (no regex), reviewed by the `reviewer` agent (one real bug found and fixed: indentation after a mid-line bracket close), Python-style INDENT/DEDENT/NEWLINE with tab = 4, implicit line joining, every diagnostic in the lexical section of the spec (`E-SRC-TOO-BIG`, `E-IDENT-TOO-LONG`, `E-LEADING-ZERO`, `E-INT-TOO-BIG`, `E-UNTERMINATED-STRING`, `E-STRING-TOO-LONG`, `E-BAD-ESCAPE`, `E-UNEXPECTED-CHAR`, `E-MIXED-INDENT` with fix-its), ERROR-token recovery, `countTokens`. 47 tests incl. alphabet-driven fast-check properties (never throws, exact text slices, no overlap, line/col from offset, INDENT/DEDENT only at line start).
