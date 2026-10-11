@@ -1,0 +1,5 @@
+# Review ownership. GitHub requires a CODEOWNERS review on protected branches when enabled.
+*                          @EvanGUTK
+/packages/db/              @EvanGUTK
+/apps/server/src/http/     @EvanGUTK
+/.github/                  @EvanGUTK

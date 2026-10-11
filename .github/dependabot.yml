@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # `groups` keep tooling bumps in one PR; security updates always come as separate PRs.
+    groups:
+      dev-tooling:
+        patterns: ['eslint*', 'typescript*', 'prettier', 'vitest', '@eslint/*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

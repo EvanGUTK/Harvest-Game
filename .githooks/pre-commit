@@ -1,0 +1,5 @@
+#!/bin/sh
+# Hard rule (CLAUDE.md workflow step 4): red is never committed.
+# Installed by `pnpm install` through the `prepare` script (git config core.hooksPath .githooks).
+echo "pre-commit: pnpm check"
+exec pnpm check
