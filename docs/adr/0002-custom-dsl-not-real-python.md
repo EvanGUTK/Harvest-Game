@@ -1,6 +1,6 @@
 # ADR-0002: Custom Python-style DSL ("Sprout") instead of real Python
 
-- **Status:** proposed
+- **Status:** accepted (2026-10-11)
 - **Date:** 2026-10-07
 
 ## Context
