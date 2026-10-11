@@ -51,8 +51,12 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-BAD-ESCAPE` | `"a\q"` | `\q` isn't a known escape. You can use `\\`, `\'`, `\"`, `\n` and `\t`. |
 | `E-STRING-TOO-LONG` | a string literal of 257 or more characters | This text is longer than 256 characters. Split it into shorter pieces. |
 | `E-UNEXPECTED-CHAR` | `$` or `?` in code | I don't know what to do with `$`. Sprout doesn't use that character. |
+| `E-UNEXPECTED-TOKEN` | `a + )`, `12abc`, `[1, 2,]` | I didn't expect `)` here. The help line says what should come instead: "Names can't start with a digit." for `12abc`, "Remove the extra comma." for a trailing comma. A line that stops too early (`a +`) says: This line ends before it is finished. |
+| `E-UNCLOSED-BRACKET` | `f(1, 2` at the end of the file | This `(` is never closed. Add a `)` where the brackets should end. |
+| `E-NO-FLOAT` | `1.5` | Sprout uses whole numbers, so `1.5` can't be used. |
+| `E-NO-POWER` | `a ** 2`, `a **= 2` | Sprout has no `**`. Multiply the number by itself instead. |
 | `E-TOO-MANY-FILES` | an 11th file in the campaign, or a second file in a showdown | Your program can have at most 10 files (1 in a showdown). |
-| `E-TOO-DEEP` / `E-PROGRAM-TOO-BIG` / `E-SRC-TOO-BIG` | limits | Tells you the limit and suggests using functions to simplify. |
+| `E-TOO-DEEP` / `E-PROGRAM-TOO-BIG` / `E-SRC-TOO-BIG` | limits | Tells you the limit and suggests using functions to simplify. `E-TOO-DEEP` covers both block nesting and expression nesting; for an expression it says: This expression is nested more than 64 levels deep. |
 | `W-UNREACHABLE` | code after `while True:` with no `break` | warning: This code will never run because the loop above never ends. |
 | `W-PURE-INFINITE-LOOP` | `while True:` that only does arithmetic, with no `break`, `return`, `halt()`, action or sensor, directly or in any function it calls | warning: This loop never ends and never touches the farm, so it will use up all your cycles doing nothing. |
 | `W-USE-BEFORE-DEF` | `tend()` at the top level above `def tend():` | warning: `tend` isn't defined yet at this line. Move the `def` above. |
