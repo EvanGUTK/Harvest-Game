@@ -260,6 +260,8 @@ describe('stateHash', () => {
     const base = stateHash(oneByOne(), T, RULES);
     const flagged = oneByOne({ farms: [farmOf([RIPE_RADISH_TILE], { everDryPaused: true })] });
     expect(stateHash(flagged, T, RULES)).toBe(base);
+    const staleStamp = oneByOne({ farms: [farmOf([{ ...RIPE_RADISH_TILE, lastUpdated: 600 }])] });
+    expect(stateHash(staleStamp, T, RULES)).toBe(base);
   });
 
   it('reads the advanced market the way marketPressures does (CROP_IDS order, decayed once at 500)', () => {
