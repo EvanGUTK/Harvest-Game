@@ -4,6 +4,7 @@
  */
 
 export type InvariantCode =
+  | 'SIM-BAD-CYCLE'
   | 'SIM-BAD-GRID'
   | 'SIM-BAD-MOISTURE-RANGE'
   | 'SIM-BAD-RANDOM-BOUND'
