@@ -35,11 +35,11 @@ type SourceFile = { name: string; text: string };
 type SourceFiles = readonly SourceFile[];
 
 type CompileOptions = {
-  languageVersion: string;
+  languageVersion: string;   // must equal LANGUAGE_VERSION; anything else throws InvariantError LANG-VERSION-MISMATCH (the host picks the bundle per version)
   hostSignatures: readonly HostSignature[];   // per player: host costs are baked from these
   constants: readonly ConstantDef[];
-  lockedFeatures: ReadonlySet<Feature>;       // syntax gating (the gating map in curriculum.md)
-  lockedNames: ReadonlySet<string>;           // builtin and constant gating by name
+  lockedFeatures: ReadonlyMap<Feature, LockReason>;  // syntax gating (the gating map in curriculum.md), with why
+  lockedNames: ReadonlyMap<string, LockReason>;      // builtin and constant gating by name, with why
   limits: Limits;
 };
 
@@ -56,6 +56,8 @@ type HostSignature = {
   unlock?: { chapter?: number; node?: string };   // campaign gating as fields (chapter that teaches it, skill node that sells it); the editor builds its 🔒 text from them, the checker gates through lockedNames
   paramHints?: readonly string[];  // one description per parameter ('a direction like `NORTH`') for E-WRONG-ARG-COUNT
 };
+type LockReason =   // picks the E-LOCKED-FEATURE suffix: chapter not reached, node not bought, or off in this mode
+  | { kind: 'chapter'; chapter: number } | { kind: 'node'; node: string } | { kind: 'mode'; mode: 'single-player-only' | 'ranked' };
 type ConstantDef = { name: string; id: number; group: string };   // e.g. { name: 'RADISH', id: 10, group: 'crop' }
 type ValueKind = 'int' | 'bool' | 'none' | 'str' | 'list' | 'dict' | 'function' | 'const';
 
@@ -132,7 +134,7 @@ type VMYield =
 - Resolves names (local / global / builtin), checks arity against `hostSignatures`.
 - Rejects `lockedFeatures` (syntax, e.g. `while` before Chapter 4) and references to `lockedNames` (builtins and constants, e.g. `sell` before Chapter 8) with `E-LOCKED-FEATURE`, which takes precedence over `E-UNKNOWN-NAME`. The `Feature` list is the gating map in [curriculum](../02-language/curriculum.md#feature-gating-map-normative).
 - Multi-file programs: the compiler merges every file into one program (one global namespace) that runs every file except `main.sprout` in tab order, then `main.sprout` last, as in [language-spec](../02-language/language-spec.md#files). The checker reports `E-DUPLICATE-DEF` (the same function name in two files), `E-TOO-MANY-FILES` (over the limit) and the warning `W-USE-BEFORE-DEF` (a top-level call above its `def`).
-- Static warnings: unreachable code, unused variables, and `W-PURE-INFINITE-LOOP`: a `while True` whose body, directly or through any user function it calls (transitively over the static call graph), contains no `break` that exits this loop, `return`, `halt()`, action call or sensor call. The check is transitive on purpose: the recommended starter program's main loop does its work inside `tend()` and `sweep()`, and must not warn.
+- Static warnings: unreachable code, unused variables, and `W-PURE-INFINITE-LOOP`: a `while True` whose body contains no `break` that exits this loop and no `return` of the enclosing function, and that neither directly nor through any user function it calls, transitively over the static call graph, reaches `halt()`, an action call or a sensor call. A callee's `return` ends the callee, not the loop. The check is transitive on purpose: the recommended starter program's main loop does its work inside `tend()` and `sweep()`, and must not warn.
 
 ## Bytecode
 
@@ -162,6 +164,41 @@ Stack machine, compact `Int32Array` code with a constant pool.
 - `a[i] op= v` evaluates `a` and `i` once: `a, i, DUP2, INDEX_GET, v, op, INDEX_SET`. `x op= v` is `LOAD x, v, op, STORE x`.
 - `x not in y` is `IN` then `NOT`: 2 base cycles plus the `IN` surcharge.
 - Language intrinsics (`len`, `abs`, `min`, `max`, `str`, `int`, `print`) compile to `CALL_INTRINSIC`, which never yields. Host builtins compile to `CALL_HOST` with the baked `cost` and `touchesWorld` operands, and every `CALL_HOST` yields, `halt()` included.
+
+### Canonical emissions (normative)
+
+What the compiler emits fixes a program's cycle count, so every implementation emits exactly these sequences. `LINE s` (0 cycles) starts every statement except `global`. Its statement-table row holds the statement's span, or the header span (keyword to the end of the test or iterable) for a compound statement. `L…` are labels.
+
+| Construct | Emission |
+|---|---|
+| int, str, `True`/`False`/`None`, game constant | `CONST k` (equal literals share one pool entry; a constant is pooled by its id) |
+| name read | `LOAD_LOCAL i` or `LOAD_GLOBAL i` (by ScopeInfo); a game constant is `CONST k` |
+| `-x`, `not x` | `x, NEG`; `x, NOT` |
+| `a op b` (arithmetic) | `a, b, OP` |
+| `a and b`, `a or b` | `a, JUMP_IF_FALSE_KEEP L, b, L:`; the same with `JUMP_IF_TRUE_KEEP` |
+| `a cmp b` | `a, b, CMP`; `not in` is `IN, NOT` |
+| `a c1 b c2 … z` (chain) | `a`, then for every link but the last: `next, DUP, ROT3, CMP, JUMP_IF_FALSE_KEEP Lf`; the last link: `z, CMP, JUMP Le`; then `Lf: SWAP, POP; Le:` |
+| `[e…]`, `{k: v…}` | elements in order, `BUILD_LIST n`; key then value per entry, `BUILD_DICT n` |
+| `a[i]` | `a, i, INDEX_GET` |
+| host builtin call | `args, CALL_HOST id argc cost touchesWorld` (cost and flag baked from the HostSignature) |
+| intrinsic call | `args, CALL_INTRINSIC id argc` (`range` never: see `for`) |
+| method call | `receiver, args, CALL_METHOD m argc` |
+| any other call | `callee, args, CALL argc` |
+| expression statement | `LINE, expr, POP` |
+| `x = v`, `a[i] = v` | `LINE, v, STORE x`; `LINE, a, i, v, INDEX_SET` |
+| `x op= v`, `a[i] op= v` | `LINE, LOAD x, v, OP, STORE x`; `LINE, a, i, DUP2, INDEX_GET, v, OP, INDEX_SET` |
+| `pass`, `global` | `LINE` alone; nothing at all |
+| `if`/`elif`/`else` | per branch: `LINE, test, JUMP_IF_FALSE Lnext, body, JUMP Lend, Lnext:`; the last branch jumps to `Lend` on false and has no `JUMP Lend`; then the `else` body; `Lend:` |
+| `while` | `Ltop: LINE, test, JUMP_IF_FALSE Lend, body, JUMP Ltop, Lend:`, emitted literally (`while True` is not folded) |
+| `for x in range(a…)` | `LINE, a…, ITER_INIT k` (k = 1..3), `Ltop: ITER_NEXT Lend, STORE x, body, JUMP Ltop, Lend:` |
+| `for x in v` | `LINE, v, ITER_INIT 0`, then as above |
+| `repeat n` | `LINE, n, REPEAT_INIT, Ltop: REPEAT_NEXT Lend, body, JUMP Ltop, Lend:` |
+| `continue` | `LINE, JUMP Ltop` of the innermost loop |
+| `break` | `LINE, JUMP Lend` in a `while`; `LINE, POP, JUMP Lend` in a `for` or `repeat` (drops its iterator or counter; on a normal exit `ITER_NEXT`/`REPEAT_NEXT` pop it themselves) |
+| `def f(…)` | `LINE, CONST <fn k>, STORE f` (binds when it runs; the body is its own function) |
+| `return v`, `return` | `LINE, v, RETURN`; `LINE, CONST None, RETURN` |
+| module body | every file's statements in run order, then `HALT` (function 0) |
+| function body | its statements, then `CONST None, RETURN`; functions follow function 0 in pre-order of their `def`s (files in run order) |
 
 ### Op cost table (normative, single source of truth)
 

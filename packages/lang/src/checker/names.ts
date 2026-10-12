@@ -31,6 +31,7 @@ import {
   unknownName,
 } from './diagnostics';
 import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
+import { lockedNameReason } from './gating';
 
 const RANGE = 'range';
 
@@ -145,7 +146,9 @@ class NameChecker {
 
   private checkName(name: NameExpr, fn: FunctionScope | null, role: Role): void {
     const resolution = this.scopes.resolutions.get(name);
-    if (resolution === undefined) return;
+    // A locked name is E-LOCKED-FEATURE (gating.ts), which wins over every name rule here.
+    if (resolution === undefined || lockedNameReason(name.name, resolution.kind, this.opts) !== undefined)
+      return;
     switch (resolution.kind) {
       case 'unknown':
         this.diagnostics.push(unknownName(name.span, name.name, this.suggestion(name.name, fn)));
@@ -171,7 +174,10 @@ class NameChecker {
 
   private isRange(expr: AstNode): boolean {
     if (expr.type !== 'NameExpr') return false;
-    return this.scopes.resolutions.get(expr)?.kind === 'intrinsic' && expr.name === RANGE;
+    const kind = this.scopes.resolutions.get(expr)?.kind;
+    return (
+      kind === 'intrinsic' && expr.name === RANGE && lockedNameReason(RANGE, kind, this.opts) === undefined
+    );
   }
 
   /** A binding site may not use a builtin, intrinsic or constant name (E-RESERVED-NAME). */

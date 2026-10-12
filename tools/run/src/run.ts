@@ -43,8 +43,8 @@ function compileOne(runtime: Runtime, program: LoadedProgram): Compiled {
     languageVersion: LANGUAGE_VERSION,
     hostSignatures: runtime.hostSignatures,
     constants: runtime.constants,
-    lockedFeatures: new Set(),
-    lockedNames: new Set(),
+    lockedFeatures: new Map(),
+    lockedNames: new Map(),
     limits: DEFAULT_LIMITS,
   });
   const participant = { slot: program.slot, file: program.label, compiled: result.ok };

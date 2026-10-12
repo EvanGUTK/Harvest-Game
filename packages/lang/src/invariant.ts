@@ -26,6 +26,7 @@ export type InvariantCode =
   | 'LANG-VM-BAD-COST'
   | 'LANG-VM-STACK'
   | 'LANG-BAD-SNAPSHOT'
+  | 'LANG-UNCHECKED-PROGRAM'
   | 'LANG-VERSION-MISMATCH';
 
 export class InvariantError extends Error {

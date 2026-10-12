@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { checkSources, TEST_OPTIONS } from '../test-support/check-options';
+import { checkErrors, TEST_OPTIONS } from '../test-support/check-options';
 import type { Span } from '../types';
 
-const codes = (text: string): string[] => checkSources(text).map((d) => d.code);
+const codes = (text: string): string[] => checkErrors(text).map((d) => d.code);
 
 const span = (line: number, col: number, endLine: number, endCol: number, file = 'main.sprout'): Span => ({
   file,
@@ -14,7 +14,7 @@ const span = (line: number, col: number, endLine: number, endCol: number, file =
 
 describe('E-UNKNOWN-NAME (errors-and-diagnostics.md: "I don\'t know `harvset`. Did you mean `harvest`?")', () => {
   it('suggests the closest known name within distance 2, with a fix-it that replaces it', () => {
-    expect(checkSources('harvset()\n')).toEqual([
+    expect(checkErrors('harvset()\n')).toEqual([
       {
         code: 'E-UNKNOWN-NAME',
         severity: 'error',
@@ -26,28 +26,28 @@ describe('E-UNKNOWN-NAME (errors-and-diagnostics.md: "I don\'t know `harvset`. D
   });
 
   it('suggests variables, intrinsics and constants too', () => {
-    expect(checkSources('total = 0\nprint(totl)\n')[0]?.message).toBe(
+    expect(checkErrors('total = 0\nprint(totl)\n')[0]?.message).toBe(
       "I don't know `totl`. Did you mean `total`?",
     );
-    expect(checkSources('lenn([])\n')[0]?.message).toBe("I don't know `lenn`. Did you mean `len`?");
-    expect(checkSources('plant(RADSH)\n')[0]?.message).toBe("I don't know `RADSH`. Did you mean `RADISH`?");
-    expect(checkSources('def f(count):\n    return cout\n')[0]?.message).toBe(
+    expect(checkErrors('lenn([])\n')[0]?.message).toBe("I don't know `lenn`. Did you mean `len`?");
+    expect(checkErrors('plant(RADSH)\n')[0]?.message).toBe("I don't know `RADSH`. Did you mean `RADISH`?");
+    expect(checkErrors('def f(count):\n    return cout\n')[0]?.message).toBe(
       "I don't know `cout`. Did you mean `count`?",
     );
   });
 
   it('ranks candidates: the closest wins, then locals, globals and intrinsics in that order', () => {
-    expect(checkSources('total = 0\ndef f(totals):\n    return totl\n')[0]?.message).toBe(
+    expect(checkErrors('total = 0\ndef f(totals):\n    return totl\n')[0]?.message).toBe(
       "I don't know `totl`. Did you mean `total`?",
     );
-    expect(checkSources('ac = 1\ndef f(ab):\n    return aa\n')[0]?.message).toBe(
+    expect(checkErrors('ac = 1\ndef f(ab):\n    return aa\n')[0]?.message).toBe(
       "I don't know `aa`. Did you mean `ab`?",
     );
-    expect(checkSources('lex = 1\nprint(lem)\n')[0]?.message).toBe("I don't know `lem`. Did you mean `lex`?");
+    expect(checkErrors('lex = 1\nprint(lem)\n')[0]?.message).toBe("I don't know `lem`. Did you mean `lex`?");
   });
 
   it('says only what it does not know when nothing is within distance 2', () => {
-    expect(checkSources('zebra()\n')).toEqual([
+    expect(checkErrors('zebra()\n')).toEqual([
       {
         code: 'E-UNKNOWN-NAME',
         severity: 'error',
@@ -59,13 +59,13 @@ describe('E-UNKNOWN-NAME (errors-and-diagnostics.md: "I don\'t know `harvset`. D
   });
 
   it('reports every occurrence, in source order', () => {
-    expect(checkSources('a = q\nb = q\n').map((d) => d.range.line)).toEqual([1, 2]);
+    expect(checkErrors('a = q\nb = q\n').map((d) => d.range.line)).toEqual([1, 2]);
   });
 
   it('does not report names bound anywhere in the program, even below their use or in another file', () => {
     expect(codes('def f():\n    return later\nlater = 1\n')).toEqual([]);
     expect(
-      checkSources([
+      checkErrors([
         { name: 'main.sprout', text: 'tend()\n' },
         { name: 'helpers.sprout', text: 'def tend():\n    pass\n' },
       ]),
@@ -73,14 +73,17 @@ describe('E-UNKNOWN-NAME (errors-and-diagnostics.md: "I don\'t know `harvset`. D
   });
 
   it('never suggests a locked name', () => {
-    const options = { ...TEST_OPTIONS, lockedNames: new Set(['sell']) };
-    expect(checkSources('selll(RADISH, 1)\n', options)[0]?.message).toBe("I don't know `selll`.");
+    const options = {
+      ...TEST_OPTIONS,
+      lockedNames: new Map([['sell', { kind: 'chapter', chapter: 8 } as const]]),
+    };
+    expect(checkErrors('selll(RADISH, 1)\n', options)[0]?.message).toBe("I don't know `selll`.");
   });
 });
 
 describe('E-RESERVED-NAME (chief ruling 2026-10-11: builtins, intrinsics and constants cannot be bound)', () => {
   it('reports a builtin used as a variable, with the catalogue wording', () => {
-    expect(checkSources('move = 1\n')).toEqual([
+    expect(checkErrors('move = 1\n')).toEqual([
       {
         code: 'E-RESERVED-NAME',
         severity: 'error',
@@ -91,7 +94,7 @@ describe('E-RESERVED-NAME (chief ruling 2026-10-11: builtins, intrinsics and con
   });
 
   it('says "built-in name" for a game constant', () => {
-    expect(checkSources('RADISH = 3\n')[0]?.message).toBe(
+    expect(checkErrors('RADISH = 3\n')[0]?.message).toBe(
       "`RADISH` is a built-in name, so it can't be used as a name. Pick another name.",
     );
   });
@@ -107,7 +110,7 @@ describe('E-RESERVED-NAME (chief ruling 2026-10-11: builtins, intrinsics and con
       '    global range',
       '',
     ].join('\n');
-    expect(checkSources(source).map((d) => [d.code, d.range.line, d.range.col])).toEqual([
+    expect(checkErrors(source).map((d) => [d.code, d.range.line, d.range.col])).toEqual([
       ['E-RESERVED-NAME', 1, 1],
       ['E-RESERVED-NAME', 2, 5],
       ['E-RESERVED-NAME', 4, 5],
@@ -123,7 +126,7 @@ describe('E-RESERVED-NAME (chief ruling 2026-10-11: builtins, intrinsics and con
 
 describe('E-BUILTIN-NOT-VALUE (chief ruling 2026-10-11: builtins are not first-class values)', () => {
   it('reports a builtin used without a call, with an example call built from its signature', () => {
-    expect(checkSources('f = plant\n')).toEqual([
+    expect(checkErrors('f = plant\n')).toEqual([
       {
         code: 'E-BUILTIN-NOT-VALUE',
         severity: 'error',
@@ -131,7 +134,7 @@ describe('E-BUILTIN-NOT-VALUE (chief ruling 2026-10-11: builtins are not first-c
         message: '`plant` is a command: call it with brackets, like `plant(...)`.',
       },
     ]);
-    expect(checkSources('spawn(halt)\n')[0]?.message).toBe(
+    expect(checkErrors('spawn(halt)\n')[0]?.message).toBe(
       '`halt` is a command: call it with brackets, like `halt()`.',
     );
   });
@@ -151,7 +154,7 @@ describe('E-BUILTIN-NOT-VALUE (chief ruling 2026-10-11: builtins are not first-c
 
 describe('E-RANGE-ONLY-IN-FOR (errors-and-diagnostics.md: "`range` can only be used in `for x in range(...)`.")', () => {
   it('reports `range(...)` outside a `for` header, over the whole call', () => {
-    expect(checkSources('r = range(5)\n')).toEqual([
+    expect(checkErrors('r = range(5)\n')).toEqual([
       {
         code: 'E-RANGE-ONLY-IN-FOR',
         severity: 'error',
@@ -176,7 +179,7 @@ describe('E-RANGE-ONLY-IN-FOR (errors-and-diagnostics.md: "`range` can only be u
 
 describe('E-GLOBAL-AFTER-USE (errors-and-diagnostics.md: "Put `global total` before the first line that uses `total`.")', () => {
   it('reports `global x` below a line of the same def that already uses `x`', () => {
-    expect(checkSources('total = 0\ndef f():\n    print(total)\n    global total\n')).toEqual([
+    expect(checkErrors('total = 0\ndef f():\n    print(total)\n    global total\n')).toEqual([
       {
         code: 'E-GLOBAL-AFTER-USE',
         severity: 'error',
@@ -204,7 +207,7 @@ describe('E-GLOBAL-AFTER-USE (errors-and-diagnostics.md: "Put `global total` bef
 
 describe('E-DUPLICATE-PARAM (chief ruling 2026-10-12: a parameter name may appear only once in a def)', () => {
   it('reports the repeated parameter with the catalogue wording', () => {
-    expect(checkSources('def f(a, b, a):\n    return a\n')).toEqual([
+    expect(checkErrors('def f(a, b, a):\n    return a\n')).toEqual([
       {
         code: 'E-DUPLICATE-PARAM',
         severity: 'error',
@@ -221,7 +224,7 @@ describe('E-DUPLICATE-PARAM (chief ruling 2026-10-12: a parameter name may appea
 
 describe('E-GLOBAL-PARAM (chief ruling 2026-10-12: a parameter cannot be declared global in its own def)', () => {
   it('reports the name inside the `global` statement, instead of E-GLOBAL-AFTER-USE', () => {
-    expect(checkSources('x = 0\ndef f(x):\n    global x\n')).toEqual([
+    expect(checkErrors('x = 0\ndef f(x):\n    global x\n')).toEqual([
       {
         code: 'E-GLOBAL-PARAM',
         severity: 'error',
@@ -233,7 +236,7 @@ describe('E-GLOBAL-PARAM (chief ruling 2026-10-12: a parameter cannot be declare
   });
 
   it('reports only E-GLOBAL-PARAM when the parameter was also used before the `global` line', () => {
-    expect(checkSources('def f(x):\n    print(x)\n    global x\n').map((d) => [d.code, d.range])).toEqual([
+    expect(checkErrors('def f(x):\n    print(x)\n    global x\n').map((d) => [d.code, d.range])).toEqual([
       ['E-GLOBAL-PARAM', span(3, 12, 3, 13)],
     ]);
   });
