@@ -6,17 +6,20 @@
  * liquidates at the same prices whatever the slot order; no event is produced (the caller logs none).
  */
 
-import { BASIS_POINTS, CROP_IDS, MARKET } from '@harvest/content';
+import { BASIS_POINTS, CROP_IDS } from '@harvest/content';
 import type { CropId } from '@harvest/content';
 import { floorDiv } from '@harvest/lang';
 import { advanceMarket, marketPrice } from './market';
-import type { MarketState } from './market';
+import type { MarketEnv, MarketState } from './market';
 import type { FarmLedger } from './sell';
 
-function liquidationValue(market: MarketState, farm: FarmLedger): number {
+function liquidationValue(market: MarketState, farm: FarmLedger, rules: MarketEnv): number {
   let total = 0;
   for (const crop of CROP_IDS) {
-    total += floorDiv(farm.silo[crop] * marketPrice(market, crop) * MARKET.liquidationBp, BASIS_POINTS);
+    total += floorDiv(
+      farm.silo[crop] * marketPrice(market, crop, rules) * rules.market.liquidationBp,
+      BASIS_POINTS,
+    );
   }
   return total;
 }
@@ -26,15 +29,20 @@ function emptySilo(): Record<CropId, number> {
 }
 
 /**
- * Every farm's silo sold to the market at `MARKET.liquidationBp` of the price at cycle `t` (the budget),
+ * Every farm's silo sold to the market at `liquidationBp` of the price at cycle `t` (the budget),
  * in the order given (slot order); the returned farms have empty silos and the extra credits. The market
  * is read as it stands at `t` and is not returned: liquidation leaves it unchanged.
  */
-export function liquidate<F extends FarmLedger>(market: MarketState, farms: readonly F[], t: number): F[] {
-  const final = advanceMarket(market, t);
+export function liquidate<F extends FarmLedger>(
+  market: MarketState,
+  farms: readonly F[],
+  t: number,
+  rules: MarketEnv,
+): F[] {
+  const final = advanceMarket(market, t, rules);
   return farms.map((farm) => ({
     ...farm,
-    credits: farm.credits + liquidationValue(final, farm),
+    credits: farm.credits + liquidationValue(final, farm, rules),
     silo: emptySilo(),
   }));
 }
