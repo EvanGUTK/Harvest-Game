@@ -1,0 +1,8 @@
+# A `#` inside text is not a comment, and comments may sit inside brackets.
+label = "a # b"
+items = [
+    1,  # first
+    # a whole-line comment inside the brackets
+    2
+]
+print(label, items)  # this file has no trailing newline
