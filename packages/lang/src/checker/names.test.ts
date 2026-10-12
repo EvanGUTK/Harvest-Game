@@ -36,6 +36,16 @@ describe('E-UNKNOWN-NAME (errors-and-diagnostics.md: "I don\'t know `harvset`. D
     );
   });
 
+  it('ranks candidates: the closest wins, then locals, globals and intrinsics in that order', () => {
+    expect(checkSources('total = 0\ndef f(totals):\n    return totl\n')[0]?.message).toBe(
+      "I don't know `totl`. Did you mean `total`?",
+    );
+    expect(checkSources('ac = 1\ndef f(ab):\n    return aa\n')[0]?.message).toBe(
+      "I don't know `aa`. Did you mean `ab`?",
+    );
+    expect(checkSources('lex = 1\nprint(lem)\n')[0]?.message).toBe("I don't know `lem`. Did you mean `lex`?");
+  });
+
   it('says only what it does not know when nothing is within distance 2', () => {
     expect(checkSources('zebra()\n')).toEqual([
       {
