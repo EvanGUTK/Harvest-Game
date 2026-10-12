@@ -9,7 +9,7 @@
 import type { CropId } from '@harvest/content';
 import type { SimEvent } from '../types';
 import { advanceMarket, marketPrice } from './market';
-import type { MarketState } from './market';
+import type { MarketEnv, MarketState } from './market';
 
 /** The part of a farm that selling touches: its credits and its silo (units per crop). */
 export type FarmLedger = {
@@ -46,11 +46,12 @@ export function sell<F extends FarmLedger>(
   crop: CropId,
   n: number,
   t: number,
+  rules: MarketEnv,
 ): SaleOutcome<F> {
-  const current = advanceMarket(market, t);
+  const current = advanceMarket(market, t, rules);
   const units = Math.min(n, farm.silo[crop]);
   if (units <= 0) return { market: current, farm, gained: 0, lot: null };
-  const price = marketPrice(current, crop);
+  const price = marketPrice(current, crop, rules);
   const gained = units * price;
   const credits = farm.credits + gained;
   return {

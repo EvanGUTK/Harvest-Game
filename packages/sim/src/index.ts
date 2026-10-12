@@ -19,6 +19,8 @@ export {
   createMarket,
   marketPressures,
   marketPrice,
+  type MarketEnv,
+  type MarketRules,
   type MarketState,
 } from './market/market';
 export { liquidate } from './market/liquidate';

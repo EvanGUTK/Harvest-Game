@@ -9,6 +9,7 @@
 import type { ConstantDef, Span } from '../types';
 import { ConstantPool, type FunctionInfo, type ModuleData, type StatementInfo } from '../compiler/bytecode';
 import { Emitter } from '../compiler/emitter';
+import { measureMaxStack } from '../compiler/stack';
 import { assertValidModule } from '../compiler/validate';
 import { LANGUAGE_VERSION } from '../version';
 
@@ -35,22 +36,25 @@ const DEFAULT_FILE = 'main.sprout';
 export function assemble(assembly: Assembly): ModuleData {
   const e = new Emitter();
   const pool = new ConstantPool();
-  const functions: FunctionInfo[] = assembly.functions.map((fn) => {
+  const bounds = assembly.functions.map((fn) => {
     const entry = e.pc;
     fn.body(e, pool);
-    return {
-      name: fn.name,
-      arity: fn.arity ?? 0,
-      localNames: fn.locals ?? [],
-      entry,
-      end: e.pc,
-      file: fn.file ?? DEFAULT_FILE,
-    };
+    return { fn, entry, end: e.pc };
   });
+  const code = e.finish();
+  const functions: FunctionInfo[] = bounds.map(({ fn, entry, end }) => ({
+    name: fn.name,
+    arity: fn.arity ?? 0,
+    localNames: fn.locals ?? [],
+    entry,
+    end,
+    file: fn.file ?? DEFAULT_FILE,
+    maxStack: measureMaxStack(code, entry, end),
+  }));
   const data: ModuleData = {
     languageVersion: LANGUAGE_VERSION,
     tokenCount: assembly.tokenCount ?? 0,
-    code: e.finish(),
+    code,
     pool: pool.build(),
     functions,
     globals: assembly.globals ?? [],
