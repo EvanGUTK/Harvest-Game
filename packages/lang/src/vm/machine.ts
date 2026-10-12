@@ -80,6 +80,8 @@ export type MachineState = {
   readonly cycles: number;
   readonly dropped: number;
   readonly statement: number;
+  /** The stopAtLine exemption (see Machine.lineStopTaken). */
+  readonly lineStopTaken: boolean;
   readonly status: Status;
   readonly heap: HeapCounters;
 };
@@ -160,6 +162,7 @@ export class Machine implements VM {
     this.cycleCount = restored.cycles;
     this.dropped = restored.dropped;
     this.statement = restored.statement;
+    this.lineStopTaken = restored.lineStopTaken;
     this.status = restored.status;
   }
 
@@ -188,6 +191,7 @@ export class Machine implements VM {
       cycles: this.cycleCount,
       dropped: this.dropped,
       statement: this.statement,
+      lineStopTaken: this.lineStopTaken,
       status: this.status,
       heap: this.ctx.heap.counters,
     };

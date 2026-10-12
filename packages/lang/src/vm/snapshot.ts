@@ -127,6 +127,7 @@ export type SnapshotJson = {
     readonly cycles: number;
     readonly dropped: number;
     readonly statement: number;
+    readonly lineStopTaken: boolean;
     readonly status: StatusJson;
   };
 };
@@ -158,6 +159,7 @@ export function snapshotMachine(machine: Machine): VMSnapshot {
       cycles: state.cycles,
       dropped: state.dropped,
       statement: state.statement,
+      lineStopTaken: state.lineStopTaken,
       status: encodeStatus(state.status, value),
     },
   };
@@ -193,6 +195,7 @@ export function decodeSnapshot(snapshot: VMSnapshot): RestoredParts {
     cycles: m.cycles,
     dropped: m.dropped,
     statement: m.statement,
+    lineStopTaken: m.lineStopTaken,
     status: decodeStatus(m.status, value),
     heap: { liveCells: json.heap.liveCells, nextId: json.heap.nextId },
   };

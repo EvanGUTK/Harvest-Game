@@ -174,6 +174,60 @@ describe('VM snapshots (interpreter-vm.md §Public API: serializable, self-conta
     expect(thrown instanceof InvariantError && thrown.code).toBe('LANG-VERSION-MISMATCH');
   });
 
+  /** Two statements of two cycles each, the second in helpers.sprout (statement 0 is main.sprout:1). */
+  const twoStatements = () =>
+    new Machine(
+      toBytecodeModule(
+        assemble({
+          statements: [
+            {
+              file: 'main.sprout',
+              line: 1,
+              span: { file: 'main.sprout', line: 1, col: 1, endLine: 1, endCol: 2 },
+            },
+            {
+              file: 'helpers.sprout',
+              line: 2,
+              span: { file: 'helpers.sprout', line: 2, col: 1, endLine: 2, endCol: 2 },
+            },
+          ],
+          functions: [
+            {
+              name: '<module>',
+              body: (e, pool) => {
+                for (const statement of [0, 1]) {
+                  e.emit(Op.LINE, statement);
+                  e.emit(Op.CONST, pool.add({ kind: 'int', value: 1 }));
+                  e.emit(Op.POP);
+                }
+                e.emit(Op.HALT);
+              },
+            },
+          ],
+        }),
+      ),
+      DEFAULT_LIMITS,
+    );
+
+  it('does not yield the same line twice after restoring a snapshot taken at a line yield', () => {
+    const machine = twoStatements();
+    expect(machine.run(100, { stopAtLine: true })).toMatchObject({ kind: 'line', line: 2 });
+    const copy = restoreMachine(viaJson(machine.snapshot()));
+    expect(copy.run(100, { stopAtLine: true })).toEqual({ kind: 'halt', atCycle: 5 });
+  });
+
+  it('stops at the LINE a budget yield left at ip, after restoring a snapshot taken there', () => {
+    const machine = twoStatements();
+    expect(machine.run(2, { stopAtLine: true })).toEqual({ kind: 'budget', atCycle: 2 });
+    const copy = restoreMachine(viaJson(machine.snapshot()));
+    expect(copy.run(100, { stopAtLine: true })).toEqual({
+      kind: 'line',
+      file: 'helpers.sprout',
+      line: 2,
+      atCycle: 2,
+    });
+  });
+
   it('validates the module it carries before running it', () => {
     const machine = start();
     machine.run(1_000);
