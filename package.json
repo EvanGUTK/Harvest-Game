@@ -10,16 +10,20 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -p packages/sim/determinism/tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run --testTimeout=30000",
     "test:watch": "vitest --testTimeout=30000",
+    "test:determinism": "playwright test -c packages/sim/determinism/playwright.config.ts",
+    "golden:update": "vitest run -u --project @harvest/sim golden.test --testTimeout=30000",
     "sprout": "pnpm --filter @harvest/tool-run start"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.63.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9.0.0",
     "fast-check": "^3.23.2",
     "prettier": "^3.0.0",
