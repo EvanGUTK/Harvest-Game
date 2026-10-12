@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { InvariantError } from '../invariant';
+import { CORPUS } from '../test-support/corpus';
 import { compileSources, listing } from '../test-support/compile';
 import type { Span } from '../types';
 
@@ -373,8 +373,108 @@ describe('compile: debug tables (interpreter-vm.md §Bytecode, module layout)', 
   });
 });
 
-describe('compile: the def guard (LANG-04.2 compiles everything but functions)', () => {
-  it('rejects a program with a def as an invariant, until functions are compiled', () => {
-    expect(() => compileSources('def f():\n    pass\n')).toThrow(InvariantError);
+describe('compile: functions and frames (LANG-04.3)', () => {
+  it('binds each def in program order and compiles its body after the module body, in pre-order', () => {
+    expect(
+      listing(
+        'total = 0\ndef add(a, b):\n    global total\n    s = a + b\n    total += s\n    return s\ndef nop():\n    pass\nadd(1, 2)\nnop()\n',
+      ),
+    ).toEqual([
+      'fn 0 <module>() locals=0 file=main.sprout',
+      '  0000  LINE 0  ; main.sprout:1',
+      '  0002  CONST 0  ; 0',
+      '  0004  STORE_GLOBAL 0  ; total',
+      '  0006  LINE 1  ; main.sprout:2',
+      '  0008  CONST 1  ; <function add>',
+      '  0010  STORE_GLOBAL 1  ; add',
+      '  0012  LINE 2  ; main.sprout:7',
+      '  0014  CONST 2  ; <function nop>',
+      '  0016  STORE_GLOBAL 2  ; nop',
+      '  0018  LINE 3  ; main.sprout:9',
+      '  0020  LOAD_GLOBAL 1  ; add',
+      '  0022  CONST 3  ; 1',
+      '  0024  CONST 4  ; 2',
+      '  0026  CALL 2',
+      '  0028  POP',
+      '  0029  LINE 4  ; main.sprout:10',
+      '  0031  LOAD_GLOBAL 2  ; nop',
+      '  0033  CALL 0',
+      '  0035  POP',
+      '  0036  HALT',
+      'fn 1 add(a, b) locals=3 file=main.sprout',
+      '  0037  LINE 5  ; main.sprout:4',
+      '  0039  LOAD_LOCAL 0',
+      '  0041  LOAD_LOCAL 1',
+      '  0043  ADD',
+      '  0044  STORE_LOCAL 2',
+      '  0046  LINE 6  ; main.sprout:5',
+      '  0048  LOAD_GLOBAL 0  ; total',
+      '  0050  LOAD_LOCAL 2',
+      '  0052  ADD',
+      '  0053  STORE_GLOBAL 0  ; total',
+      '  0055  LINE 7  ; main.sprout:6',
+      '  0057  LOAD_LOCAL 2',
+      '  0059  RETURN',
+      '  0060  CONST 5  ; None',
+      '  0062  RETURN',
+      'fn 2 nop() locals=0 file=main.sprout',
+      '  0063  LINE 8  ; main.sprout:8',
+      '  0065  CONST 5  ; None',
+      '  0067  RETURN',
+    ]);
   });
+
+  it('compiles a bare `return` to CONST None, RETURN, and a return inside a loop to a plain RETURN', () => {
+    expect(
+      listing(
+        'def f(n):\n    for i in range(n):\n        if i == 2:\n            return i\n    return\nf(3)\n',
+      ).slice(10),
+    ).toEqual([
+      'fn 1 f(n) locals=2 file=main.sprout',
+      '  0016  LINE 2  ; main.sprout:2',
+      '  0018  LOAD_LOCAL 0',
+      '  0020  ITER_INIT 1',
+      '  0022  ITER_NEXT 42',
+      '  0024  STORE_LOCAL 1',
+      '  0026  LINE 3  ; main.sprout:3',
+      '  0028  LOAD_LOCAL 1',
+      '  0030  CONST 2  ; 2',
+      '  0032  EQ',
+      '  0033  JUMP_IF_FALSE 40',
+      '  0035  LINE 4  ; main.sprout:4',
+      '  0037  LOAD_LOCAL 1',
+      '  0039  RETURN',
+      '  0040  JUMP 22',
+      '  0042  LINE 5  ; main.sprout:5',
+      '  0044  CONST 3  ; None',
+      '  0046  RETURN',
+      '  0047  CONST 3  ; None',
+      '  0049  RETURN',
+    ]);
+  });
+
+  it("records each function's name, arity, locals (parameters first) and file", () => {
+    const data = compileSources([
+      { name: 'main.sprout', text: 'go(1, 2)\n' },
+      { name: 'helpers.sprout', text: 'def go(x, y):\n    z = x\n    return z\n' },
+    ]);
+    expect(data.functions.map((f) => [f.name, f.arity, f.localNames, f.file])).toEqual([
+      ['<module>', 0, [], 'main.sprout'],
+      ['go', 2, ['x', 'y', 'z'], 'helpers.sprout'],
+    ]);
+  });
+
+  it('stamps the module with countTokens of the source', () => {
+    expect(compileSources('x = 1 + 2\n').tokenCount).toBe(5);
+  });
+});
+
+describe('compile: the recommended programs (language-spec.md §Example, standard-library.md §Example)', () => {
+  for (const name of ['spec-example.sprout', 'starter-showdown.sprout']) {
+    it(`compiles ${name} to a valid module`, () => {
+      const file = CORPUS.find((f) => f.name === name);
+      if (file === undefined) throw new Error(`no corpus file ${name}`);
+      expect(compileSources([{ name: 'main.sprout', text: file.text }]).functions.length).toBeGreaterThan(0);
+    });
+  }
 });

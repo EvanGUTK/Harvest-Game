@@ -35,7 +35,7 @@ type SourceFile = { name: string; text: string };
 type SourceFiles = readonly SourceFile[];
 
 type CompileOptions = {
-  languageVersion: string;
+  languageVersion: string;   // must equal LANGUAGE_VERSION; anything else throws InvariantError LANG-VERSION-MISMATCH (the host picks the bundle per version)
   hostSignatures: readonly HostSignature[];   // per player: host costs are baked from these
   constants: readonly ConstantDef[];
   lockedFeatures: ReadonlyMap<Feature, LockReason>;  // syntax gating (the gating map in curriculum.md), with why
@@ -188,7 +188,10 @@ What the compiler emits fixes a program's cycle count, so every implementation e
 | `repeat n` | `LINE, n, REPEAT_INIT, Ltop: REPEAT_NEXT Lend, body, JUMP Ltop, Lend:` |
 | `continue` | `LINE, JUMP Ltop` of the innermost loop |
 | `break` | `LINE, JUMP Lend` in a `while`; `LINE, POP, JUMP Lend` in a `for` or `repeat` (drops its iterator or counter; on a normal exit `ITER_NEXT`/`REPEAT_NEXT` pop it themselves) |
-| module body | every file's statements in run order, then `HALT` |
+| `def f(…)` | `LINE, CONST <fn k>, STORE f` (binds when it runs; the body is its own function) |
+| `return v`, `return` | `LINE, v, RETURN`; `LINE, CONST None, RETURN` |
+| module body | every file's statements in run order, then `HALT` (function 0) |
+| function body | its statements, then `CONST None, RETURN`; functions follow function 0 in pre-order of their `def`s (files in run order) |
 
 ### Op cost table (normative, single source of truth)
 

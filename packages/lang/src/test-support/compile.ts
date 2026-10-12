@@ -21,11 +21,21 @@ export const TEST_HOSTS: readonly HostSignature[] = [
   { id: 3, name: 'harvest', params: [], returns: 'bool', cost: 30, touchesWorld: true },
   { id: 4, name: 'random', params: ['int'], returns: 'int', cost: 2, touchesWorld: false },
   { id: 5, name: 'halt', params: [], returns: 'none', cost: 0, touchesWorld: true },
+  { id: 6, name: 'is_ripe', params: [], returns: 'bool', cost: 2, touchesWorld: true },
+  { id: 7, name: 'crop', params: [], returns: 'any', cost: 2, touchesWorld: true },
+  { id: 8, name: 'world_size', params: [], returns: 'int', cost: 1, touchesWorld: true },
+  { id: 9, name: 'inventory', params: ['const'], returns: 'int', cost: 1, touchesWorld: true },
+  { id: 10, name: 'sell', params: ['const', 'int'], returns: 'int', cost: 10, touchesWorld: true },
+  { id: 11, name: 'moisture', params: [], returns: 'int', cost: 2, touchesWorld: true },
+  { id: 12, name: 'water', params: [], returns: 'bool', cost: 25, touchesWorld: true },
+  { id: 13, name: 'refill', params: [], returns: 'bool', cost: 60, touchesWorld: true },
 ];
 
 export const TEST_CONSTANTS: readonly ConstantDef[] = [
   { name: 'RADISH', id: 10, group: 'crop' },
   { name: 'EAST', id: 2, group: 'direction' },
+  { name: 'NORTH', id: 1, group: 'direction' },
+  { name: 'SOUTH', id: 3, group: 'direction' },
 ];
 
 /** Parses, resolves and compiles `files` (one main.sprout when given a string); throws on parse errors. */

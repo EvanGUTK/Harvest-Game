@@ -9,6 +9,7 @@
  */
 
 import { InvariantError } from '../invariant';
+import type { DefStmt } from '../parser/ast';
 import type { ScopeInfo } from '../scope/scope';
 import type { ConstantDef, HostSignature, Span } from '../types';
 import { ConstantPool, type OperandNames, type StatementInfo } from './bytecode';
@@ -23,14 +24,24 @@ export class ModuleBuilder {
   readonly operandNames = new Map<number, OperandNames>();
   private readonly hosts: ReadonlyMap<string, HostSignature>;
   private readonly constantIds: ReadonlyMap<string, number>;
+  private readonly functionIndices: ReadonlyMap<DefStmt, number>;
 
   constructor(
     readonly scopes: ScopeInfo,
     hostSignatures: readonly HostSignature[],
     constants: readonly ConstantDef[],
+    /** Every def in pre-order; def i is function i + 1 (function 0 is the module body). */
+    readonly defs: readonly DefStmt[],
   ) {
     this.hosts = new Map(hostSignatures.map((s) => [s.name, s]));
     this.constantIds = new Map(constants.map((c) => [c.name, c.id]));
+    this.functionIndices = new Map(defs.map((def, i) => [def, i + 1]));
+  }
+
+  functionIndex(def: DefStmt): number {
+    const index = this.functionIndices.get(def);
+    if (index === undefined) throw unchecked(`def ${def.name.name} was not collected`);
+    return index;
   }
 
   /** Emits an instruction that can fail, recording where its error points. */

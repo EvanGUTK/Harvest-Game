@@ -21,7 +21,8 @@ export type InvariantCode =
   | 'LANG-BAD-BYTECODE'
   | 'LANG-BAD-MAX-STACK'
   | 'LANG-UNRESOLVED-LABEL'
-  | 'LANG-UNCHECKED-PROGRAM';
+  | 'LANG-UNCHECKED-PROGRAM'
+  | 'LANG-VERSION-MISMATCH';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;

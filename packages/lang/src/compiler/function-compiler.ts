@@ -4,7 +4,8 @@
  * sequence here is the one that section lists, because emitted code fixes the cycle count of a program.
  * Invariants: the value stack between two statements holds only the iterators and counters of the
  * enclosing `for` and `repeat` loops, so `break` pops exactly one of them; each statement except `global`
- * starts with `LINE s`; names are resolved by ScopeInfo, never re-derived.
+ * starts with `LINE s`; names are resolved by ScopeInfo, never re-derived; a `def` only binds its
+ * function here, and the function's own body is compiled later by its own FunctionCompiler.
  *
  * A class because a function body carries state while it compiles (its scope and the open loops).
  */
@@ -114,8 +115,17 @@ export class FunctionCompiler {
         this.repeatStatement(stmt);
         return;
       case 'DefStmt':
+        // The function's body is compiled after the module body; here it is only bound (in program order).
+        this.b.emitLine(headerSpan(stmt.span, (stmt.params[stmt.params.length - 1] ?? stmt.name).span));
+        this.b.emitter.emit(Op.CONST, this.b.pool.add({ kind: 'fn', index: this.b.functionIndex(stmt) }));
+        this.store(stmt.name);
+        return;
       case 'ReturnStmt':
-        throw unchecked('functions are compiled by LANG-04.3');
+        this.b.emitLine(stmt.span);
+        if (stmt.value === null) this.b.emitter.emit(Op.CONST, this.b.pool.add({ kind: 'none' }));
+        else this.expression(stmt.value);
+        this.b.emitter.emit(Op.RETURN);
+        return;
       default:
         assertNever(stmt);
     }

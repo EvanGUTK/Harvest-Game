@@ -61,7 +61,8 @@ export function check(program: Program, scopes: ScopeInfo, opts: CheckOptions): 
   return { diagnostics: inSourceOrder(diagnostics, program) };
 }
 
-function inSourceOrder(diagnostics: readonly Diagnostic[], program: Program): Diagnostic[] {
+/** Diagnostics sorted by file (run order), line and column; stable, so ties keep their given order. */
+export function inSourceOrder(diagnostics: readonly Diagnostic[], program: Program): Diagnostic[] {
   const fileIndex = new Map(program.files.map((f, i) => [f.name, i]));
   const rank = (d: Diagnostic) => fileIndex.get(d.range.file) ?? program.files.length;
   return [...diagnostics].sort(
