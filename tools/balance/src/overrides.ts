@@ -6,7 +6,7 @@
  * config or into content; the market numbers an override can name are exactly the keys of MARKET.
  */
 
-import { MARKET, SHOWDOWN_DEFAULTS } from '@harvest/content';
+import { MARKET, SHOWDOWN_DEFAULTS, WORLD } from '@harvest/content';
 import type { MarketRules, SimConfig } from '@harvest/sim';
 
 /** What a variant may change. Anything left out keeps its showdown default. */
@@ -118,6 +118,9 @@ function overridesOf(acc: Accumulated): RulesOverrides | string {
     };
     if (range.min > range.max)
       return `startMoisture.min ${range.min} is above startMoisture.max ${range.max}`;
+    if (range.max > WORLD.moistureMax) {
+      return `startMoisture.max ${range.max} is above the world maximum ${WORLD.moistureMax}`;
+    }
     overrides.startMoisture = range;
   }
   if (Object.keys(acc.market).length > 0) overrides.market = acc.market;

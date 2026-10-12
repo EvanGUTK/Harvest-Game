@@ -120,6 +120,13 @@ describe('parseVariant', () => {
     });
   });
 
+  it('accepts a starting moisture of exactly the world maximum, the campaign’s 100 to 100', () => {
+    expect(parseVariant('c:startMoisture.min=100,startMoisture.max=100')).toEqual({
+      ok: true,
+      variant: { name: 'c', overrides: { startMoisture: { min: 100, max: 100 } } },
+    });
+  });
+
   it('accepts a name alone as a variant with no overrides', () => {
     expect(parseVariant('plain:')).toEqual({ ok: true, variant: { name: 'plain', overrides: {} } });
   });
@@ -140,6 +147,11 @@ describe('parseVariant', () => {
     ['a zero decay interval', 'x:market.pressureDecayEvery=0'],
     ['a zero decay denominator', 'x:market.pressureDecayDenominator=0'],
     ['a starting moisture range with min above max', 'x:startMoisture.min=30,startMoisture.max=10'],
+    ['a starting moisture max above the world maximum of 100', 'x:startMoisture.max=120'],
+    [
+      'a starting moisture range wholly above the world maximum',
+      'x:startMoisture.min=101,startMoisture.max=101',
+    ],
   ])('rejects %s', (_label, text) => {
     const parsed = parseVariant(text);
     expect(parsed.ok).toBe(false);
