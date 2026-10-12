@@ -24,7 +24,9 @@ export type InvariantCode =
   | 'LANG-VM-PENDING-HOST'
   | 'LANG-VM-NO-PENDING-HOST'
   | 'LANG-VM-BAD-COST'
-  | 'LANG-VM-STACK';
+  | 'LANG-VM-STACK'
+  | 'LANG-BAD-SNAPSHOT'
+  | 'LANG-VERSION-MISMATCH';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;

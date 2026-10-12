@@ -9,7 +9,7 @@
  * is resumed; every stack slot, local and global owns one reference, released when it is dropped.
  */
 
-import type { BytecodeModule, Diagnostic, Limits, Span, Value, VMYield } from '../types';
+import type { BytecodeModule, Diagnostic, Limits, Span, Value, VM, VMSnapshot, VMYield } from '../types';
 import { InvariantError, assertNever } from '../invariant';
 import { CALLABLE_INTRINSICS, METHOD_IDS } from '../intrinsics/intrinsics';
 import { moduleData, type FunctionInfo, type ModuleData, type PoolEntry } from '../compiler/bytecode';
@@ -40,16 +40,18 @@ import {
   type RepeatCounter,
   type StackItem,
 } from './loops';
+import type { HeapCounters } from './heap';
 import { createOpContext, type OpContext } from './op-context';
 import { reprForMessage } from './repr';
+import { decodeSnapshot, snapshotMachine } from './snapshot';
 import { formatCount } from '../format';
 import type { OpResult, RuntimeError } from './runtime-error';
 import { constValue, fnValue, fromPublic, isFn, isTruthy, literalStr, toPublic, type RtValue } from './value';
 
 /** A local or global slot: undefined until first assigned. */
-type Slot = RtValue | undefined;
+export type Slot = RtValue | undefined;
 
-type Frame = {
+export type Frame = {
   readonly fnIndex: number;
   /** Where the caller continues after RETURN (unused for the module body). */
   readonly returnPc: number;
@@ -58,12 +60,31 @@ type Frame = {
   readonly locals: Slot[];
 };
 
-type PendingHost = { readonly pc: number; readonly cost: number; readonly args: readonly RtValue[] };
+export type PendingHost = { readonly pc: number; readonly cost: number; readonly args: readonly RtValue[] };
 
-type Status =
+export type Status =
   | { readonly kind: 'running' }
   | { readonly kind: 'awaiting-host'; readonly call: PendingHost }
   | { readonly kind: 'finished'; readonly final: VMYield };
+
+/**
+ * Everything a snapshot captures about a machine besides its module and limits. `state()` hands out
+ * the live structures by reference for encoding; a restored machine adopts copies.
+ */
+export type MachineState = {
+  readonly stack: readonly StackItem[];
+  readonly frames: readonly Frame[];
+  readonly globals: readonly Slot[];
+  readonly printed: readonly string[];
+  readonly ip: number;
+  readonly cycles: number;
+  readonly dropped: number;
+  readonly statement: number;
+  /** The stopAtLine exemption (see Machine.lineStopTaken). */
+  readonly lineStopTaken: boolean;
+  readonly status: Status;
+  readonly heap: HeapCounters;
+};
 
 /** What one instruction did: charged its cycles and continued, or produced a yield. */
 type Step = number | VMYield;
@@ -102,7 +123,7 @@ const BINARY_OPS: ReadonlyMap<number, (ctx: OpContext, a: RtValue, b: RtValue) =
   [Op.IN, contains],
 ]);
 
-export class Machine {
+export class Machine implements VM {
   private readonly data: ModuleData;
   private readonly ctx: OpContext;
   private readonly poolValues: readonly RtValue[];
@@ -122,16 +143,58 @@ export class Machine {
    */
   private lineStopTaken = true;
 
-  constructor(module: BytecodeModule, limits: Limits) {
+  /** A machine at the start of the module body, or one adopting a restored state (restoreVM). */
+  constructor(module: BytecodeModule, limits: Limits, restored?: MachineState) {
     this.data = moduleData(module);
-    this.ctx = createOpContext(
-      limits,
-      this.data.constantDefs,
-      this.data.functions.map((fn) => fn.name),
-    );
+    const names = this.data.functions.map((fn) => fn.name);
+    this.ctx = createOpContext(limits, this.data.constantDefs, names, restored?.heap);
     this.poolValues = this.data.pool.map(poolValue);
-    this.globals = this.data.globals.map(() => undefined);
-    this.frames.push({ fnIndex: 0, returnPc: -1, base: 0, locals: [] });
+    if (restored === undefined) {
+      this.globals = this.data.globals.map(() => undefined);
+      this.frames.push({ fnIndex: 0, returnPc: -1, base: 0, locals: [] });
+      return;
+    }
+    this.globals = [...restored.globals];
+    this.frames.push(...restored.frames);
+    this.stack.push(...restored.stack);
+    this.printed.push(...restored.printed);
+    this.ip = restored.ip;
+    this.cycleCount = restored.cycles;
+    this.dropped = restored.dropped;
+    this.statement = restored.statement;
+    this.lineStopTaken = restored.lineStopTaken;
+    this.status = restored.status;
+  }
+
+  /** A serialisable, self-contained record of this machine (interpreter-vm.md §Public API). */
+  snapshot(): VMSnapshot {
+    return snapshotMachine(this);
+  }
+
+  /** The module this machine runs (for snapshots). */
+  get module(): ModuleData {
+    return this.data;
+  }
+
+  get limits(): Limits {
+    return this.ctx.limits;
+  }
+
+  /** The machine's state by reference, for snapshot encoding; callers must not mutate it. */
+  state(): MachineState {
+    return {
+      stack: this.stack,
+      frames: this.frames,
+      globals: this.globals,
+      printed: this.printed,
+      ip: this.ip,
+      cycles: this.cycleCount,
+      dropped: this.dropped,
+      statement: this.statement,
+      lineStopTaken: this.lineStopTaken,
+      status: this.status,
+      heap: this.ctx.heap.counters,
+    };
   }
 
   get cycles(): number {
@@ -715,4 +778,10 @@ function tooDeep(ctx: OpContext): RuntimeError {
 
 function stackError(message: string): InvariantError {
   return new InvariantError('LANG-VM-STACK', message);
+}
+
+/** Rebuilds a machine from any snapshot made by `Machine.snapshot()` (restoreVM). */
+export function restoreMachine(snapshot: VMSnapshot): Machine {
+  const parts = decodeSnapshot(snapshot);
+  return new Machine(parts.module, parts.limits, parts.state);
 }

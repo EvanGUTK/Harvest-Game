@@ -7,7 +7,7 @@
 
 import type { ConstantDef, Limits } from '../types';
 import { InvariantError } from '../invariant';
-import { Heap } from './heap';
+import { Heap, type HeapCounters } from './heap';
 
 /** ConstantDef by id, built once from CompileOptions.constants and baked into the module. */
 export type ConstantTable = ReadonlyMap<number, ConstantDef>;
@@ -25,8 +25,9 @@ export function createOpContext(
   limits: Limits,
   constants: readonly ConstantDef[],
   functionNames: readonly string[],
+  counters?: HeapCounters,
 ): OpContext {
-  return { heap: new Heap(limits), limits, constants: constantTable(constants), functionNames };
+  return { heap: new Heap(limits, counters), limits, constants: constantTable(constants), functionNames };
 }
 
 export function constantTable(defs: readonly ConstantDef[]): ConstantTable {
