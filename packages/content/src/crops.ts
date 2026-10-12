@@ -5,7 +5,13 @@
  * ALL NUMBERS ARE PROVISIONAL (tuned with SIM-BAL); changing any value changes simulation results (bump RULES_VERSION).
  */
 
-export type CropId = 'radish' | 'corn' | 'melon';
+/**
+ * Crop ids in canonical order. The state hash and every per-crop iteration use this array, never Object.keys;
+ * `CropId` derives from it, so `CROPS` must have exactly these keys (the type checker enforces completeness).
+ */
+export const CROP_IDS = ['radish', 'corn', 'melon'] as const;
+
+export type CropId = (typeof CROP_IDS)[number];
 
 export type CropDef = {
   id: CropId;
@@ -52,6 +58,3 @@ export const CROPS: Readonly<Record<CropId, CropDef>> = {
     minMoisture: 30,
   },
 };
-
-/** Crop ids in `CROPS` order. Every per-crop iteration uses this array, never Object.keys. */
-export const CROP_IDS: readonly CropId[] = ['radish', 'corn', 'melon'];
