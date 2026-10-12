@@ -149,7 +149,7 @@ export type CompileResult =
 
 export type VMYield =
   | { kind: 'host'; fn: HostId; args: readonly Value[]; cost: number; atCycle: number }
-  | { kind: 'line'; line: number; atCycle: number }
+  | { kind: 'line'; file: string; line: number; atCycle: number }
   | { kind: 'halt'; atCycle: number }
   | { kind: 'error'; error: Diagnostic; atCycle: number }
   | { kind: 'budget'; atCycle: number };
