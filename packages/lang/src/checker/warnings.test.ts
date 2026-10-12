@@ -29,15 +29,24 @@ describe('the recommended programs check clean (interpreter-vm.md §Checker: the
   });
 });
 
-describe('W-UNREACHABLE (errors-and-diagnostics.md: "This code will never run because the loop above never ends.")', () => {
+describe('W-UNREACHABLE (errors-and-diagnostics.md: "This code will never run because the loop above has no `break` to leave it.")', () => {
   it('warns once at the first statement after a `while True:` with no `break`', () => {
     expect(checkSources('while True:\n    move(EAST)\nharvest()\nharvest()\n')).toEqual([
       {
         code: 'W-UNREACHABLE',
         severity: 'warning',
         range: span(3, 1, 3, 10),
-        message: 'This code will never run because the loop above never ends.',
+        message: 'This code will never run because the loop above has no `break` to leave it.',
       },
+    ]);
+  });
+
+  it('says the loop has no `break` even when it can still return or halt, which is why the code is unreachable', () => {
+    const lines = checkSources(
+      'def f():\n    while True:\n        if crop():\n            return 1\n    harvest()\nf()\n',
+    );
+    expect(lines.map((d) => [d.code, d.range.line, d.message])).toEqual([
+      ['W-UNREACHABLE', 5, 'This code will never run because the loop above has no `break` to leave it.'],
     ]);
   });
 
