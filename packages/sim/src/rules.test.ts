@@ -5,7 +5,7 @@ import { advanceMarket, createMarket, marketPrice } from './market/market';
 import type { MarketEnv, MarketRules } from './market/market';
 import { liquidate } from './market/liquidate';
 import { sell } from './market/sell';
-import { validateRules } from './rules';
+import { toInvariantError, validateConfig, validateRules } from './rules';
 
 function withMarket(over: Partial<{ -readonly [K in keyof MarketRules]: number }>): { market: MarketRules } {
   return { market: { ...MARKET, ...over } };
@@ -120,5 +120,113 @@ describe('the market entry points refuse invalid rules (SIM-BAD-RULES)', () => {
 
   it('still works with valid rules', () => {
     expect(() => advanceMarket(MARKET_STATE, 500, { market: MARKET, crops: CROPS })).not.toThrow();
+  });
+});
+
+describe('validateConfig (match settings)', () => {
+  const VALID = {
+    gridSize: 8,
+    cycleBudget: 30_000,
+    startCredits: 100,
+    startWater: 60,
+    startMoisture: { min: 0, max: 40 },
+  };
+
+  it('finds nothing wrong with the showdown settings', () => {
+    expect(validateConfig(VALID)).toEqual([]);
+  });
+
+  it('checks only the fields that are given', () => {
+    expect(validateConfig({})).toEqual([]);
+    expect(validateConfig({ gridSize: 0 }).map((p) => p.path)).toEqual(['gridSize']);
+  });
+
+  it('refuses a grid that is not a whole number of at least 1, with the layout’s own code and message', () => {
+    for (const gridSize of [0, -3, 1.5, Number.NaN]) {
+      const problems = validateConfig({ gridSize });
+      expect(
+        problems.map((p) => [p.code, p.path]),
+        String(gridSize),
+      ).toEqual([['SIM-BAD-GRID', 'gridSize']]);
+      expect(problems[0]?.message).toBe(`grid size must be an integer ≥ 1, got ${gridSize}`);
+    }
+  });
+
+  it('refuses a starting moisture range that is not whole numbers with 0 ≤ min ≤ max ≤ 100, with the layout’s code and message', () => {
+    const bad = [
+      { min: 5, max: 3 },
+      { min: -1, max: 10 },
+      { min: 0, max: 101 },
+      { min: 0.5, max: 10 },
+      { min: 101, max: 101 },
+    ];
+    for (const startMoisture of bad) {
+      const problems = validateConfig({ startMoisture });
+      expect(
+        problems.map((p) => [p.code, p.path]),
+        JSON.stringify(startMoisture),
+      ).toEqual([['SIM-BAD-MOISTURE-RANGE', 'startMoisture']]);
+      expect(problems[0]?.message).toBe(
+        `starting moisture must be integers with 0 ≤ min ≤ max ≤ 100, got ${startMoisture.min}..${startMoisture.max}`,
+      );
+    }
+  });
+
+  it('accepts the ends of the moisture range: 0 to 0, and the campaign’s 100 to 100', () => {
+    expect(validateConfig({ startMoisture: { min: 0, max: 0 } })).toEqual([]);
+    expect(validateConfig({ startMoisture: { min: 100, max: 100 } })).toEqual([]);
+  });
+
+  it('refuses a cycle budget below 1 or not whole, and negative or fractional credits and water', () => {
+    expect(validateConfig({ cycleBudget: 0 }).map((p) => [p.code, p.path])).toEqual([
+      ['CONFIG-OUT-OF-RANGE', 'cycleBudget'],
+    ]);
+    expect(validateConfig({ cycleBudget: 1.5 }).map((p) => p.path)).toEqual(['cycleBudget']);
+    expect(validateConfig({ startCredits: -1 }).map((p) => p.path)).toEqual(['startCredits']);
+    expect(validateConfig({ startWater: 0.5 }).map((p) => p.path)).toEqual(['startWater']);
+  });
+
+  it('accepts zero credits and zero water, a match where nothing can be bought or watered', () => {
+    expect(validateConfig({ startCredits: 0, startWater: 0 })).toEqual([]);
+  });
+
+  it('reports every problem, in the order gridSize, startMoisture, cycleBudget, startCredits, startWater', () => {
+    const problems = validateConfig({
+      gridSize: 0,
+      startMoisture: { min: 9, max: 1 },
+      cycleBudget: 0,
+      startCredits: -1,
+      startWater: -1,
+    });
+    expect(problems.map((p) => p.path)).toEqual([
+      'gridSize',
+      'startMoisture',
+      'cycleBudget',
+      'startCredits',
+      'startWater',
+    ]);
+  });
+});
+
+describe('toInvariantError', () => {
+  it('keeps the layout’s invariant codes and messages: SIM-BAD-GRID and SIM-BAD-MOISTURE-RANGE', () => {
+    const grid = validateConfig({ gridSize: 0 })[0];
+    const moisture = validateConfig({ startMoisture: { min: 5, max: 3 } })[0];
+    expect(grid && toInvariantError(grid).message).toBe(
+      'SIM-BAD-GRID: grid size must be an integer ≥ 1, got 0',
+    );
+    expect(moisture && toInvariantError(moisture).code).toBe('SIM-BAD-MOISTURE-RANGE');
+  });
+
+  it('turns every other problem into SIM-BAD-RULES', () => {
+    const rule = validateRules(withMarket({ pressureDecayEvery: 0 }))[0];
+    const budget = validateConfig({ cycleBudget: 0 })[0];
+    expect(rule && toInvariantError(rule).code).toBe('SIM-BAD-RULES');
+    expect(budget && toInvariantError(budget).code).toBe('SIM-BAD-RULES');
+  });
+
+  it('returns an InvariantError', () => {
+    const problem = validateConfig({ gridSize: 0 })[0];
+    expect(problem && toInvariantError(problem)).toBeInstanceOf(InvariantError);
   });
 });

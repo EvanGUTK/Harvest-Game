@@ -110,4 +110,12 @@ export {
 
 // ---------- Rules validation ----------
 
-export { validateRules, type RulesProblem, type RulesProblemCode, type ValidatableRules } from './rules';
+export {
+  toInvariantError,
+  validateConfig,
+  validateRules,
+  type ConfigFields,
+  type RulesProblem,
+  type RulesProblemCode,
+  type ValidatableRules,
+} from './rules';

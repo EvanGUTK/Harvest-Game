@@ -6,14 +6,26 @@
  * arithmetic; callers that take rules from a user (the balance harness) call it first and report the problems.
  */
 
-import { BASIS_POINTS } from '@harvest/content';
+import { BASIS_POINTS, WORLD } from '@harvest/content';
+import { assertNever, InvariantError } from './invariant';
 import type { MarketRules } from './market/market';
 
-export type RulesProblemCode = 'RULES-NOT-A-SAFE-INTEGER' | 'RULES-OUT-OF-RANGE' | 'RULES-DECAY-GROWS';
+/**
+ * The market rules use RULES-* codes, the match settings CONFIG-OUT-OF-RANGE, and the grid and the starting moisture
+ * keep the invariant codes the layout generator has always thrown, so their messages do not change.
+ */
+export type RulesProblemCode =
+  | 'RULES-NOT-A-SAFE-INTEGER'
+  | 'RULES-OUT-OF-RANGE'
+  | 'RULES-DECAY-GROWS'
+  | 'CONFIG-OUT-OF-RANGE'
+  | 'SIM-BAD-GRID'
+  | 'SIM-BAD-MOISTURE-RANGE';
 
+/** A problem with the market rules or the match settings: one shape for both validators. */
 export type RulesProblem = {
   readonly code: RulesProblemCode;
-  /** Where the number lives, e.g. `market.priceFloorBp`. */
+  /** Where the number lives, e.g. `market.priceFloorBp` or `gridSize`. */
   readonly path: string;
   readonly message: string;
 };
@@ -74,4 +86,71 @@ export function validateRules(rules: ValidatableRules): readonly RulesProblem[] 
     ...MARKET_BOUNDS.flatMap(([key, bounds]) => checkNumber(key, rules.market[key], bounds)),
     ...checkDecayShrinks(rules.market),
   ];
+}
+
+/** The match settings a harness can override; each is checked only when given. */
+export type ConfigFields = {
+  readonly gridSize?: number;
+  readonly cycleBudget?: number;
+  readonly startCredits?: number;
+  readonly startWater?: number;
+  readonly startMoisture?: { readonly min: number; readonly max: number };
+};
+
+function checkGrid(gridSize: number): RulesProblem[] {
+  if (Number.isInteger(gridSize) && gridSize >= 1) return [];
+  return [
+    { code: 'SIM-BAD-GRID', path: 'gridSize', message: `grid size must be an integer ≥ 1, got ${gridSize}` },
+  ];
+}
+
+function checkMoisture({ min, max }: { readonly min: number; readonly max: number }): RulesProblem[] {
+  const ok =
+    Number.isInteger(min) && Number.isInteger(max) && min >= 0 && min <= max && max <= WORLD.moistureMax;
+  if (ok) return [];
+  return [
+    {
+      code: 'SIM-BAD-MOISTURE-RANGE',
+      path: 'startMoisture',
+      message: `starting moisture must be integers with 0 ≤ min ≤ max ≤ ${WORLD.moistureMax}, got ${min}..${max}`,
+    },
+  ];
+}
+
+function checkAtLeast(path: string, value: number, min: number): RulesProblem[] {
+  if (Number.isSafeInteger(value) && value >= min) return [];
+  return [
+    {
+      code: 'CONFIG-OUT-OF-RANGE',
+      path,
+      message: `${path} must be a whole number of ${min} or more, got ${value}`,
+    },
+  ];
+}
+
+/** Every problem with these match settings, in the order gridSize, startMoisture, cycleBudget, startCredits, startWater. */
+export function validateConfig(config: ConfigFields): readonly RulesProblem[] {
+  return [
+    ...(config.gridSize === undefined ? [] : checkGrid(config.gridSize)),
+    ...(config.startMoisture === undefined ? [] : checkMoisture(config.startMoisture)),
+    ...(config.cycleBudget === undefined ? [] : checkAtLeast('cycleBudget', config.cycleBudget, 1)),
+    ...(config.startCredits === undefined ? [] : checkAtLeast('startCredits', config.startCredits, 0)),
+    ...(config.startWater === undefined ? [] : checkAtLeast('startWater', config.startWater, 0)),
+  ];
+}
+
+/** The invariant violation for a problem: the layout's own codes where they exist, SIM-BAD-RULES otherwise. */
+export function toInvariantError(problem: RulesProblem): InvariantError {
+  switch (problem.code) {
+    case 'SIM-BAD-GRID':
+    case 'SIM-BAD-MOISTURE-RANGE':
+      return new InvariantError(problem.code, problem.message);
+    case 'RULES-NOT-A-SAFE-INTEGER':
+    case 'RULES-OUT-OF-RANGE':
+    case 'RULES-DECAY-GROWS':
+    case 'CONFIG-OUT-OF-RANGE':
+      return new InvariantError('SIM-BAD-RULES', problem.message);
+    default:
+      return assertNever(problem.code);
+  }
 }
