@@ -10,6 +10,8 @@ source ──► Lexer ──► tokens (with INDENT/DEDENT) ──► Parser �
 
 Every stage is a pure function, apart from the VM's own state. No stage ever calls `eval`, `Function` or `import()`, and **player code never becomes JavaScript**.
 
+When the parser reports any error, `compile` returns only the parse diagnostics and does not run the checker, so statements the parser dropped never cause spurious errors such as `E-UNKNOWN-NAME`; otherwise it returns every checker diagnostic (warnings included) and compiles only when none is an error.
+
 ## Public API
 
 ```ts
