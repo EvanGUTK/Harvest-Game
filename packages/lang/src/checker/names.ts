@@ -16,6 +16,7 @@ import {
   type NameExpr,
   type Program,
 } from '../parser/ast';
+import { assertNever } from '../invariant';
 import type { FunctionScope, ScopeInfo } from '../scope/scope';
 import type { Diagnostic } from '../types';
 import type { CheckOptions } from './check';
@@ -105,6 +106,9 @@ class NameChecker {
       case 'WhileStmt':
       case 'RepeatStmt':
         for (const child of childNodes(node)) this.visit(child, fn);
+        return;
+      default:
+        assertNever(node);
     }
   }
 
@@ -152,6 +156,8 @@ class NameChecker {
       case 'global':
       case 'constant':
         return;
+      default:
+        assertNever(resolution);
     }
   }
 
