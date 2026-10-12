@@ -159,6 +159,13 @@ export class Machine {
       );
     }
     if (this.status.kind === 'finished') return this.status.final;
+    if (!Number.isSafeInteger(maxCycles) || maxCycles < 0) {
+      // NaN or Infinity would never reach `remaining < 1`, so a `while True:` program would never yield.
+      throw new InvariantError(
+        'LANG-VM-BAD-BUDGET',
+        `maxCycles must be a whole number >= 0, got ${String(maxCycles)}`,
+      );
+    }
     const stopAtLine = opts?.stopAtLine === true;
     let remaining = maxCycles;
     for (;;) {

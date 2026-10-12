@@ -179,7 +179,7 @@ describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode nev
   const C = [Op.CONST, 0];
 
   it('rejects an op that pops more than the stack holds', () => {
-    expect(words([...C, Op.ADD, Op.RETURN])).toContain('ADD needs 2 stack slots but has 1');
+    expect(words([...C, Op.ADD, Op.HALT])).toContain('ADD needs 2 stack slots but has 1');
     expect(words([Op.POP, Op.HALT])).toContain('POP needs 1 stack slot but has 0');
     expect(words([Op.BUILD_LIST, 5, Op.HALT])).toContain('BUILD_LIST needs 5 stack slots but has 0');
     expect(words([...C, ...C, Op.BUILD_DICT, 2, Op.HALT])).toContain(
@@ -189,8 +189,18 @@ describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode nev
   });
 
   it('rejects RETURN without a value', () => {
-    const data = single([Op.RETURN], 1);
-    expect(moduleProblems(data).join()).toContain('RETURN needs 1 stack slot but has 0');
+    // fn 0: HALT; fn 1: RETURN with nothing on the stack.
+    const base = single([Op.HALT, Op.RETURN], 1);
+    const [body] = base.functions;
+    if (!body) throw new Error('fixture');
+    const data: ModuleData = {
+      ...base,
+      functions: [
+        { ...body, end: 1, maxStack: 0 },
+        { ...body, name: 'f', entry: 1, end: 2, maxStack: 0 },
+      ],
+    };
+    expect(moduleProblems(data).join()).toContain('fn 1: pc 1: RETURN needs 1 stack slot but has 0');
   });
 
   it('rejects a join reached with two different stacks', () => {
@@ -284,6 +294,12 @@ describe('module layout nits (#45 review)', () => {
     expect(moduleProblems({ ...data, functions: [{ ...fn, arity: 1, localNames: ['x'] }] })).toContain(
       'fn 0 (the module body) must take no parameters',
     );
+  });
+
+  it('rejects a RETURN in the module body, which has no caller (#58 review nit)', () => {
+    expect(moduleProblems(single([Op.CONST, 0, Op.RETURN], 1))).toEqual([
+      'pc 2: fn 0 (the module body) cannot RETURN',
+    ]);
   });
 
   it('rejects a pool string over the 256-unit limit and accepts one at it', () => {

@@ -24,6 +24,7 @@ export type InvariantCode =
   | 'LANG-VM-PENDING-HOST'
   | 'LANG-VM-NO-PENDING-HOST'
   | 'LANG-VM-BAD-COST'
+  | 'LANG-VM-BAD-BUDGET'
   | 'LANG-VM-STACK';
 
 export class InvariantError extends Error {
