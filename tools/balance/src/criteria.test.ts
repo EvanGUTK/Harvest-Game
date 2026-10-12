@@ -125,14 +125,23 @@ describe('evaluateCriteria', () => {
       expect(byId(criteria, 'starter-share').detail).toContain('29');
     });
 
-    it('averages the seven Agronomists of a seed first and the seeds second', () => {
-      // seed 0: starter 40, agronomists average 100; seed 1: starter 20, agronomists average 100 → starter 30, agronomist 100
+    it('pools the seeds: starter 40 and 20 against Agronomists at 100 is a mean of 30 against 100', () => {
       const lobby = [
         [40, 100, 100, 100, 100, 100, 100, 100],
         [20, 100, 100, 100, 100, 100, 100, 100],
       ];
       const criteria = evaluateCriteria(build({ ...PASSING, starterLobby: lobby }));
       expect(byId(criteria, 'starter-share').passed).toBe(true);
+    });
+
+    it('compares exact sums, not floored means: Agronomists at 100.07 on average need more than a starter at 30', () => {
+      // Agronomist scores add up to 1_401 over 14 players (floored mean 100); starter 30 and 30 → 3_000 < 30 × 1_401 ÷ 14 × … = 3_002
+      const lobby = [
+        [30, 100, 100, 100, 100, 100, 100, 101],
+        [30, 100, 100, 100, 100, 100, 100, 100],
+      ];
+      const criterion = byId(evaluateCriteria(build({ ...PASSING, starterLobby: lobby })), 'starter-share');
+      expect(criterion.passed).toBe(false);
     });
   });
 
@@ -162,6 +171,13 @@ describe('evaluateCriteria', () => {
     it('passes when dumpers tie the steady farmers', () => {
       const hoard = [[100, 100, 100, 100, 100, 100, 100, 100]];
       expect(byId(evaluateCriteria(build({ ...PASSING, hoard })), 'dump-not-better').passed).toBe(true);
+    });
+
+    it('compares exact sums, not floored means: dump scores adding up one credit higher fail even when both means floor to 100', () => {
+      const hoard = [[100, 100, 100, 100, 100, 100, 100, 101]];
+      const criterion = byId(evaluateCriteria(build({ ...PASSING, hoard })), 'dump-not-better');
+      expect(criterion.passed).toBe(false);
+      expect(criterion.detail).toContain('₵100');
     });
 
     it('fails when the dumpers’ mean is higher', () => {
@@ -198,7 +214,8 @@ describe('evaluateCriteria', () => {
 
   it('fails every criterion that has no data instead of passing it, e.g. when no seed ran', () => {
     const criteria = evaluateCriteria({ variant: 'default', seeds: [], records: new Map() });
-    expect(criteria.filter((c) => c.id !== 'clean-runs').every((c) => !c.passed)).toBe(true);
+    expect(criteria.every((c) => !c.passed)).toBe(true);
     expect(byId(criteria, 'starter-solo').detail).toContain('no data');
+    expect(byId(criteria, 'clean-runs').detail).toContain('no data');
   });
 });

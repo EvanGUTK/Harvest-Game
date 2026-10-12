@@ -10,7 +10,7 @@ import { BASIS_POINTS } from '@harvest/content';
 import type { ACTION_COSTS, CropDef, CropId, WORLD } from '@harvest/content';
 import { floorDiv, floorMod } from '@harvest/lang';
 import { HOARD_LOBBY } from './scenario';
-import type { RunRecord, SellLot, VariantData } from './scenario';
+import type { SellLot, VariantData } from './scenario';
 import { ceilDiv, mean } from './stats';
 
 /** Every action also pays the 1-cycle CALL_HOST (simulation-engine.md §Clock arithmetic). */
@@ -47,7 +47,12 @@ export type IdealProfit = {
 };
 
 export type HoardVersusSteady = {
-  /** Mean over seeds of the per-seed mean score of the steady farmers. */
+  /** Every steady farmer's score added up over all seeds, and how many scores that is. */
+  steadyTotal: number;
+  steadyPlayers: number;
+  dumpTotal: number;
+  dumpPlayers: number;
+  /** The floored means of those totals, for display; comparisons use the totals. */
   steadyMean: number;
   dumpMean: number;
   perSeed: { seed: number; steady: number; dump: number }[];
@@ -135,20 +140,35 @@ export function idealProfit(crop: CropDef, inputs: IdealInputs): IdealProfit {
   };
 }
 
-function groupMean(record: RunRecord, from: number, to: number): number {
-  return mean(record.scores.slice(from, to)) ?? 0;
+function sum(values: readonly number[]): number {
+  return values.reduce((total, v) => total + v, 0);
 }
 
-/** Mean score of the steady and the dump farmers of the hoard lobby, per seed and over the seeds. */
+/**
+ * Totals and means of the steady and the dump farmers of the hoard lobby, pooled over every seed. Compare the
+ * totals (dumpTotal × steadyPlayers against steadyTotal × dumpPlayers), not the floored means, which can tie
+ * while the sums differ.
+ */
 export function hoardVersusSteady(data: VariantData): HoardVersusSteady | null {
   const records = data.records.get(HOARD_LOBBY.id) ?? [];
-  const perSeed = records.map((r) => ({
-    seed: r.seed,
-    steady: groupMean(r, 0, STEADY_SLOT_COUNT),
-    dump: groupMean(r, STEADY_SLOT_COUNT, r.scores.length),
-  }));
-  const steadyMean = mean(perSeed.map((p) => p.steady));
-  const dumpMean = mean(perSeed.map((p) => p.dump));
+  const steady = records.map((r) => r.scores.slice(0, STEADY_SLOT_COUNT));
+  const dump = records.map((r) => r.scores.slice(STEADY_SLOT_COUNT));
+  const steadyScores = steady.flat();
+  const dumpScores = dump.flat();
+  const steadyMean = mean(steadyScores);
+  const dumpMean = mean(dumpScores);
   if (steadyMean === null || dumpMean === null) return null;
-  return { steadyMean, dumpMean, perSeed };
+  return {
+    steadyTotal: sum(steadyScores),
+    steadyPlayers: steadyScores.length,
+    dumpTotal: sum(dumpScores),
+    dumpPlayers: dumpScores.length,
+    steadyMean,
+    dumpMean,
+    perSeed: records.map((r, i) => ({
+      seed: r.seed,
+      steady: mean(steady[i] ?? []) ?? 0,
+      dump: mean(dump[i] ?? []) ?? 0,
+    })),
+  };
 }

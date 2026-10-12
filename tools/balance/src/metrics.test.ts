@@ -139,13 +139,24 @@ describe('hoardVersusSteady', () => {
       record(HOARD_LOBBY.id, 1, [200, 200, 200, 200, 150, 160, 170, 180]),
     ]);
     expect(hoardVersusSteady(data)).toEqual({
-      steadyMean: 157, // floorDiv(115 + 200, 2): the mean over seeds of the per-seed means
-      dumpMean: 127, // floorDiv(90 + 165, 2)
+      steadyTotal: 1_260, // 460 + 800
+      steadyPlayers: 8,
+      dumpTotal: 1_020, // 360 + 660
+      dumpPlayers: 8,
+      steadyMean: 157, // floorDiv(1_260, 8) = 157.5
+      dumpMean: 127, // floorDiv(1_020, 8) = 127.5
       perSeed: [
         { seed: 0, steady: 115, dump: 90 },
         { seed: 1, steady: 200, dump: 165 },
       ],
     });
+  });
+
+  it('keeps the sums apart when the floored means tie: 400 against 401 over 4 players each', () => {
+    const data = dataOf([record(HOARD_LOBBY.id, 0, [100, 100, 100, 100, 100, 100, 100, 101])]);
+    const result = hoardVersusSteady(data);
+    expect([result?.steadyMean, result?.dumpMean]).toEqual([100, 100]);
+    expect([result?.steadyTotal, result?.dumpTotal]).toEqual([400, 401]);
   });
 
   it('is null when the hoard lobby was not run', () => {
