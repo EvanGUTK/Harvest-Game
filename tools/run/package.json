@@ -6,6 +6,7 @@
   "exports": {
     "./compile": "./src/compile.ts",
     "./config": "./src/config.ts",
+    "./format": "./src/format.ts",
     "./runtime": "./src/runtime.ts"
   },
   "bin": {

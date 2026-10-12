@@ -19,14 +19,15 @@ const COLUMN_GAP = '  ';
 const HEX_DIGITS = 8;
 const HEX_RADIX = 16;
 
-type Align = 'left' | 'right';
-type Column = { header: string; align: Align; cells: readonly string[] };
+export type Align = 'left' | 'right';
+export type Column = { header: string; align: Align; cells: readonly string[] };
 
 function pad(text: string, width: number, align: Align): string {
   return align === 'left' ? text.padEnd(width) : text.padStart(width);
 }
 
-function renderTable(columns: readonly Column[]): string {
+/** Columns of equal length as an aligned plain-text table: a header row, then one row per cell, no trailing spaces. */
+export function renderTable(columns: readonly Column[]): string {
   const widths = columns.map((c) => Math.max(c.header.length, ...c.cells.map((cell) => cell.length)));
   const rowCount = columns[0]?.cells.length ?? 0;
   const lines = [columns.map((c, i) => pad(c.header, widths[i] ?? 0, c.align)).join(COLUMN_GAP)];
