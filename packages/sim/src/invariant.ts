@@ -5,6 +5,7 @@
 
 export type InvariantCode =
   | 'SIM-BAD-COORD'
+  | 'SIM-BAD-CONFIG'
   | 'SIM-BAD-CYCLE'
   | 'SIM-BAD-GRID'
   | 'SIM-BAD-MOISTURE-RANGE'

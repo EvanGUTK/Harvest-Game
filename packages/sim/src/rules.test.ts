@@ -37,17 +37,17 @@ describe('validateRules (market bounds)', () => {
       expect(
         problems.map((p) => [p.code, p.path]),
         String(bad),
-      ).toEqual([['RULES-NOT-A-SAFE-INTEGER', 'market.pressureStepBp']]);
+      ).toEqual([['SIM-BAD-RULES', 'market.pressureStepBp']]);
       expect(problems[0]?.message).toContain('whole number');
     }
   });
 
   it('reports the percentages that leave 0..10_000 basis points: floor and liquidation share', () => {
     expect(validateRules(withMarket({ priceFloorBp: 10_001 })).map((p) => [p.code, p.path])).toEqual([
-      ['RULES-OUT-OF-RANGE', 'market.priceFloorBp'],
+      ['SIM-BAD-RULES', 'market.priceFloorBp'],
     ]);
     expect(validateRules(withMarket({ liquidationBp: -1 })).map((p) => [p.code, p.path])).toEqual([
-      ['RULES-OUT-OF-RANGE', 'market.liquidationBp'],
+      ['SIM-BAD-RULES', 'market.liquidationBp'],
     ]);
   });
 
@@ -74,11 +74,31 @@ describe('validateRules (market bounds)', () => {
     ]);
   });
 
+  it('accepts the lowest value of each market number: step 0, numerator 0, interval 1, denominator 1', () => {
+    expect(
+      validateRules(
+        withMarket({
+          pressureStepBp: 0,
+          pressureDecayNumerator: 0,
+          pressureDecayEvery: 1,
+          pressureDecayDenominator: 1,
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('caps the decay denominator at 10_000, so pressure × numerator stays a safe integer', () => {
+    const capped = withMarket({ pressureDecayNumerator: 10_000, pressureDecayDenominator: 10_000 });
+    expect(validateRules(capped)).toEqual([]);
+    const over = validateRules(
+      withMarket({ pressureDecayNumerator: 10_000, pressureDecayDenominator: 10_001 }),
+    );
+    expect(over.map((p) => [p.code, p.path])).toEqual([['SIM-BAD-RULES', 'market.pressureDecayDenominator']]);
+  });
+
   it('reports a decay that grows the pressure: numerator above denominator', () => {
     const grows = validateRules(withMarket({ pressureDecayNumerator: 101, pressureDecayDenominator: 100 }));
-    expect(grows.map((p) => [p.code, p.path])).toEqual([
-      ['RULES-DECAY-GROWS', 'market.pressureDecayNumerator'],
-    ]);
+    expect(grows.map((p) => [p.code, p.path])).toEqual([['SIM-BAD-RULES', 'market.pressureDecayNumerator']]);
     expect(grows[0]?.message).toContain('101');
     expect(validateRules(withMarket({ pressureDecayNumerator: 100, pressureDecayDenominator: 100 }))).toEqual(
       [],
@@ -179,7 +199,7 @@ describe('validateConfig (match settings)', () => {
 
   it('refuses a cycle budget below 1 or not whole, and negative or fractional credits and water', () => {
     expect(validateConfig({ cycleBudget: 0 }).map((p) => [p.code, p.path])).toEqual([
-      ['CONFIG-OUT-OF-RANGE', 'cycleBudget'],
+      ['SIM-BAD-CONFIG', 'cycleBudget'],
     ]);
     expect(validateConfig({ cycleBudget: 1.5 }).map((p) => p.path)).toEqual(['cycleBudget']);
     expect(validateConfig({ startCredits: -1 }).map((p) => p.path)).toEqual(['startCredits']);
@@ -218,11 +238,22 @@ describe('toInvariantError', () => {
     expect(moisture && toInvariantError(moisture).code).toBe('SIM-BAD-MOISTURE-RANGE');
   });
 
-  it('turns every other problem into SIM-BAD-RULES', () => {
+  it('throws a market problem as SIM-BAD-RULES and a budget, credits or water problem as SIM-BAD-CONFIG', () => {
     const rule = validateRules(withMarket({ pressureDecayEvery: 0 }))[0];
     const budget = validateConfig({ cycleBudget: 0 })[0];
     expect(rule && toInvariantError(rule).code).toBe('SIM-BAD-RULES');
-    expect(budget && toInvariantError(budget).code).toBe('SIM-BAD-RULES');
+    expect(budget && toInvariantError(budget).code).toBe('SIM-BAD-CONFIG');
+    expect(budget && toInvariantError(budget).message).toBe(
+      'SIM-BAD-CONFIG: cycleBudget must be a whole number of 1 or more, got 0',
+    );
+  });
+
+  it('gives each problem the code its error carries', () => {
+    const problems = [
+      ...validateRules(withMarket({ priceFloorBp: 20_000 })),
+      ...validateConfig({ gridSize: 0, startMoisture: { min: 5, max: 3 }, startWater: -1 }),
+    ];
+    expect(problems.map((p) => toInvariantError(p).code)).toEqual(problems.map((p) => p.code));
   });
 
   it('returns an InvariantError', () => {

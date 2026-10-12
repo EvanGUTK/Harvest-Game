@@ -7,20 +7,19 @@
  */
 
 import { BASIS_POINTS, WORLD } from '@harvest/content';
-import { assertNever, InvariantError } from './invariant';
+import { InvariantError } from './invariant';
+import type { InvariantCode } from './invariant';
 import type { MarketRules } from './market/market';
 
 /**
- * The market rules use RULES-* codes, the match settings CONFIG-OUT-OF-RANGE, and the grid and the starting moisture
- * keep the invariant codes the layout generator has always thrown, so their messages do not change.
+ * A problem's code is the invariant code the same violation throws: SIM-BAD-RULES for every market number (the path
+ * and message say which), SIM-BAD-GRID and SIM-BAD-MOISTURE-RANGE as the layout has always thrown them, and
+ * SIM-BAD-CONFIG for the budget, the starting credits and the starting water.
  */
-export type RulesProblemCode =
-  | 'RULES-NOT-A-SAFE-INTEGER'
-  | 'RULES-OUT-OF-RANGE'
-  | 'RULES-DECAY-GROWS'
-  | 'CONFIG-OUT-OF-RANGE'
-  | 'SIM-BAD-GRID'
-  | 'SIM-BAD-MOISTURE-RANGE';
+export type RulesProblemCode = Extract<
+  InvariantCode,
+  'SIM-BAD-RULES' | 'SIM-BAD-CONFIG' | 'SIM-BAD-GRID' | 'SIM-BAD-MOISTURE-RANGE'
+>;
 
 /** A problem with the market rules or the match settings: one shape for both validators. */
 export type RulesProblem = {
@@ -46,7 +45,7 @@ const MARKET_BOUNDS: readonly (readonly [keyof MarketRules, Bounds])[] = [
   ['pressureStepBp', NON_NEGATIVE],
   ['pressureDecayEvery', AT_LEAST_ONE],
   ['pressureDecayNumerator', NON_NEGATIVE],
-  ['pressureDecayDenominator', AT_LEAST_ONE],
+  ['pressureDecayDenominator', { min: 1, max: BASIS_POINTS }],
   ['liquidationBp', PERCENT],
 ];
 
@@ -57,14 +56,10 @@ function rangeText({ min, max }: Bounds): string {
 function checkNumber(key: keyof MarketRules, value: number, bounds: Bounds): RulesProblem[] {
   const path = `market.${key}`;
   if (!Number.isSafeInteger(value)) {
-    return [
-      { code: 'RULES-NOT-A-SAFE-INTEGER', path, message: `${path} must be a whole number, got ${value}` },
-    ];
+    return [{ code: 'SIM-BAD-RULES', path, message: `${path} must be a whole number, got ${value}` }];
   }
   if (value < bounds.min || value > bounds.max) {
-    return [
-      { code: 'RULES-OUT-OF-RANGE', path, message: `${path} must be ${rangeText(bounds)}, got ${value}` },
-    ];
+    return [{ code: 'SIM-BAD-RULES', path, message: `${path} must be ${rangeText(bounds)}, got ${value}` }];
   }
   return [];
 }
@@ -73,7 +68,7 @@ function checkDecayShrinks(market: MarketRules): RulesProblem[] {
   if (market.pressureDecayNumerator <= market.pressureDecayDenominator) return [];
   return [
     {
-      code: 'RULES-DECAY-GROWS',
+      code: 'SIM-BAD-RULES',
       path: 'market.pressureDecayNumerator',
       message: `market.pressureDecayNumerator ${market.pressureDecayNumerator} is above market.pressureDecayDenominator ${market.pressureDecayDenominator}, so pressure would grow instead of decay`,
     },
@@ -121,7 +116,7 @@ function checkAtLeast(path: string, value: number, min: number): RulesProblem[] 
   if (Number.isSafeInteger(value) && value >= min) return [];
   return [
     {
-      code: 'CONFIG-OUT-OF-RANGE',
+      code: 'SIM-BAD-CONFIG',
       path,
       message: `${path} must be a whole number of ${min} or more, got ${value}`,
     },
@@ -139,18 +134,7 @@ export function validateConfig(config: ConfigFields): readonly RulesProblem[] {
   ];
 }
 
-/** The invariant violation for a problem: the layout's own codes where they exist, SIM-BAD-RULES otherwise. */
+/** The invariant violation for a problem: its code and message, so a thrown error reads like the reported problem. */
 export function toInvariantError(problem: RulesProblem): InvariantError {
-  switch (problem.code) {
-    case 'SIM-BAD-GRID':
-    case 'SIM-BAD-MOISTURE-RANGE':
-      return new InvariantError(problem.code, problem.message);
-    case 'RULES-NOT-A-SAFE-INTEGER':
-    case 'RULES-OUT-OF-RANGE':
-    case 'RULES-DECAY-GROWS':
-    case 'CONFIG-OUT-OF-RANGE':
-      return new InvariantError('SIM-BAD-RULES', problem.message);
-    default:
-      return assertNever(problem.code);
-  }
+  return new InvariantError(problem.code, problem.message);
 }
