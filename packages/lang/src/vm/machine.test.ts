@@ -572,6 +572,52 @@ describe('stopAtLine (chief ruling V6)', () => {
     expect(machine.run(100, { stopAtLine: true })).toEqual({ kind: 'halt', atCycle: 5 });
   });
 
+  it('stops at a LINE that a budget yield left at ip (chunking must not skip a boundary)', () => {
+    const machine = vm((e, pool) => {
+      e.emit(Op.LINE, 0);
+      e.emit(Op.CONST, int(pool, 1));
+      e.emit(Op.POP);
+      e.emit(Op.LINE, 1);
+      e.emit(Op.CONST, int(pool, 2));
+      e.emit(Op.POP);
+      e.emit(Op.HALT);
+    });
+    expect(machine.run(2, { stopAtLine: true })).toEqual({ kind: 'budget', atCycle: 2 });
+    expect(machine.run(100, { stopAtLine: true })).toEqual({
+      kind: 'line',
+      file: 'helpers.sprout',
+      line: 2,
+      atCycle: 2,
+    });
+    expect(machine.run(100, { stopAtLine: true })).toEqual({ kind: 'halt', atCycle: 5 });
+  });
+
+  it('stops at the same boundaries whatever the run budgets are', () => {
+    /** Three statements of two cycles each; collects every line yield, run in chunks of `chunk`. */
+    const stops = (chunk: number) => {
+      const machine = vm((e, pool) => {
+        for (const statement of [0, 1, 0]) {
+          e.emit(Op.LINE, statement);
+          e.emit(Op.CONST, int(pool, 1));
+          e.emit(Op.POP);
+        }
+        e.emit(Op.HALT);
+      });
+      const seen: VMYield[] = [];
+      for (
+        let y = machine.run(chunk, { stopAtLine: true });
+        y.kind !== 'halt';
+        y = machine.run(chunk, { stopAtLine: true })
+      ) {
+        if (y.kind === 'line') seen.push(y);
+      }
+      return seen;
+    };
+    const expected = stops(1_000);
+    expect(expected.map((y) => y.atCycle)).toEqual([2, 4]);
+    for (const chunk of [1, 2, 3, 4]) expect(stops(chunk)).toEqual(expected);
+  });
+
   it('needs a cycle of budget to start even a LINE', () => {
     const machine = vm((e) => {
       e.emit(Op.LINE, 0);
