@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./compile": "./src/compile.ts",
+    "./runtime": "./src/runtime.ts"
+  },
   "bin": {
     "sprout": "./src/bin.ts"
   },

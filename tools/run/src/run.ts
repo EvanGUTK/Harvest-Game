@@ -8,11 +8,12 @@
  */
 
 import { RULES_VERSION, SHOWDOWN_DEFAULTS } from '@harvest/content';
-import { DEFAULT_LIMITS, LANGUAGE_VERSION } from '@harvest/lang';
-import type { CompileResult, Diagnostic } from '@harvest/lang';
+import { LANGUAGE_VERSION } from '@harvest/lang';
+import type { Diagnostic } from '@harvest/lang';
 import type { PlayerInput, SimConfig, SimResult } from '@harvest/sim';
 import { parseCliArgs } from './args';
 import type { RunOptions } from './args';
+import { compileProgram } from './compile';
 import {
   formatDiagnostics,
   formatFooter,
@@ -39,28 +40,8 @@ export const EXIT_ENGINE_NOT_WIRED = 70;
 type Compiled = { input: PlayerInput; participant: Participant; diagnostics: readonly Diagnostic[] };
 
 function compileOne(runtime: Runtime, program: LoadedProgram): Compiled {
-  const result: CompileResult = runtime.engine.compile(program.files, {
-    languageVersion: LANGUAGE_VERSION,
-    hostSignatures: runtime.hostSignatures,
-    constants: runtime.constants,
-    lockedFeatures: new Set(),
-    lockedNames: new Set(),
-    limits: DEFAULT_LIMITS,
-  });
-  const participant = { slot: program.slot, file: program.label, compiled: result.ok };
-  if (result.ok) {
-    return {
-      input: { slot: program.slot, module: result.module },
-      participant,
-      diagnostics: result.warnings,
-    };
-  }
-  const first = result.diagnostics[0];
-  const input: PlayerInput =
-    first === undefined
-      ? { slot: program.slot, module: null }
-      : { slot: program.slot, module: null, compileError: { code: first.code, line: first.range.line } };
-  return { input, participant, diagnostics: result.diagnostics };
+  const { input, compiled, diagnostics } = compileProgram(runtime, program.slot, program.files);
+  return { input, participant: { slot: program.slot, file: program.label, compiled }, diagnostics };
 }
 
 function configOf(options: RunOptions): SimConfig {
