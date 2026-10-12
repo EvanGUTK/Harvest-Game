@@ -24,6 +24,14 @@
 - Vitest projects are the package directories (`packages/*`, `apps/*`; `tools/*` is added with the first tool package). `passWithNoTests` exists only for the empty skeleton and is removed in LANG-01.
 - Coverage is a signal, not a target. The target is: every design-doc rule has at least one test naming it (`it('wraps at east edge (farm-simulation.md §Grid)')`).
 
+## Sim goldens: scripted scenarios (SIM-08)
+
+A `sim` golden has two kinds. The **program** kind (program + seed → hashes) needs the scheduler and arrives in slice 2. The **scripted** kind needs only the world, market and hash primitives and is what exists today: a scenario is a seed, the match settings (grid, budget, starting credits, water and moisture range, `moistureDecay`, `sharedMarket`), an optional `market` object that shadows `content`'s market numbers for that scenario (the rules variant), and a list of **timed host calls** per slot: `move`, `plant`, `harvest`, `till`, `water`, `refill`, `sell`. A call is `{ t, slot, call, … }` where `t` is its start cycle; tile calls apply where that slot's drone stands (it starts on the well `(0,0)` and only `move` changes it).
+
+The driver (`packages/sim/src/golden/scripted.ts`) plays the calls in time order with the normative tie-break ([simulation-engine.md §Tie-break](../03-architecture/simulation-engine.md)), emits a hash for every multiple of 1,000 before any call at or after it, advances to the budget, liquidates, and hashes again. A call may not start before its slot's previous call has finished (`SIM-BAD-SCRIPT`). Drones are `running` during the script and `halted` in the final hash; there is one drone per slot.
+
+A scripted golden is `{ hashes, finalStateHash, eventCount }`: `hashes` are the `hash` events in order (when the budget is a multiple of 1,000 the last is the final hash), and `eventCount` is fixed at 0 because the scripted kind runs without the scheduler's event log; slice 2 fills it from the real engine.
+
 ## Naming
 
 `describe('<unit>')` → `it('<does X when Y>')`. Use glossary terms.
