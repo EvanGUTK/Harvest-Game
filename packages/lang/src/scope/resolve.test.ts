@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DefStmt, Identifier, NameExpr, Program } from '../parser/ast';
+import { assertNever } from '../invariant';
 import { parse } from '../parser/parser';
 import { DEFAULT_LIMITS, type SourceFile } from '../types';
 import { resolveScopes } from './resolve';
@@ -42,6 +43,8 @@ function show(r: Resolution): string {
       return r.kind;
     case 'unknown':
       return 'unknown';
+    default:
+      return assertNever(r);
   }
 }
 
