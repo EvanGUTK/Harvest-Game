@@ -14,7 +14,7 @@
  * compiling each player's program with that player's host signatures.
  */
 
-export const LANGUAGE_VERSION = '0.1.0';
+export { LANGUAGE_VERSION } from './version';
 
 // ---------- Source, diagnostics, limits ----------
 
@@ -98,11 +98,6 @@ export type {
   UnaryOp,
   WhileStmt,
 } from './parser/ast';
-
-// ---------- Checker (LANG-03) ----------
-
-export { check, scopeNames, type CheckOptions, type CheckResult } from './checker/check';
-export type { ScopeInfo } from './scope/scope';
 
 // ---------- Features ----------
 
