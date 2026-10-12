@@ -38,8 +38,8 @@ type CompileOptions = {
   languageVersion: string;
   hostSignatures: readonly HostSignature[];   // per player: host costs are baked from these
   constants: readonly ConstantDef[];
-  lockedFeatures: ReadonlySet<Feature>;       // syntax gating (the gating map in curriculum.md)
-  lockedNames: ReadonlySet<string>;           // builtin and constant gating by name
+  lockedFeatures: ReadonlyMap<Feature, LockReason>;  // syntax gating (the gating map in curriculum.md), with why
+  lockedNames: ReadonlyMap<string, LockReason>;      // builtin and constant gating by name, with why
   limits: Limits;
 };
 
@@ -56,6 +56,8 @@ type HostSignature = {
   unlock?: { chapter?: number; node?: string };   // campaign gating as fields (chapter that teaches it, skill node that sells it); the editor builds its 🔒 text from them, the checker gates through lockedNames
   paramHints?: readonly string[];  // one description per parameter ('a direction like `NORTH`') for E-WRONG-ARG-COUNT
 };
+type LockReason =   // picks the E-LOCKED-FEATURE suffix: chapter not reached, node not bought, or off in this mode
+  | { kind: 'chapter'; chapter: number } | { kind: 'node'; node: string } | { kind: 'mode'; mode: 'single-player-only' | 'ranked' };
 type ConstantDef = { name: string; id: number; group: string };   // e.g. { name: 'RADISH', id: 10, group: 'crop' }
 type ValueKind = 'int' | 'bool' | 'none' | 'str' | 'list' | 'dict' | 'function' | 'const';
 
@@ -79,7 +81,14 @@ interface VM {
    *  scheduler actually applied; when omitted, `yield.cost` is charged. It is charged to
    *  the VM cycle counter, so the counter equals `agent.clock` when the VM runs again. */
   resume(value: Value, cost?: number): void;
+  /** The counterpart of `resume` for a host call that failed inside the host (R-BAD-ARG for
+   *  wait(0), goto(9, 9), plant(5); R-TYPE for a non-int sell count). The applied cost (default 0:
+   *  a host error charges nothing beyond the 1-cycle call, like a VM runtime error) is charged; the next run() yields `{ kind: 'error' }` with the pending
+   *  CALL_HOST's source range, and the drone is finished like any runtime error. */
+  raise(error: { code: string; message: string }, cost?: number): void;
   readonly cycles: number;        // cycles consumed by this VM so far
+  readonly output: readonly string[];  // the first maxPrintLines lines print wrote
+  readonly droppedLines: number;  // lines dropped after those (the Output panel's notice)
   snapshot(): VMSnapshot;         // serializable, self-contained (debugger timeline, tests)
 }
 
@@ -125,7 +134,7 @@ type VMYield =
 - Resolves names (local / global / builtin), checks arity against `hostSignatures`.
 - Rejects `lockedFeatures` (syntax, e.g. `while` before Chapter 4) and references to `lockedNames` (builtins and constants, e.g. `sell` before Chapter 8) with `E-LOCKED-FEATURE`, which takes precedence over `E-UNKNOWN-NAME`. The `Feature` list is the gating map in [curriculum](../02-language/curriculum.md#feature-gating-map-normative).
 - Multi-file programs: the compiler merges every file into one program (one global namespace) that runs every file except `main.sprout` in tab order, then `main.sprout` last, as in [language-spec](../02-language/language-spec.md#files). The checker reports `E-DUPLICATE-DEF` (the same function name in two files), `E-TOO-MANY-FILES` (over the limit) and the warning `W-USE-BEFORE-DEF` (a top-level call above its `def`).
-- Static warnings: unreachable code, unused variables, and `W-PURE-INFINITE-LOOP`: a `while True` whose body, directly or through any user function it calls (transitively over the static call graph), contains no `break` that exits this loop, `return`, `halt()`, action call or sensor call. The check is transitive on purpose: the recommended starter program's main loop does its work inside `tend()` and `sweep()`, and must not warn.
+- Static warnings: unreachable code, unused variables, and `W-PURE-INFINITE-LOOP`: a `while True` whose body contains no `break` that exits this loop and no `return` of the enclosing function, and that neither directly nor through any user function it calls, transitively over the static call graph, reaches `halt()`, an action call or a sensor call. A callee's `return` ends the callee, not the loop. The check is transitive on purpose: the recommended starter program's main loop does its work inside `tend()` and `sweep()`, and must not warn.
 
 ## Bytecode
 
@@ -210,6 +219,7 @@ Costs never depend on wall-clock time or on the host machine. Changing any row c
 - **Frames:** `{ fnIndex, ip, base, locals[] }`. Max depth 64.
 - **Resumable:** the VM is an explicit loop over `ip`, never JS recursion, so it can stop at any instruction and resume later. This enables lockstep scheduling across players, the step debugger, budget cut-off, and running inside a Worker with cooperative time-slicing (the client runs `vm.run(50_000)` per frame chunk).
 - **Determinism rules:** no `Math.random`, `Date`, `performance`, float math, or iteration over JS objects with unspecified order (dicts use `Map`, which preserves insertion order).
+- **Second drone (planned, M2; backlog LANG-05.6).** `LangEngine.spawnVM(parent: VM, fn: Value): VM` will create a VM over the same module with its own frames and stack that **shares the parent's globals and heap** (one program, one namespace; [standard-library](../02-language/standard-library.md) §Second drone: one heap and one set of limits per player). It starts with a zero-argument call to `fn` and halts when that call returns. A snapshot is then taken per program (the parent and its spawned child as one unit) so a shared heap is never duplicated; the snapshot format carries a kind/version word so that per-program snapshots can be added without breaking M0 ones. Not implemented in M0: `spawn` is campaign-only (D-24), showdowns compile it as `E-LOCKED-FEATURE`, and the host table rejects it.
 
 ## Performance target
 
