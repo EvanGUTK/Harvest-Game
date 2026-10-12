@@ -1,6 +1,6 @@
 /**
- * A small, literal set of host signatures, constants and intrinsic signatures for checker tests, standing
- * in for sim's host table and lang-vm's intrinsic table until they exist (chief ruling 2026-10-11).
+ * A small, literal set of host signatures and constants for checker tests, standing in for sim's host
+ * table (intrinsics come from lang's own intrinsics.ts).
  * Spec: docs/02-language/standard-library.md (names, arities). Test support only; not part of the public API.
  */
 
@@ -14,18 +14,20 @@ function host(
   name: string,
   params: HostSignature['params'],
   touchesWorld: boolean,
+  paramHints?: readonly string[],
 ): HostSignature {
-  return { id, name, params, returns: 'any', cost: 1, touchesWorld };
+  const sig: HostSignature = { id, name, params, returns: 'any', cost: 1, touchesWorld };
+  return paramHints === undefined ? sig : { ...sig, paramHints };
 }
 
 export const TEST_OPTIONS: CheckOptions = {
   hostSignatures: [
-    host(1, 'move', ['const'], true),
+    host(1, 'move', ['const'], true, ['a direction like `NORTH`']),
     host(2, 'plant', ['const'], true),
     host(3, 'harvest', [], true),
     host(4, 'is_ripe', [], true),
     host(5, 'crop', [], true),
-    host(6, 'sell', ['const', 'int'], true),
+    host(6, 'sell', ['const', 'int'], true, ['a crop like `RADISH`', 'a number']),
     host(7, 'inventory', ['const'], true),
     host(8, 'world_size', [], false),
     host(9, 'halt', [], true),
@@ -40,16 +42,6 @@ export const TEST_OPTIONS: CheckOptions = {
   lockedFeatures: new Set(),
   lockedNames: new Set(),
   limits: DEFAULT_LIMITS,
-  intrinsicSignatures: [
-    { name: 'range', minArgs: 1, maxArgs: 3 },
-    { name: 'len', minArgs: 1, maxArgs: 1 },
-    { name: 'abs', minArgs: 1, maxArgs: 1 },
-    { name: 'min', minArgs: 1, maxArgs: null },
-    { name: 'max', minArgs: 1, maxArgs: null },
-    { name: 'str', minArgs: 1, maxArgs: 1 },
-    { name: 'int', minArgs: 1, maxArgs: 1 },
-    { name: 'print', minArgs: 0, maxArgs: null },
-  ],
 };
 
 /** Parses (which must succeed cleanly), resolves and checks `files`, returning the checker's diagnostics. */

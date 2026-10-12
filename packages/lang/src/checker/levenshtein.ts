@@ -5,6 +5,9 @@
  * alignment exceeds `cap`, so the cost per pair is bounded by the name length limit.
  */
 
+/** errors-and-diagnostics.md: E-UNKNOWN-NAME and E-UNKNOWN-METHOD suggest names within distance 2. */
+export const MAX_SUGGESTION_DISTANCE = 2;
+
 /** The Levenshtein distance between `a` and `b`, or `cap + 1` when it is larger than `cap`. */
 export function boundedDistance(a: string, b: string, cap: number): number {
   if (Math.abs(a.length - b.length) > cap) return cap + 1;
