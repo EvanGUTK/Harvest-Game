@@ -5,10 +5,12 @@
 
 export type InvariantCode =
   | 'SIM-BAD-COORD'
+  | 'SIM-BAD-CONFIG'
   | 'SIM-BAD-CYCLE'
   | 'SIM-BAD-GRID'
   | 'SIM-BAD-MOISTURE-RANGE'
   | 'SIM-BAD-RANDOM-BOUND'
+  | 'SIM-BAD-RULES'
   | 'SIM-BAD-SEED'
   | 'SIM-BAD-SLOT'
   | 'SIM-BAD-SLOT-COUNT'

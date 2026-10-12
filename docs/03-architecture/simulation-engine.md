@@ -166,6 +166,7 @@ SimRun.snapshot(): SimSnapshot                                            // the
   - `spawnEnabled` is `false` in showdowns (D-24): the compiler already reports `E-LOCKED-FEATURE`, and the host table also rejects `spawn()`. `randomEnabled` is `false` in ranked (D-18).
 - **`PlayerInput`** is `{ slot, module: BytecodeModule | null, compileError?, upgrades? }`. A `null` module is the idle program, and `compileError` (the first diagnostic) surfaces in `PlayerResult.error`. `upgrades` is `{ moveCost, waterAmount, maxDrones }` (campaign only; showdowns use the defaults).
 - **`PlayerResult`** is `{ slot, score, cyclesLastChange, logicCycles, programTokens, cropsHarvested, cyclesUsed, awards, output, error? }`. `cyclesUsed` is the player's value from [Clock arithmetic](#clock-arithmetic-normative) (0 for the idle program). `output` is the first 200 `print` lines and is never shown to rivals (see [realtime-protocol](realtime-protocol.md)). `SimResult` is `{ players, finalStateHash, events }`.
+- **Rule and setting bounds** (`validateRules`, `validateConfig`; a violation throws `SIM-BAD-RULES`, `SIM-BAD-CONFIG`, `SIM-BAD-GRID` or `SIM-BAD-MOISTURE-RANGE` and is also returned as a value so a harness can report it): every number is a safe integer; `priceFloorBp` and `liquidationBp` are 0 to 10,000; `pressureStepBp` and `pressureDecayNumerator` are 0 or more; `pressureDecayEvery` is 1 or more; `pressureDecayDenominator` is 1 to 10,000 and at least the numerator (pressure must not grow); `gridSize` is at least 1; `startMoisture` is `0 ≤ min ≤ max ≤ 100`; `cycleBudget` is at least 1; `startCredits` and `startWater` are 0 or more.
 - **Host-call contract.** `spawn` follows the Clock arithmetic bullet above; the scheduler resumes the VM with `vm.resume(result, cost?)` as described there.
 
 ## Balance harness (`tools/balance`)
@@ -175,9 +176,28 @@ A CLI that runs bot programs × seeds × rule tweaks and reports:
 - sensitivity of the shared market (does an 8-player lobby collapse all prices?)
 - `[SIM-BAL]` mean realised sale price against base in an 8-player all-radish lobby (a reported metric, provisional; no pass threshold until the architect sets one)
 - `[SIM-BAL]` ideal-play profit per 1,000 drone-cycles for each crop, at base price and at the market floor price
+
+**Ideal-play profit** `[SIM-BAL]` *(closed form, amortised over a steady rotation)*. For each crop, with every action also paying the 1-cycle `CALL_HOST` and all division floored (`floorDiv`), the harness computes:
+
+- `fixed = till* + plant + harvest + move` in drone cycles, each term the action's cost plus 1 (`till*` is 0 for a crop that grows on grass).
+- A growing tile loses 1 moisture every `moistureDecayEvery` cycles and each watering restores `waterAmount`, so one watering covers `waterAmount × moistureDecayEvery` tile-cycles of growth (2,000 by default) and one unit needs `growCycles ÷ (waterAmount × moistureDecayEvery)` waterings on average. The ratio is exact: nothing is floored before the final division, so a `growCycles` that is not a multiple of `moistureDecayEvery` loses no fraction.
+- Each watering is one `water` call (cost + 1), and one `refill` call (cost + 1) serves `waterCapacity` waterings. The walk to the well is not modelled: it depends on where the tile is, and the single `move` in `fixed` stands for the move to the next tile.
+- Cycles per unit = `fixed + growCycles ÷ (waterAmount × moistureDecayEvery) × (water + 1) + growCycles ÷ (waterAmount × moistureDecayEvery × waterCapacity) × (refill + 1)`.
+
+To stay in integers, every term is multiplied by `S = waterAmount × moistureDecayEvery × waterCapacity` (120,000 by default):
+
+```
+scaled = S × fixed + growCycles × waterCapacity × (water + 1) + growCycles × (refill + 1)
+profit per 1,000 cycles = floorDiv((price − seedCost) × 1000 × S, scaled)
+tiles to keep the drone busy = ceilDiv(growCycles × S, scaled)
+```
+
+Sells are batched, so they cost nothing. The one-off cost of lifting a dry tile to the crop's `minMoisture` is a per-tile setup cost: it is paid once per tile, not per unit, so it is excluded from the per-1,000-cycle rate. With the default numbers: radish 87.05 cycles per unit (`scaled` 10,446,300; ₵34 at base, ₵0 at the floor), corn 126.15 (₵95, ₵7), melon 146.42 (₵307, ₵61). The report prints every term of `scaled` for each crop.
 - `[SIM-BAL]` "hoard and dump" strategies (one large `sell` per window) must not beat steady selling
 - cycle budget pacing: the starter-program criterion below
 
 **Starter-program criterion** `[SIM-BAL]` *(provisional)*. The published starter program (see [standard-library](../02-language/standard-library.md)) must finish with at least ₵250 when run solo, and with at least 30 % of the Agronomist bot's score in an 8-player lobby. The harness exits non-zero otherwise, and CI fails once the harness is wired into it.
+
+**The CLI** (`pnpm balance [--seeds N] [--variant name:key=value,...]... [--json]`). Each *variant* is a named set of overrides (grid, budget, starting credits, water and moisture, and any `MARKET` number) that shadows `content` for that run only; the default variant always runs first. For every variant and seed the harness runs each program solo (`pass`, the starter, the three bots, a steady single-crop farmer per crop), each program but `pass` as eight copies in one lobby, the starter in slot 0 against seven Agronomists, and a lobby of four steady and four hoard-and-dump radish farmers (one `sell` per 5,000-cycle window). The report prints the score distributions, the realised-price metric, the ideal-profit arithmetic and the criteria, and the process gates on them with exit code 1: the starter's worst seed is at least ₵250 solo; the starter's mean is at least 30 % of the Agronomist's mean (compared by cross-multiplication); every bot beats `pass` on every seed; the dump farmers' mean never exceeds the steady farmers'; and every program compiled and none stopped on a runtime error (an idle result would otherwise invalidate the others). A criterion with no data fails. Exit codes: 0 all pass, 1 a criterion fails, 2 usage, 70 engine not wired.
 
 This is where provisional numbers in `content` get tuned.

@@ -7,6 +7,7 @@ import {
   formatOutput,
   formatResultsTable,
   formatRuntimeErrors,
+  renderTable,
 } from './format';
 import type { Participant } from './format';
 
@@ -160,5 +161,32 @@ describe('formatFooter', () => {
   it('prints a full uint32 hash', () => {
     const sim: SimResult = { players: [], finalStateHash: 0xffffffff, events: [{ t: 0, k: 'hash', h: 1 }] };
     expect(formatFooter(sim)).toEqual(['events: 1', 'finalStateHash: 0xffffffff']);
+  });
+});
+
+describe('renderTable', () => {
+  it('pads each column to its widest cell, left or right aligned, with two spaces between columns', () => {
+    const table = renderTable([
+      { header: 'name', align: 'left', cells: ['a', 'bcd'] },
+      { header: 'score', align: 'right', cells: ['5', '1234'] },
+    ]);
+    expect(table.split('\n')).toEqual(['name  score', 'a         5', 'bcd    1234']);
+  });
+
+  it('widens a column to its header when the cells are shorter', () => {
+    const table = renderTable([{ header: 'wide header', align: 'right', cells: ['1'] }]);
+    expect(table.split('\n')).toEqual(['wide header', '          1']);
+  });
+
+  it('leaves no trailing spaces even when the last column is empty', () => {
+    const table = renderTable([
+      { header: 'a', align: 'left', cells: ['x'] },
+      { header: 'awards', align: 'left', cells: [''] },
+    ]);
+    expect(table.split('\n').every((line) => line === line.trimEnd())).toBe(true);
+  });
+
+  it('prints just the header row for no rows', () => {
+    expect(renderTable([{ header: 'only', align: 'left', cells: [] }])).toBe('only');
   });
 });

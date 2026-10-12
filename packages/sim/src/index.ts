@@ -107,3 +107,15 @@ export {
   type DroneStatus,
   type HashableState,
 } from './hash/state-hash';
+
+// ---------- Rules validation ----------
+
+export {
+  toInvariantError,
+  validateConfig,
+  validateRules,
+  type ConfigFields,
+  type RulesProblem,
+  type RulesProblemCode,
+  type ValidatableRules,
+} from './rules';

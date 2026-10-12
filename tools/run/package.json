@@ -3,6 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./compile": "./src/compile.ts",
+    "./config": "./src/config.ts",
+    "./format": "./src/format.ts",
+    "./runtime": "./src/runtime.ts"
+  },
   "bin": {
     "sprout": "./src/bin.ts"
   },
@@ -15,7 +21,7 @@
     "@harvest/sim": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "22.20.5",
-    "tsx": "4.23.15"
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15"
   }
 }

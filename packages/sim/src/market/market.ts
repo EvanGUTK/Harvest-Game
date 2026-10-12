@@ -10,6 +10,7 @@ import type { CropId, MARKET } from '@harvest/content';
 import { floorDiv } from '@harvest/lang';
 import type { SimConfig } from '../types';
 import { InvariantError } from '../invariant';
+import { validateRules } from '../rules';
 
 /** The tunable market numbers: every key of content's MARKET, as plain numbers so a run can shadow them. */
 export type MarketRules = { readonly [K in keyof typeof MARKET]: number };
@@ -51,6 +52,14 @@ export function marketPressures(market: MarketState): readonly number[] {
   return CROP_IDS.map((id) => market.pressure[id]);
 }
 
+/** Refuses rules that break the market's arithmetic (validateRules lists the bounds), so a bad number never runs. */
+function assertValidRules(rules: MarketEnv): void {
+  const problems = validateRules(rules);
+  if (problems.length > 0) {
+    throw new InvariantError('SIM-BAD-RULES', problems.map((p) => p.message).join('; '));
+  }
+}
+
 function decayStepsBetween(from: number, to: number, rules: MarketRules): number {
   return floorDiv(to, rules.pressureDecayEvery) - floorDiv(from, rules.pressureDecayEvery);
 }
@@ -73,6 +82,7 @@ function decayAll(pressure: Readonly<Record<CropId, number>>, rules: MarketRules
  * equals advancing at once.
  */
 export function advanceMarket(market: MarketState, t: number, rules: MarketEnv): MarketState {
+  assertValidRules(rules);
   if (t < market.lastUpdated) {
     throw new InvariantError(
       'SIM-TIME-BACKWARDS',
@@ -90,6 +100,7 @@ export function advanceMarket(market: MarketState, t: number, rules: MarketEnv):
  * so the caller advances the market to the current cycle first.
  */
 export function marketPrice(market: MarketState, crop: CropId, rules: MarketEnv): number {
+  assertValidRules(rules);
   const discountedBp = BASIS_POINTS - rules.market.pressureStepBp * market.pressure[crop];
   const priceBp = Math.max(rules.market.priceFloorBp, discountedBp);
   return floorDiv(rules.crops[crop].basePrice * priceBp, BASIS_POINTS);
