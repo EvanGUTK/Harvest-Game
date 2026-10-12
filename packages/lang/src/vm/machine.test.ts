@@ -500,6 +500,14 @@ describe('clock arithmetic (simulation-engine.md §Clock arithmetic)', () => {
     }).toThrow(InvariantError);
   });
 
+  it('rejects a budget that is not a whole number >= 0, so run() can never hang (#58 review nit)', () => {
+    for (const budget of [Number.NaN, Number.POSITIVE_INFINITY, -1, 0.5]) {
+      const machine = vm((e) => e.emit(Op.HALT));
+      expect(() => machine.run(budget)).toThrow(InvariantError);
+    }
+    expect(vm((e) => e.emit(Op.HALT)).run(0)).toEqual({ kind: 'budget', atCycle: 0 });
+  });
+
   it('rejects a negative or fractional applied cost', () => {
     const machine = hostCall();
     machine.run(100);
