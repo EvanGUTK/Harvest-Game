@@ -159,9 +159,9 @@ describe('E-LOCKED-FEATURE for names (errors-and-diagnostics.md: locked names wi
         `${tend}spawn(tend)\n`,
         locked([], [['spawn', { kind: 'mode', mode: 'single-player-only' }]]),
       ),
-    ).toEqual(["`spawn` isn't unlocked yet. `spawn()` is single-player only in v1."]);
+    ).toEqual(['`spawn()` is single-player only in v1.']);
     expect(lockedMessages('random(6)\n', locked([], [['random', { kind: 'mode', mode: 'ranked' }]]))).toEqual(
-      ["`random` isn't unlocked yet. `random()` is turned off in ranked matches so replays stay clean."],
+      ['`random()` is turned off in ranked matches so replays stay clean.'],
     );
   });
 
