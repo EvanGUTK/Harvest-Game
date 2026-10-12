@@ -78,8 +78,21 @@ describe('cropFarmer', () => {
   it('sells once per window when dumping: the first at the window, then every window after', () => {
     const source = cropFarmer('radish', { kind: 'dump', windowCycles: 5_000 }).source;
     expect(source).toContain('next_dump = 5000');
-    expect(source).toContain('if cycles() >= next_dump:');
+    expect(source).toContain('cycles() >= next_dump');
     expect(source).toContain('next_dump = next_dump + 5000');
+  });
+
+  it('also sells on its last lap, so the final window’s crop is not liquidated at 50 %: it times each lap and sells when no more than one lap is left', () => {
+    const source = cropFarmer('radish', { kind: 'dump', windowCycles: 5_000 }).source;
+    expect(source).toContain('    lap_start = cycles()');
+    expect(source).toContain('    lap = cycles() - lap_start');
+    expect(source).toContain('    if cycles() >= next_dump or cycles_left() <= lap:');
+  });
+
+  it('keeps the lap timing out of the steady farmer, which sells every lap anyway', () => {
+    const source = cropFarmer('radish', { kind: 'steady' }).source;
+    expect(source).not.toContain('lap_start');
+    expect(source).not.toContain('cycles_left()');
   });
 
   it('refills the tank at the well after every lap', () => {

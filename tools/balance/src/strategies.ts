@@ -48,7 +48,9 @@ function sellBlock(crop: CropId, policy: SellPolicy): string {
   const constant = CROPS[crop].constant;
   const sale = `sell(${constant}, inventory(${constant}))`;
   if (policy.kind === 'steady') return `    ${sale}\n`;
-  return `    if cycles() >= next_dump:\n        ${sale}\n        next_dump = next_dump + ${policy.windowCycles}\n`;
+  // The last lap sells too: once no more than one lap of budget is left, nothing further would be sold before the
+  // end, and what is left in the silo would be liquidated at 50 %.
+  return `    lap = cycles() - lap_start\n    if cycles() >= next_dump or cycles_left() <= lap:\n        ${sale}\n        next_dump = next_dump + ${policy.windowCycles}\n`;
 }
 
 function policyId(policy: SellPolicy): string {
@@ -69,8 +71,9 @@ export function cropFarmer(crop: CropId, policy: SellPolicy): Program {
         sow()
 `;
   const start = policy.kind === 'dump' ? `next_dump = ${policy.windowCycles}\n` : '';
+  const lapStart = policy.kind === 'dump' ? '    lap_start = cycles()\n' : '';
   const lap = `while True:
-    repeat ${FARMED_ROWS}:
+${lapStart}    repeat ${FARMED_ROWS}:
         repeat world_size():
             tend()
             move(EAST)
