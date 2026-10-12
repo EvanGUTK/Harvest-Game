@@ -31,11 +31,8 @@ const { program, diagnostics, nodeCount } = parse(files, DEFAULT_LIMITS);
 
 ## Checker (LANG-03)
 
-```ts
-const scopes = resolveScopes(program, scopeNames(opts)); // internal: src/scope/
-const { diagnostics } = check(program, scopes, opts);
-```
+The checker is internal to `lang`: it is not part of the public API (`src/index.ts` exports only what docs/03-architecture/interpreter-vm.md §Public API lists), and `LangEngine.compile` reaches it.
 
-- `check(program, scopes, opts: CheckOptions): CheckResult` runs the static rules over a parsed program. `CheckOptions` carries `hostSignatures`, `constants`, `lockedFeatures`, `lockedNames` and `limits`; intrinsic arities come from lang's own `src/intrinsics/intrinsics.ts`. `CheckResult.diagnostics` holds errors and warnings ordered by file (run order), then line, then column.
-- `scopeNames(opts)` derives the name sets for name resolution from the same options, so the resolver and the checker cannot disagree. Name resolution (`src/scope/`) is internal to `lang` and shared by the checker and the compiler. `ScopeInfo` is exported as a type only.
-- Rules so far: `E-UNKNOWN-NAME` (with a Levenshtein ≤ 2 suggestion and fix-it), `E-RESERVED-NAME`, `E-BUILTIN-NOT-VALUE`, `E-RANGE-ONLY-IN-FOR`, `E-GLOBAL-AFTER-USE`, `E-DUPLICATE-DEF`, `E-TOO-MANY-FILES`, `E-WRONG-ARG-COUNT` (builtins, intrinsics, methods by name, certain user-function calls; `HostSignature.paramHints` supplies the beginner description of each parameter), and the warnings `W-UNREACHABLE`, `W-PURE-INFINITE-LOOP` (transitive over the static call graph), `W-USE-BEFORE-DEF` and the hint `W-UNUSED-VAR`. The starter showdown program and the spec example check with no diagnostics.
+- `check(program, scopes, opts: CheckOptions): CheckResult` (`src/checker/check.ts`) runs the static rules over a parsed program. `CheckOptions` carries `hostSignatures`, `constants`, `lockedFeatures`, `lockedNames` and `limits`; intrinsic arities come from lang's own `src/intrinsics/intrinsics.ts`. `CheckResult.diagnostics` holds errors and warnings ordered by file (run order), then line, then column.
+- `scopeNames(opts)` derives the name sets for name resolution (`src/scope/`, shared by the checker and the compiler) from the same options, so the resolver and the checker cannot disagree.
+- Rules so far: `E-UNKNOWN-NAME` (with a Levenshtein ≤ 2 suggestion and fix-it), `E-RESERVED-NAME`, `E-BUILTIN-NOT-VALUE`, `E-RANGE-ONLY-IN-FOR`, `E-GLOBAL-AFTER-USE`, `E-DUPLICATE-PARAM`, `E-GLOBAL-PARAM`, `E-DUPLICATE-DEF`, `E-TOO-MANY-FILES`, `E-WRONG-ARG-COUNT` (builtins, intrinsics, methods by name, certain user-function calls; `HostSignature.paramHints` supplies the beginner description of each parameter), and the warnings `W-UNREACHABLE`, `W-PURE-INFINITE-LOOP` (transitive over the static call graph), `W-USE-BEFORE-DEF` and the hint `W-UNUSED-VAR`. The starter showdown program and the spec example check with no diagnostics.

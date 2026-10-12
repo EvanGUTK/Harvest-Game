@@ -16,7 +16,11 @@ export type InvariantCode =
   | 'LANG-VALUE-UNKNOWN-CONST'
   | 'LANG-VALUE-UNKNOWN-FUNCTION'
   | 'LANG-METHOD-ARITY'
-  | 'LANG-INTRINSIC-ARITY';
+  | 'LANG-INTRINSIC-ARITY'
+  | 'LANG-FOREIGN-MODULE'
+  | 'LANG-BAD-BYTECODE'
+  | 'LANG-BAD-MAX-STACK'
+  | 'LANG-UNRESOLVED-LABEL';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;

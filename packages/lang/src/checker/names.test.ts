@@ -36,6 +36,16 @@ describe('E-UNKNOWN-NAME (errors-and-diagnostics.md: "I don\'t know `harvset`. D
     );
   });
 
+  it('ranks candidates: the closest wins, then locals, globals and intrinsics in that order', () => {
+    expect(checkErrors('total = 0\ndef f(totals):\n    return totl\n')[0]?.message).toBe(
+      "I don't know `totl`. Did you mean `total`?",
+    );
+    expect(checkErrors('ac = 1\ndef f(ab):\n    return aa\n')[0]?.message).toBe(
+      "I don't know `aa`. Did you mean `ab`?",
+    );
+    expect(checkErrors('lex = 1\nprint(lem)\n')[0]?.message).toBe("I don't know `lem`. Did you mean `lex`?");
+  });
+
   it('says only what it does not know when nothing is within distance 2', () => {
     expect(checkErrors('zebra()\n')).toEqual([
       {
@@ -219,6 +229,12 @@ describe('E-GLOBAL-PARAM (chief ruling 2026-10-12: a parameter cannot be declare
         message:
           "`x` is a parameter of `f`, so it can't be declared `global`. Rename the parameter or drop the `global` line.",
       },
+    ]);
+  });
+
+  it('reports only E-GLOBAL-PARAM when the parameter was also used before the `global` line', () => {
+    expect(checkErrors('def f(x):\n    print(x)\n    global x\n').map((d) => [d.code, d.range])).toEqual([
+      ['E-GLOBAL-PARAM', span(3, 12, 3, 13)],
     ]);
   });
 
