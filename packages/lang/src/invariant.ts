@@ -20,7 +20,8 @@ export type InvariantCode =
   | 'LANG-FOREIGN-MODULE'
   | 'LANG-BAD-BYTECODE'
   | 'LANG-BAD-MAX-STACK'
-  | 'LANG-UNRESOLVED-LABEL';
+  | 'LANG-UNRESOLVED-LABEL'
+  | 'LANG-UNCHECKED-PROGRAM';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;

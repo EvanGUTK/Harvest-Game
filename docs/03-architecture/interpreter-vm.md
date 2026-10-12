@@ -158,6 +158,38 @@ Stack machine, compact `Int32Array` code with a constant pool.
 - `x not in y` is `IN` then `NOT`: 2 base cycles plus the `IN` surcharge.
 - Language intrinsics (`len`, `abs`, `min`, `max`, `str`, `int`, `print`) compile to `CALL_INTRINSIC`, which never yields. Host builtins compile to `CALL_HOST` with the baked `cost` and `touchesWorld` operands, and every `CALL_HOST` yields, `halt()` included.
 
+### Canonical emissions (normative)
+
+What the compiler emits fixes a program's cycle count, so every implementation emits exactly these sequences. `LINE s` (0 cycles) starts every statement except `global`. Its statement-table row holds the statement's span, or the header span (keyword to the end of the test or iterable) for a compound statement. `L…` are labels.
+
+| Construct | Emission |
+|---|---|
+| int, str, `True`/`False`/`None`, game constant | `CONST k` (equal literals share one pool entry; a constant is pooled by its id) |
+| name read | `LOAD_LOCAL i` or `LOAD_GLOBAL i` (by ScopeInfo); a game constant is `CONST k` |
+| `-x`, `not x` | `x, NEG`; `x, NOT` |
+| `a op b` (arithmetic) | `a, b, OP` |
+| `a and b`, `a or b` | `a, JUMP_IF_FALSE_KEEP L, b, L:`; the same with `JUMP_IF_TRUE_KEEP` |
+| `a cmp b` | `a, b, CMP`; `not in` is `IN, NOT` |
+| `a c1 b c2 … z` (chain) | `a`, then for every link but the last: `next, DUP, ROT3, CMP, JUMP_IF_FALSE_KEEP Lf`; the last link: `z, CMP, JUMP Le`; then `Lf: SWAP, POP; Le:` |
+| `[e…]`, `{k: v…}` | elements in order, `BUILD_LIST n`; key then value per entry, `BUILD_DICT n` |
+| `a[i]` | `a, i, INDEX_GET` |
+| host builtin call | `args, CALL_HOST id argc cost touchesWorld` (cost and flag baked from the HostSignature) |
+| intrinsic call | `args, CALL_INTRINSIC id argc` (`range` never: see `for`) |
+| method call | `receiver, args, CALL_METHOD m argc` |
+| any other call | `callee, args, CALL argc` |
+| expression statement | `LINE, expr, POP` |
+| `x = v`, `a[i] = v` | `LINE, v, STORE x`; `LINE, a, i, v, INDEX_SET` |
+| `x op= v`, `a[i] op= v` | `LINE, LOAD x, v, OP, STORE x`; `LINE, a, i, DUP2, INDEX_GET, v, OP, INDEX_SET` |
+| `pass`, `global` | `LINE` alone; nothing at all |
+| `if`/`elif`/`else` | per branch: `LINE, test, JUMP_IF_FALSE Lnext, body, JUMP Lend, Lnext:`; the last branch jumps to `Lend` on false and has no `JUMP Lend`; then the `else` body; `Lend:` |
+| `while` | `Ltop: LINE, test, JUMP_IF_FALSE Lend, body, JUMP Ltop, Lend:`, emitted literally (`while True` is not folded) |
+| `for x in range(a…)` | `LINE, a…, ITER_INIT k` (k = 1..3), `Ltop: ITER_NEXT Lend, STORE x, body, JUMP Ltop, Lend:` |
+| `for x in v` | `LINE, v, ITER_INIT 0`, then as above |
+| `repeat n` | `LINE, n, REPEAT_INIT, Ltop: REPEAT_NEXT Lend, body, JUMP Ltop, Lend:` |
+| `continue` | `LINE, JUMP Ltop` of the innermost loop |
+| `break` | `LINE, JUMP Lend` in a `while`; `LINE, POP, JUMP Lend` in a `for` or `repeat` (drops its iterator or counter; on a normal exit `ITER_NEXT`/`REPEAT_NEXT` pop it themselves) |
+| module body | every file's statements in run order, then `HALT` |
+
 ### Op cost table (normative, single source of truth)
 
 World time is cycles, so every implementation must charge exactly these costs. [language-spec](../02-language/language-spec.md) says which operations are legal and [standard-library](../02-language/standard-library.md) lists the fixed cost of each builtin; neither overrides this table. Every op costs **1 cycle** unless a row says otherwise. A **surcharge** is extra cycles on top of that 1, counted in the unit named in the row.
