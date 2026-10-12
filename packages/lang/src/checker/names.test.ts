@@ -222,6 +222,12 @@ describe('E-GLOBAL-PARAM (chief ruling 2026-10-12: a parameter cannot be declare
     ]);
   });
 
+  it('reports only E-GLOBAL-PARAM when the parameter was also used before the `global` line', () => {
+    expect(checkSources('def f(x):\n    print(x)\n    global x\n').map((d) => [d.code, d.range])).toEqual([
+      ['E-GLOBAL-PARAM', span(3, 12, 3, 13)],
+    ]);
+  });
+
   it('leaves `global` of a non-parameter alone', () => {
     expect(codes('n = 0\ndef f(x):\n    global n\n    n = x\n')).toEqual([]);
   });
