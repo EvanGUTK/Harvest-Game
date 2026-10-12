@@ -219,36 +219,34 @@ describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode nev
     expect(words([...C, Op.ITER_INIT, 0, Op.ITER_NEXT, 10, Op.POP, Op.POP, Op.JUMP, 10, Op.HALT])).toBe('');
   });
 
-  it('rejects a function whose stack grows past its declared maxStack', () => {
-    const data = single([...C, ...C, Op.POP, Op.POP, Op.HALT], 1);
-    const [fn] = data.functions;
-    if (!fn) throw new Error('fixture');
-    expect(moduleProblems({ ...data, functions: [{ ...fn, maxStack: 1 }] }).join()).toContain(
-      'CONST grows the stack past its declared maximum 1',
-    );
-    expect(moduleProblems({ ...data, functions: [{ ...fn, maxStack: 2 }] })).toEqual([]);
-  });
-
-  it('rejects a declared maxStack above the deepest the stack really gets (#45 review nit)', () => {
+  it('reports one LANG-BAD-MAX-STACK problem for a declared maxStack below or above the measured height', () => {
     const data = single([...C, ...C, Op.POP, Op.POP, Op.HALT], 1);
     const [fn] = data.functions;
     if (!fn) throw new Error('fixture');
     expect(fn.maxStack).toBe(2);
-    expect(moduleProblems({ ...data, functions: [{ ...fn, maxStack: 3 }] })).toEqual([
-      'fn 0 declares maxStack 3 but reaches 2',
+    const declare = (maxStack: number) => validateModule({ ...data, functions: [{ ...fn, maxStack }] });
+    expect(declare(2)).toEqual([]);
+    expect(declare(1)).toEqual([
+      { code: 'LANG-BAD-MAX-STACK', message: 'fn 0 declares maxStack 1 but reaches 2' },
     ]);
-    expect(
-      moduleProblems({ ...data, functions: [{ ...fn, maxStack: Number.MAX_SAFE_INTEGER }] }),
-    ).toHaveLength(1);
-    const tooBig = { ...data, functions: [{ ...fn, maxStack: 3 }] };
-    expect(validateModule(tooBig)[0]?.code).toBe('LANG-BAD-MAX-STACK');
+    expect(declare(3)).toEqual([
+      { code: 'LANG-BAD-MAX-STACK', message: 'fn 0 declares maxStack 3 but reaches 2' },
+    ]);
+    expect(declare(Number.MAX_SAFE_INTEGER)).toHaveLength(1);
     let thrown: unknown;
     try {
-      assertValidModule(tooBig);
+      assertValidModule({ ...data, functions: [{ ...fn, maxStack: 1 }] });
     } catch (e) {
       thrown = e;
     }
     expect(thrown instanceof InvariantError && thrown.code).toBe('LANG-BAD-MAX-STACK');
+  });
+
+  it('runs no stack analysis on structurally broken code, so one fault gives one problem', () => {
+    // CONST 0; JUMP 1; HALT — the jump lands inside CONST's operand; nothing else may be reported.
+    expect(validateModule(single([...C, Op.JUMP, 1, Op.HALT], 1))).toEqual([
+      { code: 'LANG-BAD-BYTECODE', message: 'pc 2: JUMP target 1 is not an instruction of fn 0' },
+    ]);
   });
 
   it('rejects the reviewer’s five malformed modules, built with assemble()', () => {
