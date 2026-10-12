@@ -9,18 +9,10 @@
 import type { Program } from '../parser/ast';
 import type { ResolveOptions, ScopeInfo } from '../scope/scope';
 import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits } from '../types';
+import { INTRINSIC_NAMES } from '../intrinsics/intrinsics';
+import { checkArity } from './arity';
 import { checkDuplicateDefs, checkFileCount } from './files';
 import { checkNames } from './names';
-
-/**
- * Arity of a language intrinsic (`range`, `len`, `print`, …). Provisional: replaced by lang-vm's intrinsic
- * table when it lands (chief ruling 2026-10-11). `maxArgs: null` means any number.
- */
-export type IntrinsicSignature = {
-  readonly name: string;
-  readonly minArgs: number;
-  readonly maxArgs: number | null;
-};
 
 export type CheckOptions = {
   readonly hostSignatures: readonly HostSignature[];
@@ -28,7 +20,6 @@ export type CheckOptions = {
   readonly lockedFeatures: ReadonlySet<Feature>;
   readonly lockedNames: ReadonlySet<string>;
   readonly limits: Limits;
-  readonly intrinsicSignatures: readonly IntrinsicSignature[];
 };
 
 export type CheckResult = {
@@ -41,7 +32,7 @@ export function scopeNames(opts: CheckOptions): ResolveOptions {
   return {
     hostNames: new Set(opts.hostSignatures.map((s) => s.name)),
     constantNames: new Set(opts.constants.map((c) => c.name)),
-    intrinsicNames: new Set(opts.intrinsicSignatures.map((s) => s.name)),
+    intrinsicNames: INTRINSIC_NAMES,
   };
 }
 
@@ -51,6 +42,7 @@ export function check(program: Program, scopes: ScopeInfo, opts: CheckOptions): 
     ...checkFileCount(program, opts.limits),
     ...checkDuplicateDefs(program),
     ...checkNames(program, scopes, opts),
+    ...checkArity(program, scopes, opts),
   ];
   return { diagnostics: inSourceOrder(diagnostics, program) };
 }

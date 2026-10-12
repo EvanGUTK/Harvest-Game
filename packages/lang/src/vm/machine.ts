@@ -134,6 +134,12 @@ export class Machine implements VM {
   private dropped = 0;
   private statement = -1;
   private status: Status = { kind: 'running' };
+  /**
+   * True while the LINE at ip must not stop a stopAtLine run: at program start, and right after this
+   * very LINE was yielded. Cleared by any executed instruction. Machine state, not per-run state, so
+   * line stops do not depend on how the cycles were chunked into runs (chief ruling on #58).
+   */
+  private lineStopTaken = true;
 
   /** A machine at the start of the module body, or one adopting a restored state (restoreVM). */
   constructor(module: BytecodeModule, limits: Limits, restored?: MachineState) {
@@ -214,11 +220,14 @@ export class Machine implements VM {
     if (this.status.kind === 'finished') return this.status.final;
     const stopAtLine = opts?.stopAtLine === true;
     let remaining = maxCycles;
-    for (let executed = false; ; executed = true) {
+    for (;;) {
       if (remaining < 1) return { kind: 'budget', atCycle: this.cycleCount };
-      if (stopAtLine && executed && this.code(this.ip) === Op.LINE)
+      if (stopAtLine && !this.lineStopTaken && this.code(this.ip) === Op.LINE) {
+        this.lineStopTaken = true;
         return this.lineYield(this.code(this.ip + 1));
+      }
       const step = this.step();
+      this.lineStopTaken = false;
       if (typeof step !== 'number') return step;
       remaining -= step;
     }

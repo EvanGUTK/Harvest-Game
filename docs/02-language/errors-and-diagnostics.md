@@ -34,7 +34,8 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-MIXED-INDENT` | 2 and 4 spaces in one block | These lines are indented by different amounts. Pick one (4 spaces is standard). |
 | `E-UNKNOWN-NAME` | `harvset()` | I don't know `harvset`. Did you mean `harvest`? *(Levenshtein ≤ 2 suggestion, fix-it)* With no name that close: I don't know `zebra`. |
 | `E-LOCKED-FEATURE` | `while` in Ch 2; `sell` before its chapter, or before the Sell node is bought; `random()` in ranked; `spawn()` in a showdown | `while` isn't unlocked yet. You'll get it in Chapter 4. For a command node whose chapter is reached: "`sell` isn't unlocked yet. Buy the Sell node in the skill tree." *(Chapter and node gating are campaign only. The two multiplayer cases are `spawn()`, single-player only in v1 (D-24), and `random()`, off in ranked (D-18).)* Where a builtin is turned off for a mode, the message says why: "`random()` is turned off in ranked matches so replays stay clean." |
-| `E-WRONG-ARG-COUNT` | `move()` | `move` needs 1 thing in the brackets: a direction like `NORTH`. |
+| `E-WRONG-ARG-COUNT` | `move()`, `tend(1)` for `def tend():`, `lst.pop(1, 2)` | `move` needs 1 thing in the brackets: a direction like `NORTH`. *(The description comes from `HostSignature.paramHints`; without hints, and for user functions and methods: `.pop` needs 0 or 1 things in the brackets, but got 2.)* Checked for builtins, intrinsics, `.append`/`.pop`/`.get` by method name, and direct calls of a certain function name (a name bound only by top-level `def`s that all share one arity, across all files, and neither assigned nor declared `global` in any `def`; language-spec §Type interactions, Calling); every other call is `R-WRONG-ARG-COUNT` at run time. |
+| `E-UNKNOWN-METHOD` | `lst.sort()`, `lst.apend(1)` | `.sort` isn't a method in Sprout. Lists have `.append` and `.pop`; dicts have `.get`. *(No Sprout value has any other method, so this is caught before running; when one of the three is within Levenshtein 2: `.apend` isn't a method in Sprout. Did you mean `.append`? with a fix-it.)* |
 | `E-SLASH-DIVISION` | `a / 2` | Sprout uses whole numbers. Use `//` for division. *(fix-it)* |
 | `E-ASSIGN-IN-IF` | `if x = 3:` | Use `==` to compare. A single `=` stores a value. *(fix-it)* |
 | `E-NESTED-DEF` | `def` inside another `def` or inside any block | Define functions at the top level, not inside other functions or blocks. |
@@ -86,7 +87,7 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `R-UNBOUND-LOCAL` | `total` is used before it gets a value in this function. Did you mean `global total`? |
 | `R-UNBOUND-GLOBAL` | `tend` isn't defined yet at this line. Move the `def` above. |
 | `R-NOT-CALLABLE` | `5` isn't a function, so it can't be called with `()`. (`None` is what a function with no `return` gives back.) |
-| `R-WRONG-ARG-COUNT` | `f` needs 2 things in the brackets, but got 1. Raised when a function stored in a variable is called with the wrong number of arguments. Direct calls are caught earlier by `E-WRONG-ARG-COUNT`. |
+| `R-WRONG-ARG-COUNT` | `f` needs 2 things in the brackets, but got 1. Raised for every call whose arity is only known at run time: a function held in a variable, or a direct call to a name that is not certain. Direct calls to builtins, intrinsics and certain function names are caught earlier by `E-WRONG-ARG-COUNT` (language-spec §Type interactions, Calling). |
 
 `pop()` on an empty list and `pop(i)` past the end are `R-INDEX` (*"The list is empty, so there is nothing to pop."*). Bad numbers and bad text passed to builtins are `R-BAD-ARG`, never a separate value-error code.
 
