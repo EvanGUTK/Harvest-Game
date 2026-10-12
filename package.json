@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run --testTimeout=30000",
     "test:watch": "vitest --testTimeout=30000",
-    "sprout": "pnpm --filter @harvest/tool-run start"
+    "sprout": "pnpm --filter @harvest/tool-run start",
+    "balance": "pnpm --filter @harvest/tool-balance start"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

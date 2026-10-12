@@ -58,6 +58,28 @@ importers:
         specifier: workspace:*
         version: link:../lang
 
+  tools/balance:
+    dependencies:
+      '@harvest/content':
+        specifier: workspace:*
+        version: link:../../packages/content
+      '@harvest/lang':
+        specifier: workspace:*
+        version: link:../../packages/lang
+      '@harvest/sim':
+        specifier: workspace:*
+        version: link:../../packages/sim
+      '@harvest/tool-run':
+        specifier: workspace:*
+        version: link:../run
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.5
+        version: 22.20.5
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
   tools/run:
     dependencies:
       '@harvest/content':
