@@ -5,16 +5,29 @@
  * arithmetic is integer (floorDiv, basis points); crops are iterated in CROP_IDS order.
  */
 
-import { BASIS_POINTS, CROPS, CROP_IDS, MARKET, type CropId } from '@harvest/content';
+import { BASIS_POINTS, CROP_IDS } from '@harvest/content';
+import type { CropId, MARKET } from '@harvest/content';
 import { floorDiv } from '@harvest/lang';
 import type { SimConfig } from '../types';
 import { InvariantError } from '../invariant';
+
+/** The tunable market numbers: every key of content's MARKET, as plain numbers so a run can shadow them. */
+export type MarketRules = { readonly [K in keyof typeof MARKET]: number };
+
+/**
+ * The part of the match `Rules` the market reads: its own numbers and the crops' base prices. The full `Rules`
+ * object satisfies it structurally, so callers pass `rules` straight through.
+ */
+export type MarketEnv = {
+  readonly market: MarketRules;
+  readonly crops: Readonly<Record<CropId, { readonly basePrice: number }>>;
+};
 
 /** Plain, serializable market state. A value: every operation returns a new state and never writes into its input. */
 export type MarketState = {
   /** Units sold into the market per crop, decayed over time. Integer ≥ 0. */
   readonly pressure: Readonly<Record<CropId, number>>;
-  /** Cycle the pressure is current for; decay is applied for every multiple of 500 after it. */
+  /** Cycle the pressure is current for; decay is applied for every multiple of `pressureDecayEvery` after it. */
   readonly lastUpdated: number;
   /**
    * `SimConfig.sharedMarket`. False is the campaign mode: no pressure dynamics, so sales add no pressure and
@@ -38,27 +51,28 @@ export function marketPressures(market: MarketState): readonly number[] {
   return CROP_IDS.map((id) => market.pressure[id]);
 }
 
-function decayStepsBetween(from: number, to: number): number {
-  return floorDiv(to, MARKET.pressureDecayEvery) - floorDiv(from, MARKET.pressureDecayEvery);
+function decayStepsBetween(from: number, to: number, rules: MarketRules): number {
+  return floorDiv(to, rules.pressureDecayEvery) - floorDiv(from, rules.pressureDecayEvery);
 }
 
-function decayOnce(pressure: number): number {
-  return floorDiv(pressure * MARKET.pressureDecayNumerator, MARKET.pressureDecayDenominator);
+function decayOnce(pressure: number, rules: MarketRules): number {
+  return floorDiv(pressure * rules.pressureDecayNumerator, rules.pressureDecayDenominator);
 }
 
-function decayAll(pressure: Readonly<Record<CropId, number>>): Record<CropId, number> {
+function decayAll(pressure: Readonly<Record<CropId, number>>, rules: MarketRules): Record<CropId, number> {
   return {
-    radish: decayOnce(pressure.radish),
-    corn: decayOnce(pressure.corn),
-    melon: decayOnce(pressure.melon),
+    radish: decayOnce(pressure.radish, rules),
+    corn: decayOnce(pressure.corn, rules),
+    melon: decayOnce(pressure.melon, rules),
   };
 }
 
 /**
- * The market with one decay step applied for every multiple of 500 in `(lastUpdated, t]`, so a sale or price
- * read at exactly `t = 500` sees the decayed pressure. Advancing in pieces equals advancing at once.
+ * The market with one decay step applied for every multiple of `pressureDecayEvery` in `(lastUpdated, t]`, so a
+ * sale or price read at exactly t = 500 (with the default rules) sees the decayed pressure. Advancing in pieces
+ * equals advancing at once.
  */
-export function advanceMarket(market: MarketState, t: number): MarketState {
+export function advanceMarket(market: MarketState, t: number, rules: MarketEnv): MarketState {
   if (t < market.lastUpdated) {
     throw new InvariantError(
       'SIM-TIME-BACKWARDS',
@@ -66,8 +80,8 @@ export function advanceMarket(market: MarketState, t: number): MarketState {
     );
   }
   let pressure = market.pressure;
-  for (let step = decayStepsBetween(market.lastUpdated, t); step > 0; step -= 1)
-    pressure = decayAll(pressure);
+  for (let step = decayStepsBetween(market.lastUpdated, t, rules.market); step > 0; step -= 1)
+    pressure = decayAll(pressure, rules.market);
   return { pressure, lastUpdated: t, shared: market.shared };
 }
 
@@ -75,8 +89,8 @@ export function advanceMarket(market: MarketState, t: number): MarketState {
  * The market price of one unit, as the `price()` sensor returns it. Reads the pressure as it stands,
  * so the caller advances the market to the current cycle first.
  */
-export function marketPrice(market: MarketState, crop: CropId): number {
-  const discountedBp = BASIS_POINTS - MARKET.pressureStepBp * market.pressure[crop];
-  const priceBp = Math.max(MARKET.priceFloorBp, discountedBp);
-  return floorDiv(CROPS[crop].basePrice * priceBp, BASIS_POINTS);
+export function marketPrice(market: MarketState, crop: CropId, rules: MarketEnv): number {
+  const discountedBp = BASIS_POINTS - rules.market.pressureStepBp * market.pressure[crop];
+  const priceBp = Math.max(rules.market.priceFloorBp, discountedBp);
+  return floorDiv(rules.crops[crop].basePrice * priceBp, BASIS_POINTS);
 }

@@ -5,6 +5,7 @@
     { "path": "packages/content" },
     { "path": "packages/sim" },
     { "path": "packages/protocol" },
-    { "path": "packages/db" }
+    { "path": "packages/db" },
+    { "path": "tools/run" }
   ]
 }

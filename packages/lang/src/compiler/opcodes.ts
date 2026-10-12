@@ -21,52 +21,123 @@ export type OperandKind =
   | 'statement' // index into the statement table
   | 'iterArgs'; // ITER_INIT k: 0 (iterable on the stack) or 1..3 range arguments
 
-export type OpSpec = { readonly name: string; readonly operands: readonly OperandKind[] };
+/** What occupies a VM stack slot, as far as validation is concerned. */
+export type SlotKind = 'value' | 'iterator' | 'counter';
+
+/** A slot an instruction pops: a specific kind, or 'any' (POP also drops a loop's iterator on break). */
+export type PopKind = SlotKind | 'any';
+
+/** Pops (bottom to top) then pushes (bottom to top) along one control-flow edge. */
+export type Transition = { readonly pops: readonly PopKind[]; readonly pushes: readonly SlotKind[] };
+
+/**
+ * An instruction's declared stack effect along each edge it has: `next` falls through to the following
+ * instruction, `jump` goes to its target operand, `final` leaves the function (RETURN, HALT). An edge
+ * that is absent does not exist (JUMP never falls through).
+ */
+export type StackEffect = {
+  readonly next?: Transition;
+  readonly jump?: Transition;
+  readonly final?: Transition;
+};
+
+export type OpSpec = {
+  readonly name: string;
+  readonly operands: readonly OperandKind[];
+  /** The stack effect, computed from the operands where it depends on them (CALL*, BUILD_*, ITER_INIT). */
+  readonly effect: (operands: readonly number[]) => StackEffect;
+};
+
+const V = 'value';
+const values = (count: number): readonly SlotKind[] => Array.from({ length: Math.max(count, 0) }, () => V);
+const flow = (pops: readonly PopKind[], pushes: readonly SlotKind[]): StackEffect => ({
+  next: { pops, pushes },
+});
+const operand = (operands: readonly number[], index: number): number => operands[index] ?? 0;
+const BINARY = (): StackEffect => flow([V, V], [V]);
 
 export const OP_SPECS = [
-  { name: 'CONST', operands: ['pool'] },
-  { name: 'POP', operands: [] },
-  { name: 'DUP', operands: [] },
-  { name: 'SWAP', operands: [] },
-  { name: 'ROT3', operands: [] },
-  { name: 'DUP2', operands: [] },
-  { name: 'LOAD_LOCAL', operands: ['local'] },
-  { name: 'STORE_LOCAL', operands: ['local'] },
-  { name: 'LOAD_GLOBAL', operands: ['global'] },
-  { name: 'STORE_GLOBAL', operands: ['global'] },
-  { name: 'ADD', operands: [] },
-  { name: 'SUB', operands: [] },
-  { name: 'MUL', operands: [] },
-  { name: 'FLOORDIV', operands: [] },
-  { name: 'MOD', operands: [] },
-  { name: 'NEG', operands: [] },
-  { name: 'EQ', operands: [] },
-  { name: 'NE', operands: [] },
-  { name: 'LT', operands: [] },
-  { name: 'LE', operands: [] },
-  { name: 'GT', operands: [] },
-  { name: 'GE', operands: [] },
-  { name: 'IN', operands: [] },
-  { name: 'NOT', operands: [] },
-  { name: 'JUMP', operands: ['target'] },
-  { name: 'JUMP_IF_FALSE', operands: ['target'] },
-  { name: 'JUMP_IF_TRUE_KEEP', operands: ['target'] },
-  { name: 'JUMP_IF_FALSE_KEEP', operands: ['target'] },
-  { name: 'ITER_INIT', operands: ['iterArgs'] },
-  { name: 'ITER_NEXT', operands: ['target'] },
-  { name: 'REPEAT_INIT', operands: [] },
-  { name: 'REPEAT_NEXT', operands: ['target'] },
-  { name: 'CALL', operands: ['count'] },
-  { name: 'CALL_HOST', operands: ['host', 'count', 'cost', 'flag'] },
-  { name: 'CALL_INTRINSIC', operands: ['intrinsic', 'count'] },
-  { name: 'CALL_METHOD', operands: ['method', 'count'] },
-  { name: 'RETURN', operands: [] },
-  { name: 'HALT', operands: [] },
-  { name: 'BUILD_LIST', operands: ['count'] },
-  { name: 'BUILD_DICT', operands: ['count'] },
-  { name: 'INDEX_GET', operands: [] },
-  { name: 'INDEX_SET', operands: [] },
-  { name: 'LINE', operands: ['statement'] },
+  { name: 'CONST', operands: ['pool'], effect: () => flow([], [V]) },
+  { name: 'POP', operands: [], effect: () => flow(['any'], []) },
+  { name: 'DUP', operands: [], effect: () => flow([V], [V, V]) },
+  { name: 'SWAP', operands: [], effect: () => flow([V, V], [V, V]) },
+  { name: 'ROT3', operands: [], effect: () => flow([V, V, V], [V, V, V]) },
+  { name: 'DUP2', operands: [], effect: () => flow([V, V], [V, V, V, V]) },
+  { name: 'LOAD_LOCAL', operands: ['local'], effect: () => flow([], [V]) },
+  { name: 'STORE_LOCAL', operands: ['local'], effect: () => flow([V], []) },
+  { name: 'LOAD_GLOBAL', operands: ['global'], effect: () => flow([], [V]) },
+  { name: 'STORE_GLOBAL', operands: ['global'], effect: () => flow([V], []) },
+  { name: 'ADD', operands: [], effect: BINARY },
+  { name: 'SUB', operands: [], effect: BINARY },
+  { name: 'MUL', operands: [], effect: BINARY },
+  { name: 'FLOORDIV', operands: [], effect: BINARY },
+  { name: 'MOD', operands: [], effect: BINARY },
+  { name: 'NEG', operands: [], effect: () => flow([V], [V]) },
+  { name: 'EQ', operands: [], effect: BINARY },
+  { name: 'NE', operands: [], effect: BINARY },
+  { name: 'LT', operands: [], effect: BINARY },
+  { name: 'LE', operands: [], effect: BINARY },
+  { name: 'GT', operands: [], effect: BINARY },
+  { name: 'GE', operands: [], effect: BINARY },
+  { name: 'IN', operands: [], effect: BINARY },
+  { name: 'NOT', operands: [], effect: () => flow([V], [V]) },
+  { name: 'JUMP', operands: ['target'], effect: () => ({ jump: { pops: [], pushes: [] } }) },
+  {
+    name: 'JUMP_IF_FALSE',
+    operands: ['target'],
+    effect: () => ({ next: { pops: [V], pushes: [] }, jump: { pops: [V], pushes: [] } }),
+  },
+  {
+    name: 'JUMP_IF_TRUE_KEEP',
+    operands: ['target'],
+    effect: () => ({ next: { pops: [V], pushes: [] }, jump: { pops: [V], pushes: [V] } }),
+  },
+  {
+    name: 'JUMP_IF_FALSE_KEEP',
+    operands: ['target'],
+    effect: () => ({ next: { pops: [V], pushes: [] }, jump: { pops: [V], pushes: [V] } }),
+  },
+  {
+    name: 'ITER_INIT',
+    operands: ['iterArgs'],
+    effect: (o) => flow(values(operand(o, 0) === 0 ? 1 : operand(o, 0)), ['iterator']),
+  },
+  {
+    name: 'ITER_NEXT',
+    operands: ['target'],
+    effect: () => ({
+      next: { pops: ['iterator'], pushes: ['iterator', V] },
+      jump: { pops: ['iterator'], pushes: [] },
+    }),
+  },
+  { name: 'REPEAT_INIT', operands: [], effect: () => flow([V], ['counter']) },
+  {
+    name: 'REPEAT_NEXT',
+    operands: ['target'],
+    effect: () => ({
+      next: { pops: ['counter'], pushes: ['counter'] },
+      jump: { pops: ['counter'], pushes: [] },
+    }),
+  },
+  { name: 'CALL', operands: ['count'], effect: (o) => flow(values(operand(o, 0) + 1), [V]) },
+  {
+    name: 'CALL_HOST',
+    operands: ['host', 'count', 'cost', 'flag'],
+    effect: (o) => flow(values(operand(o, 1)), [V]),
+  },
+  {
+    name: 'CALL_INTRINSIC',
+    operands: ['intrinsic', 'count'],
+    effect: (o) => flow(values(operand(o, 1)), [V]),
+  },
+  { name: 'CALL_METHOD', operands: ['method', 'count'], effect: (o) => flow(values(operand(o, 1) + 1), [V]) },
+  { name: 'RETURN', operands: [], effect: () => ({ final: { pops: [V], pushes: [] } }) },
+  { name: 'HALT', operands: [], effect: () => ({ final: { pops: [], pushes: [] } }) },
+  { name: 'BUILD_LIST', operands: ['count'], effect: (o) => flow(values(operand(o, 0)), [V]) },
+  { name: 'BUILD_DICT', operands: ['count'], effect: (o) => flow(values(2 * operand(o, 0)), [V]) },
+  { name: 'INDEX_GET', operands: [], effect: BINARY },
+  { name: 'INDEX_SET', operands: [], effect: () => flow([V, V, V], []) },
+  { name: 'LINE', operands: ['statement'], effect: () => flow([], []) },
 ] as const satisfies readonly OpSpec[];
 
 export type OpName = (typeof OP_SPECS)[number]['name'];

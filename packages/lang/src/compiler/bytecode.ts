@@ -26,6 +26,8 @@ export type FunctionInfo = {
   readonly entry: number;
   readonly end: number;
   readonly file: string;
+  /** The deepest the function's own operand stack gets (computed by measureMaxStack); validated. */
+  readonly maxStack: number;
 };
 
 /** One row per statement boundary; `LINE s` points here. */

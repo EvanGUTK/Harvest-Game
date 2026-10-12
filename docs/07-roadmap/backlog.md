@@ -29,6 +29,7 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
   - LANG-05.3 Resumable `run(maxCycles)` / `resume(value)` host yields
   - LANG-05.4 Snapshot/restore
   - LANG-05.5 Runtime diagnostics
+  - LANG-05.6 `spawnVM(parent, fn)`: second-drone VM sharing the parent's globals and heap, per-program snapshot [M2, campaign only (D-24); design in interpreter-vm.md §VM]
 - **LANG-06 Tests**
   - LANG-06.1 Corpus + AST snapshots
   - LANG-06.2 Fuzzing (no throws)
@@ -50,7 +51,7 @@ IDs are stable. Use them in branch names and commits (`feat(LANG-03): …`). The
 ## CONTENT [M0→M7]
 - CNT-01 Crops v1 (radish, corn, melon)
 - CNT-02 Stdlib metadata (costs, unlocks, docs, examples)
-- CNT-03 Bots: Seedling, Grower, Agronomist
+- CNT-03 Bots: Seedling, Grower, Agronomist (sources landed; compile them in the sim bot tests once LANG-03 and the compiler are on main)
 - CNT-04 Contracts Ch1–5 [M2], Ch6–10 [M7]
 - CNT-05 Skill tree nodes [M2]
 - CNT-06 Lesson cards [M2/M7]
