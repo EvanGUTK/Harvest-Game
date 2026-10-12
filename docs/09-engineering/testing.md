@@ -38,7 +38,11 @@ Files, in `packages/sim/src/__golden__/`: `cases.ts` (`export const cases = [...
 
 `pnpm test:determinism` plays every golden case inside Chromium, Firefox and WebKit and compares each hash with `expected.ts`; the Node run (`pnpm test`) covers the fourth engine. The harness lives in `packages/sim/determinism/`: `browser-entry.ts` is the page side (it runs the same `runScripted` over the same `cases` and exposes the results as `window.goldens`), `bundle.ts` builds that entry with esbuild in memory on every run (nothing is cached on disk, so a stale bundle cannot pass), and `golden.pw.ts` loads the bundle into a blank page and compares in Node, outside the browser. `*.pw.ts` keeps Vitest from picking the spec up. The page runs the engine unchanged: no stubbed `Date`, `Math` or `Intl`, which is the point.
 
-Install the browsers once with `pnpm exec playwright install --with-deps chromium firefox webkit` (without `--with-deps` on a machine that already has the system libraries). The check is a local command for now; wiring it into CI is OPS work and a GitHub workflow is not part of SIM-08 slice 1. Failure output names the browser project, the case and the first differing hash, so a divergence points at the engine that produced it.
+Install the browsers once with `pnpm exec playwright install --with-deps chromium firefox webkit` (without `--with-deps` on a machine that already has the system libraries). The check is a local command for now; wiring it into CI is OPS work and a GitHub workflow is not part of SIM-08 slice 1.
+
+**Known limitation.** On macOS 27.0.1 the Playwright Firefox build (1543) exits at launch with "Could not find profile folder", so `--project=firefox` could not be verified there; it fails the same way outside the shell sandbox, before any hash is compared. Firefox stays in the config because the M0 exit criterion names all four engines; until it has been run on another OS version it is unverified (STATE.md Known gaps). The local workaround is `pnpm test:determinism --project=chromium --project=webkit`.
+
+Failure output names the browser project, the case and the first differing hash, so a divergence points at the engine that produced it.
 
 ## Naming
 

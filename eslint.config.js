@@ -68,7 +68,7 @@ export default defineConfig(
       '*.config.js',
       '*.config.ts',
       // Playwright reads its config from a default export, which the no-default-export rule bans everywhere else.
-      'packages/sim/determinism/playwright.config.ts',
+      '**/playwright.config.ts',
     ],
   },
   js.configs.recommended,
