@@ -1,17 +1,17 @@
-import { CROPS } from '@harvest/content';
+import { CROPS, MARKET } from '@harvest/content';
 import { describe, expect, it } from 'vitest';
 import { advanceMarket, createMarket, marketPressures, type MarketState } from '../market/market';
 import { createStreams } from '../prng/streams';
 import { advanceFarm, type Farm } from '../world/farm';
 import type { Tile } from '../types';
-import { stateHash, stateWords, type DroneHashState, type HashableState } from './state-hash';
+import { stateHash, stateWords, type DroneHashState, type HashableState, type HashRules } from './state-hash';
 
 function marketWith(pressure: Partial<MarketState['pressure']>): MarketState {
   const base = createMarket({ sharedMarket: true });
   return { ...base, pressure: { ...base.pressure, ...pressure } };
 }
 
-const RULES = { moistureDecay: false } as const;
+const RULES: HashRules = { moistureDecay: false, market: MARKET, crops: CROPS };
 const T = 700;
 
 const RUNNING: DroneHashState = { x: 0, y: 0, clock: 500, status: 'running' };
@@ -77,7 +77,7 @@ describe('stateWords (simulation-engine.md §State hash)', () => {
       lastUpdated: T,
       crop: { kind: 'corn', plantedAt: 650, growth: 50, ripeAt: null, withered: false },
     };
-    const unripeWords = stateWords(oneByOne({ farms: [farmOf([unripe])] }), T, { moistureDecay: false });
+    const unripeWords = stateWords(oneByOne({ farms: [farmOf([unripe])] }), T, RULES);
     expect(unripeWords.slice(19, 26)).toEqual([0, 60, 1, 650, 50, -1, 0]);
     const dead: Tile = {
       soil: 'tilled',
@@ -85,7 +85,7 @@ describe('stateWords (simulation-engine.md §State hash)', () => {
       lastUpdated: T,
       crop: { kind: 'melon', plantedAt: 0, growth: CROPS.melon.growCycles, ripeAt: 100, withered: true },
     };
-    const deadWords = stateWords(oneByOne({ farms: [farmOf([dead])] }), T, { moistureDecay: false });
+    const deadWords = stateWords(oneByOne({ farms: [farmOf([dead])] }), T, RULES);
     expect(deadWords.slice(19, 26)).toEqual([1, 0, 2, 0, CROPS.melon.growCycles, 100, 1]);
   });
 
@@ -232,14 +232,14 @@ describe('stateHash', () => {
       lastUpdated: 0,
       crop: { kind: 'corn', plantedAt: 0, growth: 0, ripeAt: null, withered: false },
     };
-    const rules = { moistureDecay: true };
+    const rules: HashRules = { ...RULES, moistureDecay: true };
     const market = marketWith({ radish: 100 });
     const state = oneByOne({ farms: [farmOf([stale])], market });
     const direct = stateHash(state, 2_000, rules);
     const advancedEarly: HashableState = {
       ...state,
       farms: state.farms.map((farm) => advanceFarm(farm, 800, rules)),
-      market: advanceMarket(market, 800),
+      market: advanceMarket(market, 800, rules),
     };
     expect(stateHash(advancedEarly, 2_000, rules)).toBe(direct);
     expect(stateHash(state, 800, rules)).not.toBe(direct);
@@ -266,7 +266,7 @@ describe('stateHash', () => {
 
   it('reads the advanced market the way marketPressures does (CROP_IDS order, decayed once at 500)', () => {
     const market = marketWith({ melon: 100 });
-    const advanced = advanceMarket(market, T);
+    const advanced = advanceMarket(market, T, RULES);
     expect(marketPressures(advanced)).toEqual([0, 0, 80]);
     expect(stateWords(oneByOne({ market }), T, RULES).slice(3, 6)).toEqual([0, 0, 80]);
   });
