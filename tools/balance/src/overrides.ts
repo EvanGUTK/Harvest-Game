@@ -3,10 +3,11 @@
  * without ever changing them. A variant is a named set of overrides; the matrix runs every scenario per variant.
  * Design: docs/03-architecture/simulation-engine.md §Balance harness (rule tweaks), packages/content MARKET.
  * Invariants: overrides are plain whole numbers; applying them returns new objects and never writes into the
- * config or into content; the market numbers an override can name are exactly the keys of MARKET.
+ * config or into content; their bounds are sim's `validateRules` and `validateConfig`, not a second copy here; the market numbers an override can name are exactly the keys of MARKET.
  */
 
-import { MARKET, SHOWDOWN_DEFAULTS, WORLD } from '@harvest/content';
+import { MARKET, SHOWDOWN_DEFAULTS } from '@harvest/content';
+import { validateConfig, validateRules } from '@harvest/sim';
 import type { MarketRules, SimConfig } from '@harvest/sim';
 
 /** What a variant may change. Anything left out keeps its showdown default. */
@@ -27,21 +28,14 @@ export const DEFAULT_VARIANT: Variant = { name: 'default', overrides: {} };
 
 type TopLevelKey = 'gridSize' | 'cycleBudget' | 'startCredits' | 'startWater';
 
-/** Top-level keys and the smallest value each accepts (a grid or a budget of 0 makes no match). */
-const TOP_LEVEL_MINIMUM: Readonly<Record<TopLevelKey, number>> = {
-  gridSize: 1,
-  cycleBudget: 1,
-  startCredits: 0,
-  startWater: 0,
-};
+const TOP_LEVEL_KEYS: ReadonlySet<string> = new Set<TopLevelKey>([
+  'gridSize',
+  'cycleBudget',
+  'startCredits',
+  'startWater',
+]);
 
 const MARKET_KEYS = Object.keys(MARKET) as (keyof MarketRules)[];
-
-/** Market keys that divide or step time, so 0 would be meaningless. */
-const MARKET_POSITIVE: ReadonlySet<keyof MarketRules> = new Set([
-  'pressureDecayEvery',
-  'pressureDecayDenominator',
-]);
 
 const VARIANT_SEPARATOR = ':';
 const MARKET_PREFIX = 'market.';
@@ -72,11 +66,13 @@ type Accumulated = {
 };
 
 function readNumber(text: string): number | null {
-  return DIGITS.test(text) ? Number(text) : null;
+  if (!DIGITS.test(text)) return null;
+  const value = Number(text);
+  return Number.isSafeInteger(value) ? value : null;
 }
 
 function isTopLevelKey(key: string): key is TopLevelKey {
-  return key in TOP_LEVEL_MINIMUM;
+  return TOP_LEVEL_KEYS.has(key);
 }
 
 function isMarketKey(key: string): key is keyof MarketRules {
@@ -87,7 +83,6 @@ function isMarketKey(key: string): key is keyof MarketRules {
 function record(acc: Accumulated, key: string, value: number): string | null {
   if (isTopLevelKey(key)) {
     if (key in acc.top) return `${key} is given twice`;
-    if (value < TOP_LEVEL_MINIMUM[key]) return `${key} must be at least ${TOP_LEVEL_MINIMUM[key]}`;
     acc.top[key] = value;
     return null;
   }
@@ -102,26 +97,25 @@ function record(acc: Accumulated, key: string, value: number): string | null {
     if (!isMarketKey(marketKey))
       return `unknown market key "${marketKey}" (known: ${MARKET_KEYS.join(', ')})`;
     if (marketKey in acc.market) return `${key} is given twice`;
-    if (MARKET_POSITIVE.has(marketKey) && value < 1) return `${key} must be at least 1`;
     acc.market[marketKey] = value;
     return null;
   }
   return `unknown key "${key}"`;
 }
 
-function overridesOf(acc: Accumulated): RulesOverrides | string {
+/** The first problem the overrides' numbers have against sim's bounds, or null when the run is playable. */
+function firstProblem(overrides: RulesOverrides): string | null {
+  const problems = [...validateConfig(overrides), ...validateRules({ market: marketRulesOf(overrides) })];
+  return problems[0]?.message ?? null;
+}
+
+function overridesOf(acc: Accumulated): RulesOverrides {
   const overrides: RulesOverrides = { ...acc.top };
   if (acc.moisture.min !== undefined || acc.moisture.max !== undefined) {
-    const range = {
+    overrides.startMoisture = {
       min: acc.moisture.min ?? SHOWDOWN_DEFAULTS.startMoisture.min,
       max: acc.moisture.max ?? SHOWDOWN_DEFAULTS.startMoisture.max,
     };
-    if (range.min > range.max)
-      return `startMoisture.min ${range.min} is above startMoisture.max ${range.max}`;
-    if (range.max > WORLD.moistureMax) {
-      return `startMoisture.max ${range.max} is above the world maximum ${WORLD.moistureMax}`;
-    }
-    overrides.startMoisture = range;
   }
   if (Object.keys(acc.market).length > 0) overrides.market = acc.market;
   return overrides;
@@ -145,5 +139,6 @@ export function parseVariant(text: string): ParsedVariant {
     if (problem !== null) return fail(problem);
   }
   const overrides = overridesOf(acc);
-  return typeof overrides === 'string' ? fail(overrides) : { ok: true, variant: { name, overrides } };
+  const problem = firstProblem(overrides);
+  return problem === null ? { ok: true, variant: { name, overrides } } : fail(problem);
 }
