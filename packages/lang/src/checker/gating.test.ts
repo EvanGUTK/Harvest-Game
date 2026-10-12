@@ -182,6 +182,12 @@ describe('E-LOCKED-FEATURE for names (errors-and-diagnostics.md: locked names wi
     ]);
   });
 
+  it('wins over E-RANGE-ONLY-IN-FOR for a locked `range`', () => {
+    expect(checkErrors('r = range(3)\n', locked([], [['range', chapter(2)]])).map((d) => d.code)).toEqual([
+      'E-LOCKED-FEATURE',
+    ]);
+  });
+
   it('never locks a name the program defines itself', () => {
     expect(
       lockedMessages('def measure():\n    pass\nmeasure()\n', locked([], [['measure', chapter(9)]])),
