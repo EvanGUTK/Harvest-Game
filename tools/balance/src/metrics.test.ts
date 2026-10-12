@@ -2,7 +2,7 @@ import { ACTION_COSTS, CROPS, MARKET, WORLD } from '@harvest/content';
 import { describe, expect, it } from 'vitest';
 import { HOARD_LOBBY } from './scenario';
 import type { RunRecord, SellLot } from './scenario';
-import { hoardVersusSteady, idealProfit, lobbyScores, realisedPriceBp } from './metrics';
+import { formatHundredths, hoardVersusSteady, idealProfit, lobbyScores, realisedPriceBp } from './metrics';
 
 const IDEAL_INPUTS = { actionCosts: ACTION_COSTS, world: WORLD, priceFloorBp: MARKET.priceFloorBp };
 
@@ -68,55 +68,67 @@ describe('realisedPriceBp (unit-weighted, basis points of base price)', () => {
   });
 });
 
-describe('idealProfit (closed form, per 1,000 drone cycles)', () => {
-  it('radish: 111 drone cycles per unit; ₵27 per 1,000 cycles at base, ₵0 at the ₵2 floor', () => {
+describe('idealProfit (amortised, per 1,000 drone cycles)', () => {
+  // D = waterAmount 40 × waterCapacity 60 = 2_400; scaled = D × (till + plant + harvest + move) + drift × 60 × 26 + drift × 61
+  it('radish: 87.05 drone cycles per unit; ₵34 per 1,000 cycles at base, ₵0 at the ₵2 floor', () => {
     const row = idealProfit(CROPS.radish, IDEAL_INPUTS);
-    // till 0 + plant 31 + harvest 31 + move 21 + 1 watering × 26 + refill ceil(61 ÷ 60) = 2
-    expect(row.cyclesPerUnit).toBe(111);
-    expect([row.waterings, row.basePrice, row.floorPrice]).toEqual([1, 5, 2]);
-    expect([row.profitAtBase, row.profitAtFloor]).toEqual([27, 0]); // floorDiv(3 × 1000, 111), floorDiv(0, 111)
-    expect(row.tilesToKeepBusy).toBe(3); // ceil(300 ÷ 111)
+    // drift floorDiv(300, 50) = 6; 2_400 × (0 + 31 + 31 + 21) + 6 × 60 × 26 + 6 × 61 = 199_200 + 9_360 + 366 = 208_926
+    expect([row.drift, row.wateringsPerUnitMilli, row.cyclesPerUnitCenti]).toEqual([6, 150, 8_705]);
+    expect([row.basePrice, row.floorPrice]).toEqual([5, 2]);
+    expect([row.profitAtBase, row.profitAtFloor]).toEqual([34, 0]); // floorDiv(3 × 1000 × 2_400, 208_926), floorDiv(0, …)
+    expect(row.tilesToKeepBusy).toBe(4); // ceil(300 × 2_400 ÷ 208_926) = ceil(3.45)
   });
 
-  it('corn: tills, 142 cycles per unit; ₵84 at base, ₵7 at the ₵7 floor', () => {
+  it('corn: tills, 126.15 cycles per unit; ₵95 at base, ₵7 at the ₵7 floor', () => {
     const row = idealProfit(CROPS.corn, IDEAL_INPUTS);
-    // till 31 + plant 31 + harvest 31 + move 21 + 1 watering × 26 + refill 2
-    expect(row.cyclesPerUnit).toBe(142);
-    expect([row.waterings, row.basePrice, row.floorPrice]).toEqual([1, 18, 7]);
-    expect([row.profitAtBase, row.profitAtFloor]).toEqual([84, 7]); // floorDiv(12 × 1000, 142), floorDiv(1 × 1000, 142)
-    expect(row.tilesToKeepBusy).toBe(7); // ceil(900 ÷ 142)
+    // drift 18; 2_400 × 114 + 18 × 60 × 26 + 18 × 61 = 273_600 + 28_080 + 1_098 = 302_778
+    expect([row.drift, row.wateringsPerUnitMilli, row.cyclesPerUnitCenti]).toEqual([18, 450, 12_615]);
+    expect([row.basePrice, row.floorPrice]).toEqual([18, 7]);
+    expect([row.profitAtBase, row.profitAtFloor]).toEqual([95, 7]); // floorDiv(12 × 1000 × 2_400, 302_778), floorDiv(1 × …)
+    expect(row.tilesToKeepBusy).toBe(8); // ceil(900 × 2_400 ÷ 302_778) = ceil(7.13)
   });
 
-  it('melon: needs 2 waterings to stay at 30 or more, 169 cycles per unit; ₵266 at base, ₵53 at the ₵24 floor', () => {
+  it('melon: 146.42 cycles per unit; ₵307 at base, ₵61 at the ₵24 floor', () => {
     const row = idealProfit(CROPS.melon, IDEAL_INPUTS);
-    // waterings ceil((30 + floorDiv(2400, 50)) ÷ 40) = ceil(78 ÷ 40) = 2; refill ceil(2 × 61 ÷ 60) = 3
-    expect(row.cyclesPerUnit).toBe(169);
-    expect([row.waterings, row.basePrice, row.floorPrice]).toEqual([2, 60, 24]);
-    expect([row.profitAtBase, row.profitAtFloor]).toEqual([266, 53]); // floorDiv(45 × 1000, 169), floorDiv(9 × 1000, 169)
-    expect(row.tilesToKeepBusy).toBe(15); // ceil(2400 ÷ 169)
+    // drift 48; 2_400 × 114 + 48 × 60 × 26 + 48 × 61 = 273_600 + 74_880 + 2_928 = 351_408
+    expect([row.drift, row.wateringsPerUnitMilli, row.cyclesPerUnitCenti]).toEqual([48, 1_200, 14_642]);
+    expect([row.basePrice, row.floorPrice]).toEqual([60, 24]);
+    expect([row.profitAtBase, row.profitAtFloor]).toEqual([307, 61]); // floorDiv(45 × 1000 × 2_400, 351_408), floorDiv(9 × …)
+    expect(row.tilesToKeepBusy).toBe(17); // ceil(2_400 × 2_400 ÷ 351_408) = ceil(16.39)
+  });
+
+  it('leaves the dry-to-minimum lift out of the rate: a melon’s minimum moisture does not change it', () => {
+    const picky = { ...CROPS.melon, minMoisture: 90 };
+    expect(idealProfit(picky, IDEAL_INPUTS)).toEqual(idealProfit(CROPS.melon, IDEAL_INPUTS));
   });
 
   it('shows every term of the arithmetic as printable lines', () => {
     const row = idealProfit(CROPS.melon, IDEAL_INPUTS);
     expect(row.lines).toEqual([
-      'melon: till 31 + plant 31 + harvest 31 + move 21 + water 2 × 26 + refill 3 = 169 drone cycles per unit',
-      '  waterings = ceil((minMoisture 30 + growCycles 2400 ÷ 50 = 48) ÷ 40 per watering) = 2',
-      '  at base ₵60: (60 − seed 15) × 1000 ÷ 169 = 266 per 1,000 drone cycles',
-      '  at floor ₵24: (24 − seed 15) × 1000 ÷ 169 = 53 per 1,000 drone cycles',
-      '  tiles to keep the drone busy: ceil(2400 ÷ 169) = 15',
+      'melon: 351408 ÷ 2400 = 146.42 drone cycles per unit, where 351408 = 2400 × (till 31 + plant 31 + harvest 31 + move 21) + drift 48 × capacity 60 × water 26 + drift 48 × refill 61',
+      '  drift = growCycles 2400 ÷ 50 = 48 moisture, 48 ÷ 40 = 1200 thousandths of a watering per unit; the dry-to-minimum lift is per-tile setup, not in the rate',
+      '  at base ₵60: (60 − seed 15) × 1000 × 2400 ÷ 351408 = 307 per 1,000 drone cycles',
+      '  at floor ₵24: (24 − seed 15) × 1000 × 2400 ÷ 351408 = 61 per 1,000 drone cycles',
+      '  tiles to keep the drone busy: ceil(2400 × 2400 ÷ 351408) = 17',
     ]);
   });
 
-  it('follows a shadowed floor: a 6_000 bp floor makes the radish floor price ₵3 and its profit 9', () => {
+  it('follows a shadowed floor: a 6_000 bp floor makes the radish floor price ₵3 and its profit 11', () => {
     const row = idealProfit(CROPS.radish, { ...IDEAL_INPUTS, priceFloorBp: 6_000 });
     expect(row.floorPrice).toBe(3);
-    expect(row.profitAtFloor).toBe(9); // floorDiv(1 × 1000, 111)
+    expect(row.profitAtFloor).toBe(11); // floorDiv(1 × 1000 × 2_400, 208_926) = floorDiv(2_400_000, 208_926) = 11
   });
 
   it('is negative when the price is below the seed cost', () => {
     const row = idealProfit(CROPS.radish, { ...IDEAL_INPUTS, priceFloorBp: 2_000 });
     expect(row.floorPrice).toBe(1); // floorDiv(5 × 2000, 10_000)
-    expect(row.profitAtFloor).toBe(-10); // floorDiv(-1 × 1000, 111) = floor(-9.01)
+    expect(row.profitAtFloor).toBe(-12); // floorDiv(-2_400_000, 208_926) = floor(-11.49)
+  });
+});
+
+describe('formatHundredths', () => {
+  it('writes hundredths as a decimal with two digits: 8_705 is 87.05, 8_700 is 87.00, 5 is 0.05', () => {
+    expect([8_705, 8_700, 5].map(formatHundredths)).toEqual(['87.05', '87.00', '0.05']);
   });
 });
 

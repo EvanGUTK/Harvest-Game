@@ -61,7 +61,7 @@ describe('buildVariantReport', () => {
 
   it('has one ideal-profit row per crop, in CROP_IDS order', () => {
     expect(report.ideal.map((row) => row.crop)).toEqual([...CROP_IDS]);
-    expect(report.ideal.map((row) => row.cyclesPerUnit)).toEqual([111, 142, 169]);
+    expect(report.ideal.map((row) => row.cyclesPerUnitCenti)).toEqual([8_705, 12_615, 14_642]);
   });
 
   it('shadows the market floor in the ideal rows when the variant does: a 6_000 bp floor gives radish ₵3', () => {
@@ -173,9 +173,11 @@ describe('formatReport', () => {
   it('prints the ideal-profit summary and then the arithmetic of every crop', () => {
     expect(lines).toContain('Ideal-play profit per 1,000 drone cycles');
     expect(text).toContain(
-      'radish: till 0 + plant 31 + harvest 31 + move 21 + water 1 × 26 + refill 2 = 111 drone cycles per unit',
+      'radish: 208926 ÷ 2400 = 87.05 drone cycles per unit, where 208926 = 2400 × (till 0 + plant 31 + harvest 31 + move 21)',
     );
-    expect(text).toContain('  at floor ₵24: (24 − seed 15) × 1000 ÷ 169 = 53 per 1,000 drone cycles');
+    expect(text).toContain(
+      '  at floor ₵24: (24 − seed 15) × 1000 × 2400 ÷ 351408 = 61 per 1,000 drone cycles',
+    );
   });
 
   it('prints the hoard comparison', () => {

@@ -10,7 +10,7 @@ import { renderTable } from '@harvest/tool-run/format';
 import type { Column } from '@harvest/tool-run/format';
 import { evaluateCriteria } from './criteria';
 import type { Criterion } from './criteria';
-import { hoardVersusSteady, idealProfit, lobbyScores, realisedPriceBp } from './metrics';
+import { formatHundredths, hoardVersusSteady, idealProfit, lobbyScores, realisedPriceBp } from './metrics';
 import type { HoardVersusSteady, IdealProfit } from './metrics';
 import { marketRulesOf } from './overrides';
 import type { Variant } from './overrides';
@@ -109,7 +109,7 @@ function scoreTable(title: string, rows: { id: string; d: Distribution | null }[
 function idealTable(rows: readonly IdealProfit[]): string {
   return renderTable([
     { header: 'crop', align: 'left', cells: rows.map((r) => r.crop) },
-    { header: 'cycles/unit', align: 'right', cells: rows.map((r) => String(r.cyclesPerUnit)) },
+    { header: 'cycles/unit', align: 'right', cells: rows.map((r) => formatHundredths(r.cyclesPerUnitCenti)) },
     { header: 'at base', align: 'right', cells: rows.map((r) => String(r.profitAtBase)) },
     { header: 'at floor', align: 'right', cells: rows.map((r) => String(r.profitAtFloor)) },
     { header: 'tiles to keep busy', align: 'right', cells: rows.map((r) => String(r.tilesToKeepBusy)) },

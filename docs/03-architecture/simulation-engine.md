@@ -175,6 +175,23 @@ A CLI that runs bot programs × seeds × rule tweaks and reports:
 - sensitivity of the shared market (does an 8-player lobby collapse all prices?)
 - `[SIM-BAL]` mean realised sale price against base in an 8-player all-radish lobby (a reported metric, provisional; no pass threshold until the architect sets one)
 - `[SIM-BAL]` ideal-play profit per 1,000 drone-cycles for each crop, at base price and at the market floor price
+
+**Ideal-play profit** `[SIM-BAL]` *(closed form, amortised over a steady rotation)*. For each crop, with every action also paying the 1-cycle `CALL_HOST` and all division floored (`floorDiv`), the harness computes:
+
+- `fixed = till* + plant + harvest + move` in drone cycles, each term the action's cost plus 1 (`till*` is 0 for a crop that grows on grass).
+- `drift = floorDiv(growCycles, moistureDecayEvery)`, the moisture a growing tile loses over its growth.
+- Each watering restores `waterAmount`, so one unit needs `drift ÷ waterAmount` waterings on average, each one `water` call (cost + 1). One refill (cost + 1) serves `waterCapacity` waterings.
+- Cycles per unit = `fixed + (drift ÷ waterAmount) × (water + 1) + (drift ÷ (waterAmount × waterCapacity)) × (refill + 1)`.
+
+To stay in integers, every term is multiplied by `D = waterAmount × waterCapacity`:
+
+```
+scaled = D × fixed + drift × waterCapacity × (water + 1) + drift × (refill + 1)
+profit per 1,000 cycles = floorDiv((price − seedCost) × 1000 × D, scaled)
+tiles to keep the drone busy = ceilDiv(growCycles × D, scaled)
+```
+
+Sells are batched, so they cost nothing. The one-off cost of lifting a dry tile to the crop's `minMoisture` is a per-tile setup cost: it is paid once per tile, not per unit, so it is excluded from the per-1,000-cycle rate. With the default numbers (`D` = 2,400): radish 87.05 cycles per unit (₵34 at base, ₵0 at the floor), corn 126.15 (₵95, ₵7), melon 146.42 (₵307, ₵61). The report prints every term of `scaled` for each crop.
 - `[SIM-BAL]` "hoard and dump" strategies (one large `sell` per window) must not beat steady selling
 - cycle budget pacing: the starter-program criterion below
 
