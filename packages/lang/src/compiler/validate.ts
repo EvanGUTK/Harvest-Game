@@ -7,12 +7,13 @@
  * every jump lands on an instruction start of the same function; the stack analysis (stack.ts) finds
  * no underflow, no slot of the wrong kind, no join reached with two stack shapes, no height past the
  * declared maxStack, no RETURN without a value and no fall-through off a function's end (chief ruling
- * 2026-10-12 on #45).
+ * 2026-10-12 on #45). Function 0 takes no parameters, and pool strings respect the 256-unit limit.
  */
 
 import { InvariantError, assertNever } from '../invariant';
 import { CALLABLE_INTRINSICS, METHOD_IDS } from '../intrinsics/intrinsics';
 import type { FunctionInfo, ModuleData } from './bytecode';
+import { DEFAULT_LIMITS } from '../types';
 import { analyzeStack } from './stack';
 import { decodeInstruction, instructionWidth, type DecodedInstruction, type OperandKind } from './opcodes';
 
@@ -35,6 +36,7 @@ export function assertValidModule(data: ModuleData): void {
 function layoutProblems(data: ModuleData): string[] {
   const problems: string[] = [];
   if (data.functions.length === 0) return ['the module has no functions'];
+  if (data.functions[0]?.arity !== 0) problems.push('fn 0 (the module body) must take no parameters');
   let expectedEntry = 0;
   data.functions.forEach((fn, index) => {
     if (fn.entry !== expectedEntry)
@@ -124,6 +126,11 @@ function poolProblems(data: ModuleData): string[] {
     }
     if (entry.kind === 'const' && !constantIds.has(entry.id)) {
       problems.push(`pool ${String(i)}: constant ${String(entry.id)} is not defined`);
+    }
+    if (entry.kind === 'str' && entry.text.length > DEFAULT_LIMITS.maxStringLength) {
+      problems.push(
+        `pool ${String(i)}: a string literal of ${String(entry.text.length)} units is over the limit`,
+      );
     }
     if (entry.kind === 'int' && !Number.isSafeInteger(entry.value)) {
       problems.push(`pool ${String(i)}: ${String(entry.value)} is not a safe integer`);

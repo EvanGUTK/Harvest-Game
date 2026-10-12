@@ -253,3 +253,22 @@ describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode nev
     }
   });
 });
+
+describe('module layout nits (#45 review)', () => {
+  it('requires the module body to take no parameters', () => {
+    const data = single([Op.HALT]);
+    const [fn] = data.functions;
+    if (!fn) throw new Error('fixture');
+    expect(moduleProblems({ ...data, functions: [{ ...fn, arity: 1, localNames: ['x'] }] })).toContain(
+      'fn 0 (the module body) must take no parameters',
+    );
+  });
+
+  it('rejects a pool string over the 256-unit limit and accepts one at it', () => {
+    const data = single([Op.HALT]);
+    expect(moduleProblems({ ...data, pool: [{ kind: 'str', text: 'x'.repeat(256) }] })).toEqual([]);
+    expect(moduleProblems({ ...data, pool: [{ kind: 'str', text: 'x'.repeat(257) }] }).join()).toContain(
+      'a string literal of 257 units is over the limit',
+    );
+  });
+});
