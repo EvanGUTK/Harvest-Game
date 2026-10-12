@@ -27,14 +27,14 @@ export type FunctionScope = {
   readonly def: DefStmt;
   /** Frame slot order: parameters, then names bound in the body in first-binding order, minus `global` ones. */
   readonly locals: readonly string[];
-  /** Names the body declares `global`. */
+  /** Names the body declares `global`, except the def's own parameters (E-GLOBAL-PARAM; they stay local). */
   readonly declaredGlobal: ReadonlySet<string>;
 };
 
 export type ScopeInfo = {
   /**
    * The global slot order: the first binding of each module-level name, and each name declared `global` in
-   * a `def`, in pre-order over the files in run order.
+   * a `def` (except that def's own parameters, E-GLOBAL-PARAM), in pre-order over the files in run order.
    */
   readonly globals: readonly string[];
   readonly functions: ReadonlyMap<DefStmt, FunctionScope>;
