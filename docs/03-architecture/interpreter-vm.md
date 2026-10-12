@@ -38,8 +38,8 @@ type CompileOptions = {
   languageVersion: string;
   hostSignatures: readonly HostSignature[];   // per player: host costs are baked from these
   constants: readonly ConstantDef[];
-  lockedFeatures: ReadonlySet<Feature>;       // syntax gating (the gating map in curriculum.md)
-  lockedNames: ReadonlySet<string>;           // builtin and constant gating by name
+  lockedFeatures: ReadonlyMap<Feature, LockReason>;  // syntax gating (the gating map in curriculum.md), with why
+  lockedNames: ReadonlyMap<string, LockReason>;      // builtin and constant gating by name, with why
   limits: Limits;
 };
 
@@ -56,6 +56,8 @@ type HostSignature = {
   unlock?: { chapter?: number; node?: string };   // campaign gating as fields (chapter that teaches it, skill node that sells it); the editor builds its 🔒 text from them, the checker gates through lockedNames
   paramHints?: readonly string[];  // one description per parameter ('a direction like `NORTH`') for E-WRONG-ARG-COUNT
 };
+type LockReason =   // picks the E-LOCKED-FEATURE suffix: chapter not reached, node not bought, or off in this mode
+  | { kind: 'chapter'; chapter: number } | { kind: 'node'; node: string } | { kind: 'mode'; mode: 'single-player-only' | 'ranked' };
 type ConstantDef = { name: string; id: number; group: string };   // e.g. { name: 'RADISH', id: 10, group: 'crop' }
 type ValueKind = 'int' | 'bool' | 'none' | 'str' | 'list' | 'dict' | 'function' | 'const';
 
@@ -125,7 +127,7 @@ type VMYield =
 - Resolves names (local / global / builtin), checks arity against `hostSignatures`.
 - Rejects `lockedFeatures` (syntax, e.g. `while` before Chapter 4) and references to `lockedNames` (builtins and constants, e.g. `sell` before Chapter 8) with `E-LOCKED-FEATURE`, which takes precedence over `E-UNKNOWN-NAME`. The `Feature` list is the gating map in [curriculum](../02-language/curriculum.md#feature-gating-map-normative).
 - Multi-file programs: the compiler merges every file into one program (one global namespace) that runs every file except `main.sprout` in tab order, then `main.sprout` last, as in [language-spec](../02-language/language-spec.md#files). The checker reports `E-DUPLICATE-DEF` (the same function name in two files), `E-TOO-MANY-FILES` (over the limit) and the warning `W-USE-BEFORE-DEF` (a top-level call above its `def`).
-- Static warnings: unreachable code, unused variables, and `W-PURE-INFINITE-LOOP`: a `while True` whose body, directly or through any user function it calls (transitively over the static call graph), contains no `break` that exits this loop, `return`, `halt()`, action call or sensor call. The check is transitive on purpose: the recommended starter program's main loop does its work inside `tend()` and `sweep()`, and must not warn.
+- Static warnings: unreachable code, unused variables, and `W-PURE-INFINITE-LOOP`: a `while True` whose body contains no `break` that exits this loop and no `return` of the enclosing function, and that neither directly nor through any user function it calls, transitively over the static call graph, reaches `halt()`, an action call or a sensor call. A callee's `return` ends the callee, not the loop. The check is transitive on purpose: the recommended starter program's main loop does its work inside `tend()` and `sweep()`, and must not warn.
 
 ## Bytecode
 

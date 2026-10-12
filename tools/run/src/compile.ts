@@ -28,8 +28,8 @@ export function compileProgram(
     languageVersion: LANGUAGE_VERSION,
     hostSignatures: runtime.hostSignatures,
     constants: runtime.constants,
-    lockedFeatures: new Set(),
-    lockedNames: new Set(),
+    lockedFeatures: new Map(),
+    lockedNames: new Map(),
     limits: DEFAULT_LIMITS,
   });
   if (result.ok) {

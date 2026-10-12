@@ -109,7 +109,7 @@ export type { ConstantDef, HostId, HostSignature, Value, ValueKind, ValueOps } f
 
 // ---------- Compile ----------
 
-export type { BytecodeModule, CompileOptions, CompileResult } from './types';
+export type { BytecodeModule, CompileOptions, CompileResult, LockReason } from './types';
 
 // ---------- VM ----------
 
