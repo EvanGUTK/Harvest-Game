@@ -144,7 +144,7 @@ export type UnreachableCause = 'loop' | 'return' | 'break' | 'continue';
 export function unreachable(range: Span, cause: UnreachableCause): Diagnostic {
   const message =
     cause === 'loop'
-      ? 'This code will never run because the loop above never ends.'
+      ? 'This code will never run because the loop above has no `break` to leave it.'
       : `This code will never run because \`${cause}\` above always leaves this block.`;
   return { code: 'W-UNREACHABLE', severity: 'warning', range, message };
 }
