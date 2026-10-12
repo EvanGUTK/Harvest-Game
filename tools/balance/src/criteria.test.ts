@@ -135,7 +135,7 @@ describe('evaluateCriteria', () => {
     });
 
     it('compares exact sums, not floored means: Agronomists at 100.07 on average need more than a starter at 30', () => {
-      // Agronomist scores add up to 1_401 over 14 players (floored mean 100); starter 30 and 30 → 3_000 < 30 × 1_401 ÷ 14 × … = 3_002
+      // 14 Agronomists add up to 1_401 (floored mean 100); the starter's 60 over 2 seeds needs 60 × 100 × 14 = 84_000 ≥ 30 × 1_401 × 2 = 84_060, which fails
       const lobby = [
         [30, 100, 100, 100, 100, 100, 100, 101],
         [30, 100, 100, 100, 100, 100, 100, 100],
