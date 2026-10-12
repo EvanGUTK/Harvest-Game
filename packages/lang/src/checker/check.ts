@@ -12,7 +12,11 @@ import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits } from '..
 import { INTRINSIC_NAMES } from '../intrinsics/intrinsics';
 import { checkArity } from './arity';
 import { checkDuplicateDefs, checkFileCount } from './files';
+import { checkPureLoops } from './infinite-loop';
 import { checkNames } from './names';
+import { checkReachability } from './reachability';
+import { checkUnused } from './unused';
+import { checkUseBeforeDef } from './use-before-def';
 
 export type CheckOptions = {
   readonly hostSignatures: readonly HostSignature[];
@@ -43,6 +47,10 @@ export function check(program: Program, scopes: ScopeInfo, opts: CheckOptions): 
     ...checkDuplicateDefs(program),
     ...checkNames(program, scopes, opts),
     ...checkArity(program, scopes, opts),
+    ...checkReachability(program),
+    ...checkPureLoops(program, scopes, opts),
+    ...checkUseBeforeDef(program, scopes),
+    ...checkUnused(program, scopes),
   ];
   return { diagnostics: inSourceOrder(diagnostics, program) };
 }

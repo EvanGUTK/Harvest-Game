@@ -11,11 +11,11 @@ import { childNodes, type AstNode, type CallExpr, type MethodCallExpr, type Prog
 import { assertNever } from '../invariant';
 import { INTRINSICS, METHODS, acceptsArgCount, type Arity } from '../intrinsics/intrinsics';
 import type { ScopeInfo } from '../scope/scope';
-import { bindingName, scopeStatements } from '../scope/bindings';
 import type { Diagnostic, Span } from '../types';
 import type { CheckOptions } from './check';
 import { unknownMethod, wrongArgCount } from './diagnostics';
 import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
+import { staticFunctions } from './static-functions';
 
 /** Beginner descriptions of what each intrinsic takes (chief ruling W3: the checker's own hint table). */
 const INTRINSIC_HINTS: ReadonlyMap<string, string> = new Map([
@@ -143,32 +143,13 @@ class CallTargets {
   }
 }
 
-/**
- * Parameter counts of top-level defs whose name is bound by nothing else (no assignment, `for` target or
- * `global` declaration anywhere) and whose defs, if several, agree. Only these calls are certain.
- */
+/** Parameter counts of static functions whose defs, if several, agree: only these calls are certain. */
 function certainUserArities(program: Program): ReadonlyMap<string, number> {
-  const counts = new Map<string, number | null>();
-  const reboundElsewhere = new Set<string>();
-  for (const file of program.files) {
-    for (const stmt of scopeStatements(file.body)) {
-      if (stmt.type === 'DefStmt' && file.body.includes(stmt)) {
-        const previous = counts.get(stmt.name.name);
-        counts.set(
-          stmt.name.name,
-          previous === undefined || previous === stmt.params.length ? stmt.params.length : null,
-        );
-        for (const inner of scopeStatements(stmt.body)) {
-          if (inner.type === 'GlobalStmt') for (const name of inner.names) reboundElsewhere.add(name.name);
-        }
-      } else {
-        const bound = bindingName(stmt);
-        if (bound !== null) reboundElsewhere.add(bound);
-      }
-    }
-  }
   const certain = new Map<string, number>();
-  for (const [name, count] of counts)
-    if (count !== null && !reboundElsewhere.has(name)) certain.set(name, count);
+  for (const [name, defs] of staticFunctions(program)) {
+    const counts = new Set(defs.map((d) => d.params.length));
+    const [only] = counts;
+    if (counts.size === 1 && only !== undefined) certain.set(name, only);
+  }
   return certain;
 }

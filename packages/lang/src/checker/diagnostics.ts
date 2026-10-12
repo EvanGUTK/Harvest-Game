@@ -137,3 +137,42 @@ export function unknownMethod(range: Span, name: string, suggestion: string | nu
     fix: { label: `Change to \`.${suggestion}\``, edits: [{ span: range, newText: suggestion }] },
   };
 }
+
+/** What makes the code after it unreachable: an endless loop, or a statement that leaves the block. */
+export type UnreachableCause = 'loop' | 'return' | 'break' | 'continue';
+
+export function unreachable(range: Span, cause: UnreachableCause): Diagnostic {
+  const message =
+    cause === 'loop'
+      ? 'This code will never run because the loop above has no `break` to leave it.'
+      : `This code will never run because \`${cause}\` above always leaves this block.`;
+  return { code: 'W-UNREACHABLE', severity: 'warning', range, message };
+}
+
+export function pureInfiniteLoop(range: Span): Diagnostic {
+  return {
+    code: 'W-PURE-INFINITE-LOOP',
+    severity: 'warning',
+    range,
+    message:
+      'This loop never ends and never touches the farm, so it will use up all your cycles doing nothing.',
+  };
+}
+
+export function useBeforeDef(range: Span, name: string): Diagnostic {
+  return {
+    code: 'W-USE-BEFORE-DEF',
+    severity: 'warning',
+    range,
+    message: `\`${name}\` isn't defined yet at this line. Move the \`def\` above.`,
+  };
+}
+
+export function unusedVariable(range: Span, name: string): Diagnostic {
+  return {
+    code: 'W-UNUSED-VAR',
+    severity: 'hint',
+    range,
+    message: `\`${name}\` is given a value but never used.`,
+  };
+}
