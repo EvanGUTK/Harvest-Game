@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { distribution, mean, quantile } from './stats';
+import { ceilDiv, distribution, mean, quantile } from './stats';
+
+describe('ceilDiv', () => {
+  it('rounds up for positive and negative numerators: 7 ÷ 2 is 4, 6 ÷ 2 is 3, -7 ÷ 2 is -3', () => {
+    expect([ceilDiv(7, 2), ceilDiv(6, 2), ceilDiv(-7, 2)]).toEqual([4, 3, -3]);
+  });
+});
 
 describe('mean', () => {
   it('floors the average: [1, 2] is 1', () => {

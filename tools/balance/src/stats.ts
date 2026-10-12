@@ -22,7 +22,8 @@ export type Distribution = {
   mean: number;
 };
 
-function ceilDiv(a: number, b: number): number {
+/** Division rounded up, for positive divisors. */
+export function ceilDiv(a: number, b: number): number {
   return -floorDiv(-a, b);
 }
 
