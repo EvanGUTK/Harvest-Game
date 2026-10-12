@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --testTimeout=30000",
     "test:watch": "vitest --testTimeout=30000",
+    "golden:update": "vitest run -u --project @harvest/sim golden.test --testTimeout=30000",
     "sprout": "pnpm --filter @harvest/tool-run start"
   },
   "devDependencies": {

@@ -32,6 +32,8 @@ The driver (`packages/sim/src/golden/scripted.ts`) plays the calls in time order
 
 A scripted golden is `{ hashes, finalStateHash, eventCount }`: `hashes` are the `hash` events in order (when the budget is a multiple of 1,000 the last is the final hash), and `eventCount` is fixed at 0 because the scripted kind runs without the scheduler's event log; slice 2 fills it from the real engine.
 
+Files, in `packages/sim/src/__golden__/`: `cases.ts` (`export const cases = [...]`, the scenarios, hand-written) and `expected.ts` (the goldens keyed by case name, **generated**). `pnpm test` compares a fresh run of every case with `expected.ts` and fails on any difference; it never rewrites it. To change a golden on purpose (a `RULES_VERSION` bump, with the reason in the commit), run `pnpm golden:update`, review the diff of `expected.ts` and commit it.
+
 ## Naming
 
 `describe('<unit>')` → `it('<does X when Y>')`. Use glossary terms.
