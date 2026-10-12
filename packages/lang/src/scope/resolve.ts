@@ -3,7 +3,10 @@
  * refers to. The one implementation shared by the checker and the compiler (chief ruling 2026-10-11).
  * Spec: docs/02-language/language-spec.md §Scoping, §Files (one global namespace, run order).
  * Invariants: pure and total (no diagnostics, never throws); every map is filled in pre-order over the
- * files in run order, so slot numbers and iteration order are deterministic.
+ * files in run order, so slot numbers and iteration order are deterministic. Two inputs the names checker
+ * rejects still resolve deterministically: a repeated parameter (`def f(a, a)`, E-DUPLICATE-PARAM) keeps
+ * both slots and resolves to the first, and a parameter declared `global` in its own function
+ * (E-GLOBAL-PARAM) stays local for the whole body, the `global` line being ignored.
  */
 
 import {
@@ -33,8 +36,11 @@ export function resolveScopes(program: Program, options: ResolveOptions): ScopeI
 function collectGlobals(program: Program): readonly string[] {
   const names = new Set<string>();
   const visitDef = (def: DefStmt): void => {
+    const params = new Set(def.params.map((p) => p.name));
     for (const stmt of scopeStatements(def.body)) {
-      if (stmt.type === 'GlobalStmt') for (const name of stmt.names) names.add(name.name);
+      if (stmt.type === 'GlobalStmt') {
+        for (const name of stmt.names) if (!params.has(name.name)) names.add(name.name);
+      }
       if (stmt.type === 'DefStmt') visitDef(stmt);
     }
   };
@@ -50,8 +56,8 @@ function collectGlobals(program: Program): readonly string[] {
 
 /** The local slots of `def`: parameters, then names bound in the body that are not declared `global`. */
 function functionScope(def: DefStmt): FunctionScope {
-  const declaredGlobal = declaredGlobals(def.body);
   const locals = def.params.map((p) => p.name);
+  const declaredGlobal = new Set([...declaredGlobals(def.body)].filter((name) => !locals.includes(name)));
   for (const name of boundNames(def.body)) {
     if (!declaredGlobal.has(name) && !locals.includes(name)) locals.push(name);
   }
@@ -85,7 +91,11 @@ class Resolver {
       this.visit(node.object, fn);
       for (const arg of node.args) this.visit(arg, fn);
     } else if (node.type === 'GlobalStmt') {
-      for (const name of node.names) this.resolutions.set(name, this.globalOrUnknown(name.name));
+      // A parameter named in `global` stays local (E-GLOBAL-PARAM is the checker's), so it resolves as one.
+      for (const name of node.names) {
+        const slot = fn === null ? -1 : fn.def.params.findIndex((p) => p.name === name.name);
+        this.resolutions.set(name, slot >= 0 ? { kind: 'local', slot } : this.globalOrUnknown(name.name));
+      }
     } else if (node.type === 'NameExpr' || node.type === 'Identifier') {
       this.resolutions.set(node, this.resolve(node.name, fn));
     } else {

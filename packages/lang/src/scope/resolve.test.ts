@@ -171,3 +171,33 @@ describe('resolveScopes: every binding Identifier and NameExpr is resolved', () 
     expect(occurrences(resolveText(text))).toEqual(occurrences(resolveText(text)));
   });
 });
+
+describe('resolveScopes: inputs the names checker rejects still resolve deterministically (chief ruling 2026-10-12)', () => {
+  it('keeps a repeated parameter in parameter order and resolves it to its first slot (E-DUPLICATE-PARAM)', () => {
+    const info = resolveText('def f(a, a):\n    return a\n');
+    expect(info.functions.get(onlyDef(info, 'f'))?.locals).toEqual(['a', 'a']);
+    expect(occurrences(info)).toEqual([
+      'f@1:5 global[0]',
+      'a@1:7 local[0]',
+      'a@1:10 local[0]',
+      'a@2:12 local[0]',
+    ]);
+  });
+
+  it('keeps a parameter declared `global` local for the whole body and ignores the `global` line (E-GLOBAL-PARAM)', () => {
+    const info = resolveText('x = 0\ndef f(x):\n    global x\n    x = 1\n    return x\n');
+    const scope = info.functions.get(onlyDef(info, 'f'));
+    expect(scope?.locals).toEqual(['x']);
+    expect([...(scope?.declaredGlobal ?? [])]).toEqual([]);
+    expect(info.globals).toEqual(['x', 'f']);
+    expect(occurrences(info)).toEqual([
+      'x@1:1 global[0]',
+      'f@2:5 global[1]',
+      'x@2:7 local[0]',
+      'x@3:12 local[0]',
+      'x@4:5 local[0]',
+      'x@5:12 local[0]',
+    ]);
+    expect(resolveText('def f(x):\n    global x\n').globals).toEqual(['f']);
+  });
+});
