@@ -107,3 +107,7 @@ export {
   type DroneStatus,
   type HashableState,
 } from './hash/state-hash';
+
+// ---------- Rules validation ----------
+
+export { validateRules, type RulesProblem, type RulesProblemCode, type ValidatableRules } from './rules';
