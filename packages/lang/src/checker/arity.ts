@@ -9,6 +9,7 @@
 
 import { childNodes, type AstNode, type CallExpr, type MethodCallExpr, type Program } from '../parser/ast';
 import { assertNever } from '../invariant';
+import { INTRINSICS, METHODS, type Arity as IntrinsicArity } from '../intrinsics/intrinsics';
 import type { ScopeInfo } from '../scope/scope';
 import { bindingName, scopeStatements } from '../scope/bindings';
 import type { Diagnostic, Span } from '../types';
@@ -19,15 +20,10 @@ import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
 /** An accepted argument count: `max: null` means any number from `min` up. */
 type Arity = { readonly min: number; readonly max: number | null };
 
-/**
- * Method arities, fixed whatever the receiver (standard-library.md §Pure helpers): `.append(x)`,
- * `.pop([i])`, `.get(k[, default])`. Unknown method names are the runtime's (R-TYPE).
- */
-const METHOD_ARITY: ReadonlyMap<string, Arity> = new Map([
-  ['append', { min: 1, max: 1 }],
-  ['pop', { min: 0, max: 1 }],
-  ['get', { min: 1, max: 2 }],
-]);
+/** lang's own arity table (intrinsics.ts) in this module's shape, where `max: null` means unbounded. */
+function arityOf(arity: IntrinsicArity): Arity {
+  return { min: arity.min, max: arity.max ?? null };
+}
 
 /** Beginner descriptions of what each intrinsic takes (chief ruling W3: the checker's own hint table). */
 const INTRINSIC_HINTS: ReadonlyMap<string, string> = new Map([
@@ -63,16 +59,17 @@ export function checkArity(program: Program, scopes: ScopeInfo, opts: CheckOptio
  */
 function checkMethod(call: MethodCallExpr): Diagnostic | null {
   const name = call.method.name;
-  const arity = METHOD_ARITY.get(name);
+  const methodArity = [...METHODS].find(([method]) => method === name)?.[1];
+  const arity = methodArity === undefined ? undefined : arityOf(methodArity);
   if (arity === undefined) return unknownMethod(call.method.span, name, closestMethod(name));
   return mismatch(call.span, `\`.${name}\``, arity, call.args.length, null);
 }
 
-/** The known method within the suggestion distance of `name`, the first one in METHOD_ARITY order on a tie. */
+/** The known method within the suggestion distance of `name`, the first one in METHODS order on a tie. */
 function closestMethod(name: string): string | null {
   let best: string | null = null;
   let bestDistance = MAX_SUGGESTION_DISTANCE + 1;
-  for (const candidate of METHOD_ARITY.keys()) {
+  for (const candidate of METHODS.keys()) {
     const distance = boundedDistance(name, candidate, MAX_SUGGESTION_DISTANCE);
     if (distance < bestDistance) {
       best = candidate;
@@ -119,8 +116,7 @@ class CallTargets {
         hint: joinHints(sig.paramHints, max),
       });
     }
-    for (const sig of opts.intrinsicSignatures)
-      this.intrinsics.set(sig.name, { min: sig.minArgs, max: sig.maxArgs });
+    for (const [name, arity] of INTRINSICS) this.intrinsics.set(name, arityOf(arity));
     this.userFunctions = certainUserArities(program);
   }
 

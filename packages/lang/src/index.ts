@@ -101,13 +101,7 @@ export type {
 
 // ---------- Checker (LANG-03) ----------
 
-export {
-  check,
-  scopeNames,
-  type CheckOptions,
-  type CheckResult,
-  type IntrinsicSignature,
-} from './checker/check';
+export { check, scopeNames, type CheckOptions, type CheckResult } from './checker/check';
 export type { ScopeInfo } from './scope/scope';
 
 // ---------- Features ----------
