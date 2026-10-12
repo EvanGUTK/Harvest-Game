@@ -54,8 +54,29 @@ const sandboxSyntax = [
   { selector: 'ImportExpression', message: 'No dynamic import in the engine.' },
 ];
 
+/** Properties that would make lang/sim/content impure or nondeterministic. */
+const enginePropertyBans = [
+  { object: 'Math', property: 'random', message: 'Use the seeded PRNG passed in explicitly.' },
+  { object: 'Object', property: 'keys', message: 'Unstable for results; use arrays or Map.' },
+  { object: 'Object', property: 'values', message: 'Unstable for results; use arrays or Map.' },
+  { object: 'Object', property: 'entries', message: 'Unstable for results; use arrays or Map.' },
+];
+
+/** testing.md §Rules: no focused, skipped or placeholder tests. */
+const testHygieneBans = ['it', 'test', 'describe', 'bench'].flatMap((object) =>
+  ['only', 'skip', 'todo'].map((property) => ({
+    object,
+    property,
+    message: 'No focused/skipped/placeholder tests (testing.md §Rules).',
+  })),
+);
+
 const ENGINE_SRC = ['packages/lang/src/**/*.ts', 'packages/sim/src/**/*.ts', 'packages/content/src/**/*.ts'];
-const ENGINE_TESTS = ['packages/lang/src/**/*.{test,bench}.ts', 'packages/sim/src/**/*.{test,bench}.ts'];
+const ENGINE_TESTS = [
+  'packages/lang/src/**/*.{test,bench}.ts',
+  'packages/sim/src/**/*.{test,bench}.ts',
+  'packages/content/src/**/*.{test,bench}.ts',
+];
 
 export default defineConfig(
   // Root tool configs are not part of any tsconfig project and carry no logic worth type-linting.
@@ -100,13 +121,7 @@ export default defineConfig(
     files: ENGINE_SRC,
     rules: {
       'no-restricted-globals': ['error', ...impureGlobals],
-      'no-restricted-properties': [
-        'error',
-        { object: 'Math', property: 'random', message: 'Use the seeded PRNG passed in explicitly.' },
-        { object: 'Object', property: 'keys', message: 'Unstable for results; use arrays or Map.' },
-        { object: 'Object', property: 'values', message: 'Unstable for results; use arrays or Map.' },
-        { object: 'Object', property: 'entries', message: 'Unstable for results; use arrays or Map.' },
-      ],
+      'no-restricted-properties': ['error', ...enginePropertyBans],
       'no-restricted-syntax': ['error', noDefaultExport, ...enginePuritySyntax, ...sandboxSyntax],
     },
   },
@@ -180,16 +195,16 @@ export default defineConfig(
     files: ['**/*.test.ts', '**/*.bench.ts'],
     rules: {
       '@typescript-eslint/no-non-null-assertion': 'off',
-      'no-restricted-properties': [
-        'error',
-        ...['it', 'test', 'describe', 'bench'].flatMap((object) =>
-          ['only', 'skip', 'todo'].map((property) => ({
-            object,
-            property,
-            message: 'No focused/skipped/placeholder tests (testing.md §Rules).',
-          })),
-        ),
-      ],
+      'no-restricted-properties': ['error', ...testHygieneBans],
+    },
+  },
+  {
+    // Flat config replaces a rule's options instead of merging them, so the block above would silently
+    // drop the engine property bans from engine tests. Restate both lists here, after it, so engine tests
+    // keep the bans that testing.md §Rules promises (they run unchanged in all four engines).
+    files: ENGINE_TESTS,
+    rules: {
+      'no-restricted-properties': ['error', ...enginePropertyBans, ...testHygieneBans],
     },
   },
 );
