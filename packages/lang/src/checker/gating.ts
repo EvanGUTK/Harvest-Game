@@ -8,7 +8,7 @@
  */
 
 import { childNodes, type AstNode, type CompareOperator, type ForStmt, type Program } from '../parser/ast';
-import type { ScopeInfo } from '../scope/scope';
+import type { Resolution, ScopeInfo } from '../scope/scope';
 import type { Diagnostic, Feature, LockReason, Span } from '../types';
 import type { CheckOptions } from './check';
 import { assertNever } from '../invariant';
@@ -58,7 +58,7 @@ export function checkGating(program: Program, scopes: ScopeInfo, opts: CheckOpti
  */
 export function lockedNameReason(
   name: string,
-  kind: string | undefined,
+  kind: Resolution['kind'] | undefined,
   opts: CheckOptions,
 ): LockReason | undefined {
   if (kind !== 'builtin' && kind !== 'intrinsic' && kind !== 'constant' && kind !== 'unknown')
