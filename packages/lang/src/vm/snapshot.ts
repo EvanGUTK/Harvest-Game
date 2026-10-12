@@ -3,6 +3,7 @@
  * Spec: docs/03-architecture/interpreter-vm.md §Public API (snapshot, restoreVM: self-contained) and
  * §VM (the live heap count is part of the snapshot; second drone: a kind/version word, chief ruling
  * V8).
+ * Restoring refuses a snapshot from another language version (LANG-VERSION-MISMATCH, chief ruling).
  * Invariants: heap objects are written once by id and restored as one object, so sharing and cycles
  * survive; the live-cell count is stored as a number, because unreachable cycles are never reclaimed
  * yet still count; restoring checks the format word, version and kind before reading anything else;
@@ -20,6 +21,7 @@ import {
   type StatementInfo,
 } from '../compiler/bytecode';
 import { assertValidModule } from '../compiler/validate';
+import { LANGUAGE_VERSION } from '../version';
 import type { ConstantDef } from '../types';
 import { isLoopState, type LoopState, type StackItem } from './loops';
 import type { Frame, Machine, MachineState, Slot, Status } from './machine';
@@ -206,6 +208,13 @@ function readSnapshot(snapshot: VMSnapshot): SnapshotJson {
     );
   }
   if (json.kind !== 'single') throw snapshotError(`snapshot kind ${String(json.kind)} is not supported`);
+  if (json.languageVersion !== LANGUAGE_VERSION) {
+    // A snapshot from another bundle would run its bytecode under different semantics: a host bug.
+    throw new InvariantError(
+      'LANG-VERSION-MISMATCH',
+      `snapshot language ${String(json.languageVersion)} is not ${LANGUAGE_VERSION}`,
+    );
+  }
   return json as SnapshotJson;
 }
 

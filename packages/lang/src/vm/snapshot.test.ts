@@ -161,6 +161,19 @@ describe('VM snapshots (interpreter-vm.md §Public API: serializable, self-conta
     expect(tamper({ kind: 'program' })).toThrow(InvariantError);
   });
 
+  it('refuses a snapshot from another language version as a host bug (LANG-VERSION-MISMATCH)', () => {
+    const machine = start();
+    machine.run(1_000);
+    const json = viaJson(machine.snapshot()) as unknown as SnapshotJson;
+    let thrown: unknown;
+    try {
+      restoreMachine({ ...json, languageVersion: '0.0.9' } as unknown as VMSnapshot);
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown instanceof InvariantError && thrown.code).toBe('LANG-VERSION-MISMATCH');
+  });
+
   it('validates the module it carries before running it', () => {
     const machine = start();
     machine.run(1_000);
