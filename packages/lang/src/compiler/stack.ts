@@ -72,18 +72,25 @@ export function measureMaxStack(code: Int32Array, entry: number, end: number): n
 function apply(shape: Shape, transition: Transition): Shape | string {
   const { pops, pushes } = transition;
   if (shape.length < pops.length) {
-    return `needs ${String(pops.length)} stack slots but has ${String(shape.length)}`;
+    const slots = pops.length === 1 ? 'slot' : 'slots';
+    return `needs ${String(pops.length)} stack ${slots} but has ${String(shape.length)}`;
   }
   const base = shape.length - pops.length;
   for (let i = 0; i < pops.length; i += 1) {
     const found = shape[base + i];
     const wanted: PopKind | undefined = pops[i];
     if (wanted !== 'any' && found !== wanted)
-      return `expects a ${String(wanted)} but finds a ${String(found)}`;
+      return `expects ${withArticle(wanted)} but finds ${withArticle(found)}`;
   }
   return [...shape.slice(0, base), ...pushes];
 }
 
 function sameShape(a: Shape, b: Shape): boolean {
   return a.length === b.length && a.every((kind, i) => kind === b[i]);
+}
+
+/** "a value", "an iterator", "a counter"; `undefined` cannot occur after the length check. */
+function withArticle(kind: SlotKind | undefined): string {
+  if (kind === undefined) return 'nothing';
+  return kind === 'iterator' ? 'an iterator' : `a ${kind}`;
 }

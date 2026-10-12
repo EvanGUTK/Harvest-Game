@@ -3,7 +3,9 @@ import { InvariantError } from '../invariant';
 import { assemble, type AssemblyFunction } from '../test-support/assemble';
 import type { ModuleData } from './bytecode';
 import { Op } from './opcodes';
-import { assertValidModule, moduleProblems } from './validate';
+import { measureMaxStack } from './stack';
+import { assertValidModule, moduleProblems, validateModule } from './validate';
+import { LANGUAGE_VERSION } from '../version';
 
 const span = { file: 'main.sprout', line: 1, col: 1, endLine: 1, endCol: 2 };
 
@@ -47,7 +49,7 @@ const withCode = (data: ModuleData, patch: (code: Int32Array) => void): ModuleDa
 
 /** A one-function module from raw words, with a pool of `poolSize` ints. */
 const single = (words: readonly number[], poolSize = 0): ModuleData => ({
-  languageVersion: '0.1.0',
+  languageVersion: LANGUAGE_VERSION,
   tokenCount: 0,
   code: Int32Array.from(words),
   pool: Array.from({ length: poolSize }, (_, value) => ({ kind: 'int' as const, value })),
@@ -59,7 +61,7 @@ const single = (words: readonly number[], poolSize = 0): ModuleData => ({
       entry: 0,
       end: words.length,
       file: 'main.sprout',
-      maxStack: 8,
+      maxStack: measureMaxStack(Int32Array.from(words), 0, words.length),
     },
   ],
   globals: [],
@@ -178,7 +180,7 @@ describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode nev
 
   it('rejects an op that pops more than the stack holds', () => {
     expect(words([...C, Op.ADD, Op.RETURN])).toContain('ADD needs 2 stack slots but has 1');
-    expect(words([Op.POP, Op.HALT])).toContain('POP needs 1 stack slots but has 0');
+    expect(words([Op.POP, Op.HALT])).toContain('POP needs 1 stack slot but has 0');
     expect(words([Op.BUILD_LIST, 5, Op.HALT])).toContain('BUILD_LIST needs 5 stack slots but has 0');
     expect(words([...C, ...C, Op.BUILD_DICT, 2, Op.HALT])).toContain(
       'BUILD_DICT needs 4 stack slots but has 2',
@@ -188,7 +190,7 @@ describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode nev
 
   it('rejects RETURN without a value', () => {
     const data = single([Op.RETURN], 1);
-    expect(moduleProblems(data).join()).toContain('RETURN needs 1 stack slots but has 0');
+    expect(moduleProblems(data).join()).toContain('RETURN needs 1 stack slot but has 0');
   });
 
   it('rejects a join reached with two different stacks', () => {
@@ -200,13 +202,13 @@ describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode nev
 
   it('rejects a slot of the wrong kind: ITER_NEXT without an iterator, REPEAT_NEXT on an iterator', () => {
     expect(words([...C, Op.ITER_NEXT, 4, Op.HALT])).toContain(
-      'ITER_NEXT expects a iterator but finds a value',
+      'ITER_NEXT expects an iterator but finds a value',
     );
     expect(words([...C, Op.ITER_INIT, 0, Op.REPEAT_NEXT, 6, Op.HALT])).toContain(
-      'REPEAT_NEXT expects a counter but finds a iterator',
+      'REPEAT_NEXT expects a counter but finds an iterator',
     );
     expect(words([...C, Op.ITER_INIT, 0, Op.NOT, Op.HALT])).toContain(
-      'NOT expects a value but finds a iterator',
+      'NOT expects a value but finds an iterator',
     );
   });
 
@@ -225,6 +227,28 @@ describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode nev
       'CONST grows the stack past its declared maximum 1',
     );
     expect(moduleProblems({ ...data, functions: [{ ...fn, maxStack: 2 }] })).toEqual([]);
+  });
+
+  it('rejects a declared maxStack above the deepest the stack really gets (#45 review nit)', () => {
+    const data = single([...C, ...C, Op.POP, Op.POP, Op.HALT], 1);
+    const [fn] = data.functions;
+    if (!fn) throw new Error('fixture');
+    expect(fn.maxStack).toBe(2);
+    expect(moduleProblems({ ...data, functions: [{ ...fn, maxStack: 3 }] })).toEqual([
+      'fn 0 declares maxStack 3 but reaches 2',
+    ]);
+    expect(
+      moduleProblems({ ...data, functions: [{ ...fn, maxStack: Number.MAX_SAFE_INTEGER }] }),
+    ).toHaveLength(1);
+    const tooBig = { ...data, functions: [{ ...fn, maxStack: 3 }] };
+    expect(validateModule(tooBig)[0]?.code).toBe('LANG-BAD-MAX-STACK');
+    let thrown: unknown;
+    try {
+      assertValidModule(tooBig);
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown instanceof InvariantError && thrown.code).toBe('LANG-BAD-MAX-STACK');
   });
 
   it('rejects the reviewer’s five malformed modules, built with assemble()', () => {

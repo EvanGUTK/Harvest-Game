@@ -19,6 +19,7 @@ export type InvariantCode =
   | 'LANG-INTRINSIC-ARITY'
   | 'LANG-FOREIGN-MODULE'
   | 'LANG-BAD-BYTECODE'
+  | 'LANG-BAD-MAX-STACK'
   | 'LANG-UNRESOLVED-LABEL';
 
 export class InvariantError extends Error {
