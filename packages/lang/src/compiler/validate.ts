@@ -8,8 +8,8 @@
  * stack analysis (stack.ts) runs and finds no underflow, no slot of the wrong kind, no join reached
  * with two stack shapes, no RETURN without a value and no fall-through off a function's end; its
  * measured height must equal the declared maxStack (chief rulings 2026-10-12 on #45: one fault, one
- * problem; a mismatch either way is LANG-BAD-MAX-STACK). Function 0 takes no parameters, and pool
- * strings respect the 256-unit limit.
+ * problem; a mismatch either way is LANG-BAD-MAX-STACK). Function 0 takes no parameters and contains no
+ * RETURN, and pool strings respect the 256-unit limit.
  */
 
 import { InvariantError, assertNever } from '../invariant';
@@ -97,6 +97,9 @@ function structuralProblems(data: ModuleData, fn: FunctionInfo, index: number): 
     if (instruction === undefined)
       return [...problems, `fn ${String(index)}: no instruction decodes at pc ${String(pc)}`];
     starts.add(pc);
+    // The module body has no caller to return to (the VM treats it as an invariant violation).
+    if (index === 0 && instruction.spec.name === 'RETURN')
+      problems.push(`pc ${String(pc)}: fn 0 (the module body) cannot RETURN`);
     instruction.spec.operands.forEach((kind, i) => {
       const value = instruction.operands[i] ?? -1;
       if (kind === 'target') jumps.push(instruction);
