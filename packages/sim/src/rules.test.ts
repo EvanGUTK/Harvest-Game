@@ -152,6 +152,11 @@ describe('validateConfig (match settings)', () => {
     startMoisture: { min: 0, max: 40 },
   };
 
+  it('reports a grid size beyond the safe integers, like every other number', () => {
+    const problems = validateConfig({ gridSize: Number.MAX_SAFE_INTEGER + 2 });
+    expect(problems.map((p) => [p.code, p.path])).toEqual([['SIM-BAD-GRID', 'gridSize']]);
+  });
+
   it('finds nothing wrong with the showdown settings', () => {
     expect(validateConfig(VALID)).toEqual([]);
   });

@@ -93,7 +93,7 @@ export type ConfigFields = {
 };
 
 function checkGrid(gridSize: number): RulesProblem[] {
-  if (Number.isInteger(gridSize) && gridSize >= 1) return [];
+  if (Number.isSafeInteger(gridSize) && gridSize >= 1) return [];
   return [
     { code: 'SIM-BAD-GRID', path: 'gridSize', message: `grid size must be an integer ≥ 1, got ${gridSize}` },
   ];
