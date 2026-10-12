@@ -239,3 +239,148 @@ describe('VM snapshots (interpreter-vm.md §Public API: serializable, self-conta
     expect(() => restoreMachine(damaged as unknown as VMSnapshot)).toThrow(InvariantError);
   });
 });
+
+describe('restore validates the machine state (chief ruling 2026-10-12 on #59: LANG-BAD-SNAPSHOT)', () => {
+  /** The parts of a snapshot these tests corrupt, as plain mutable JSON. */
+  type MutableJson = {
+    limits: Record<string, number>;
+    machine: {
+      ip: number;
+      statement: number;
+      stack: unknown[];
+      globals: unknown[];
+      frames: { fnIndex: number; returnPc: number; base: number; locals: unknown[] }[];
+      status: Record<string, unknown>;
+    };
+  };
+  const clone = (s: VMSnapshot): MutableJson => JSON.parse(JSON.stringify(s)) as MutableJson;
+
+  /** Paused at f's first host call. */
+  const awaiting = (): MutableJson => {
+    const machine = start();
+    machine.run(1_000);
+    return clone(machine.snapshot());
+  };
+  /** Running inside f, just after the first host call was resumed, with the iterator live. */
+  const running = (): MutableJson => {
+    const machine = start();
+    machine.run(1_000);
+    machine.resume(valueOps.int(0), 4);
+    return clone(machine.snapshot());
+  };
+  const rejected = (json: MutableJson): string | undefined => {
+    try {
+      restoreMachine(json as unknown as VMSnapshot);
+    } catch (e) {
+      return e instanceof InvariantError ? e.code : 'not an InvariantError';
+    }
+    return undefined;
+  };
+
+  it('accepts unmodified awaiting, running and finished snapshots', () => {
+    expect(rejected(awaiting())).toBeUndefined();
+    expect(rejected(running())).toBeUndefined();
+  });
+
+  it('rejects an ip moved onto an operand word that decodes as a well-formed op', () => {
+    const json = running();
+    // ip sits just after f's CALL_HOST; its argc operand (1) three words back decodes as POP.
+    json.machine.ip -= 3;
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('rejects an ip outside the running function', () => {
+    const json = running();
+    json.machine.ip = 0;
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('rejects more nested frames than the call-depth limit allows', () => {
+    const json = running();
+    json.limits.maxCallDepth = 0;
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('rejects locals or globals whose counts differ from the module', () => {
+    const locals = running();
+    locals.machine.frames[1]?.locals.pop();
+    expect(rejected(locals)).toBe('LANG-BAD-SNAPSHOT');
+    const globals = running();
+    globals.machine.globals.pop();
+    expect(rejected(globals)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('rejects a frame running a missing function, bases out of order, or a return pc not after a CALL', () => {
+    const fn = running();
+    const [, f] = fn.machine.frames;
+    if (!f) throw new Error('fixture');
+    f.fnIndex = 9;
+    expect(rejected(fn)).toBe('LANG-BAD-SNAPSHOT');
+    const base = running();
+    const [, g] = base.machine.frames;
+    if (!g) throw new Error('fixture');
+    g.base = base.machine.stack.length + 1;
+    expect(rejected(base)).toBe('LANG-BAD-SNAPSHOT');
+    const ret = running();
+    const [, h] = ret.machine.frames;
+    if (!h) throw new Error('fixture');
+    h.returnPc = 0;
+    expect(rejected(ret)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('rejects a statement index outside the statement table', () => {
+    const json = running();
+    json.machine.statement = 99;
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('rejects a pending host call whose pc is not the CALL_HOST before ip', () => {
+    const json = awaiting();
+    json.machine.status.pc = 0;
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('rejects a stack whose height at ip differs from the analysed one', () => {
+    const json = running();
+    json.machine.stack.push(7);
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('rejects a stack slot of the wrong kind at the analysed height', () => {
+    const json = running();
+    // f's segment is [iterator, value] (the resumed host result on top); a value in the iterator's slot
+    // keeps the height but is the wrong kind.
+    const [, f] = json.machine.frames;
+    if (!f) throw new Error('fixture');
+    json.machine.stack[f.base] = 7;
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it("rejects a caller frame's segment that differs from the shape at its call", () => {
+    const json = running();
+    // The module body waits for f's result with nothing else on its stack; give it an extra value.
+    json.machine.stack.unshift(7);
+    const [, f] = json.machine.frames;
+    if (!f) throw new Error('fixture');
+    f.base += 1;
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('expects one slot fewer while a host result is pending', () => {
+    const json = awaiting();
+    // Awaiting: f holds [iterator]; the analysed shape after CALL_HOST is [iterator, value].
+    json.machine.stack.push(7);
+    expect(rejected(json)).toBe('LANG-BAD-SNAPSHOT');
+  });
+
+  it('keeps the structural checks but skips the shape check for a finished machine', () => {
+    const machine = start();
+    finish(machine);
+    const odd = clone(machine.snapshot());
+    odd.machine.stack.push(7);
+    expect(rejected(odd)).toBeUndefined();
+    const broken = clone(machine.snapshot());
+    broken.machine.globals.pop();
+    expect(rejected(broken)).toBe('LANG-BAD-SNAPSHOT');
+  });
+});

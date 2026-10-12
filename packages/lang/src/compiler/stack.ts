@@ -10,9 +10,18 @@
 
 import { decodeInstruction, instructionWidth, type PopKind, type SlotKind, type Transition } from './opcodes';
 
-export type StackAnalysis = { readonly problem?: string; readonly maxHeight: number };
+/** The kinds on a function's operand stack at one pc, bottom to top. */
+export type Shape = readonly SlotKind[];
 
-type Shape = readonly SlotKind[];
+/**
+ * The outcome for one function: the first problem if any, the deepest height, and the shape at the
+ * start of every reachable instruction (restore checks a snapshot's stacks against these).
+ */
+export type StackAnalysis = {
+  readonly problem?: string;
+  readonly maxHeight: number;
+  readonly shapes: ReadonlyMap<number, Shape>;
+};
 
 /**
  * Runs the abstract stack over code[entry, end), starting empty at `entry`, and measures the deepest
@@ -27,7 +36,7 @@ export function analyzeStack(code: Int32Array, entry: number, end: number): Stac
     const shape = shapes.get(pc) ?? [];
     const instruction = decodeInstruction(code, pc, end);
     if (instruction === undefined)
-      return { problem: `no instruction decodes at pc ${String(pc)}`, maxHeight };
+      return { problem: `no instruction decodes at pc ${String(pc)}`, maxHeight, shapes };
     const effect = instruction.spec.effect(instruction.operands);
     const name = instruction.spec.name;
     const edges: [Transition | undefined, number | undefined][] = [
@@ -38,11 +47,12 @@ export function analyzeStack(code: Int32Array, entry: number, end: number): Stac
     for (const [transition, successor] of edges) {
       if (transition === undefined) continue;
       const after = apply(shape, transition);
-      if (typeof after === 'string') return { problem: `pc ${String(pc)}: ${name} ${after}`, maxHeight };
+      if (typeof after === 'string')
+        return { problem: `pc ${String(pc)}: ${name} ${after}`, maxHeight, shapes };
       maxHeight = Math.max(maxHeight, after.length);
       if (successor === undefined) continue;
       if (successor >= end)
-        return { problem: `pc ${String(pc)}: ${name} falls off the end of the function`, maxHeight };
+        return { problem: `pc ${String(pc)}: ${name} falls off the end of the function`, maxHeight, shapes };
       const known = shapes.get(successor);
       if (known === undefined) {
         shapes.set(successor, after);
@@ -51,11 +61,12 @@ export function analyzeStack(code: Int32Array, entry: number, end: number): Stac
         return {
           problem: `pc ${String(successor)} is reached with stacks [${known.join(', ')}] and [${after.join(', ')}]`,
           maxHeight,
+          shapes,
         };
       }
     }
   }
-  return { maxHeight };
+  return { maxHeight, shapes };
 }
 
 /** The deepest stack a well-formed function reaches; producers store it as FunctionInfo.maxStack. */

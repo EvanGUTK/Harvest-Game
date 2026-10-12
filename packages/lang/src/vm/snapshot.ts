@@ -3,7 +3,8 @@
  * Spec: docs/03-architecture/interpreter-vm.md §Public API (snapshot, restoreVM: self-contained) and
  * §VM (the live heap count is part of the snapshot; second drone: a kind/version word, chief ruling
  * V8).
- * Restoring refuses a snapshot from another language version (LANG-VERSION-MISMATCH, chief ruling).
+ * Restoring refuses a snapshot from another language version (LANG-VERSION-MISMATCH, chief ruling) and
+ * one whose machine state does not fit its module (snapshot-check.ts, LANG-BAD-SNAPSHOT).
  * Invariants: heap objects are written once by id and restored as one object, so sharing and cycles
  * survive; the live-cell count is stored as a number, because unreachable cycles are never reclaimed
  * yet still count; restoring checks the format word, version and kind before reading anything else;
@@ -21,6 +22,7 @@ import {
   type StatementInfo,
 } from '../compiler/bytecode';
 import { assertValidModule } from '../compiler/validate';
+import { machineStateProblem } from './snapshot-check';
 import { LANGUAGE_VERSION } from '../version';
 import type { ConstantDef } from '../types';
 import { isLoopState, type LoopState, type StackItem } from './loops';
@@ -199,6 +201,8 @@ export function decodeSnapshot(snapshot: VMSnapshot): RestoredParts {
     status: decodeStatus(m.status, value),
     heap: { liveCells: json.heap.liveCells, nextId: json.heap.nextId },
   };
+  const problem = machineStateProblem(data, json.limits, state);
+  if (problem !== undefined) throw snapshotError(problem);
   return { module: toBytecodeModule(data), limits: json.limits, state };
 }
 
