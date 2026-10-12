@@ -19,18 +19,36 @@ import { decodeInstruction, instructionWidth, type DecodedInstruction, type Oper
 
 const MAX_RANGE_ARGS = 3;
 
-/** Every structural problem found, in code order; an empty list means the module is valid. */
-export function moduleProblems(data: ModuleData): string[] {
-  const problems = [...layoutProblems(data), ...poolProblems(data)];
-  if (problems.length > 0) return problems;
-  data.functions.forEach((fn, index) => problems.push(...functionProblems(data, fn, index)));
-  return problems;
+/**
+ * A validation failure. LANG-BAD-MAX-STACK marks a declared maxStack that differs from the measured
+ * height (chief ruling 2026-10-12: maxStack is a cached, checked result, not a free bound); every
+ * other malformation is LANG-BAD-BYTECODE.
+ */
+export type ModuleProblem = {
+  readonly code: 'LANG-BAD-BYTECODE' | 'LANG-BAD-MAX-STACK';
+  readonly message: string;
+};
+
+/** Every problem found, in code order; an empty list means the module is valid. */
+export function validateModule(data: ModuleData): ModuleProblem[] {
+  const structural = [...layoutProblems(data), ...poolProblems(data)].map(badBytecode);
+  if (structural.length > 0) return structural;
+  return data.functions.flatMap((fn, index) => functionProblems(data, fn, index));
 }
 
-/** Throws LANG-BAD-BYTECODE naming the first problem, if there is one. */
+/** The messages of validateModule's problems. */
+export function moduleProblems(data: ModuleData): string[] {
+  return validateModule(data).map((problem) => problem.message);
+}
+
+/** Throws the first problem as an InvariantError with its own code, if there is one. */
 export function assertValidModule(data: ModuleData): void {
-  const [first] = moduleProblems(data);
-  if (first !== undefined) throw new InvariantError('LANG-BAD-BYTECODE', first);
+  const [first] = validateModule(data);
+  if (first !== undefined) throw new InvariantError(first.code, first.message);
+}
+
+function badBytecode(message: string): ModuleProblem {
+  return { code: 'LANG-BAD-BYTECODE', message };
 }
 
 function layoutProblems(data: ModuleData): string[] {
@@ -53,7 +71,11 @@ function layoutProblems(data: ModuleData): string[] {
   return problems;
 }
 
-function functionProblems(data: ModuleData, fn: FunctionInfo, index: number): string[] {
+function functionProblems(data: ModuleData, fn: FunctionInfo, index: number): ModuleProblem[] {
+  return [...bytecodeProblems(data, fn, index).map(badBytecode), ...maxStackProblems(data, fn, index)];
+}
+
+function bytecodeProblems(data: ModuleData, fn: FunctionInfo, index: number): string[] {
   const problems: string[] = [];
   const starts = new Set<number>();
   const jumps: DecodedInstruction[] = [];
@@ -83,6 +105,18 @@ function functionProblems(data: ModuleData, fn: FunctionInfo, index: number): st
   const stack = analyzeStack(data.code, fn.entry, fn.end, fn.maxStack);
   if (stack.problem !== undefined) problems.push(`fn ${String(index)}: ${stack.problem}`);
   return problems;
+}
+
+/** §Bytecode defines maxStack as the deepest the stack gets, so a larger declaration is wrong too. */
+function maxStackProblems(data: ModuleData, fn: FunctionInfo, index: number): ModuleProblem[] {
+  const stack = analyzeStack(data.code, fn.entry, fn.end);
+  if (stack.problem !== undefined || stack.maxHeight === fn.maxStack) return [];
+  return [
+    {
+      code: 'LANG-BAD-MAX-STACK',
+      message: `fn ${String(index)} declares maxStack ${String(fn.maxStack)} but reaches ${String(stack.maxHeight)}`,
+    },
+  ];
 }
 
 function operandInRange(
