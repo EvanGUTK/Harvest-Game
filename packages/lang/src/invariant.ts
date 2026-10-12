@@ -22,7 +22,11 @@ export type InvariantCode =
   | 'LANG-BAD-MAX-STACK'
   | 'LANG-UNRESOLVED-LABEL'
   | 'LANG-UNCHECKED-PROGRAM'
-  | 'LANG-VERSION-MISMATCH';
+  | 'LANG-VERSION-MISMATCH'
+  | 'LANG-VM-PENDING-HOST'
+  | 'LANG-VM-NO-PENDING-HOST'
+  | 'LANG-VM-BAD-COST'
+  | 'LANG-VM-STACK';
 
 export class InvariantError extends Error {
   readonly code: InvariantCode;
