@@ -1,6 +1,6 @@
 /**
- * Name rules: E-UNKNOWN-NAME (with suggestion), E-RESERVED-NAME, E-BUILTIN-NOT-VALUE, E-RANGE-ONLY-IN-FOR
- * and E-GLOBAL-AFTER-USE.
+ * Name rules: E-UNKNOWN-NAME (with suggestion), E-RESERVED-NAME, E-BUILTIN-NOT-VALUE, E-RANGE-ONLY-IN-FOR,
+ * E-GLOBAL-AFTER-USE, E-DUPLICATE-PARAM and E-GLOBAL-PARAM.
  * Spec: docs/02-language/language-spec.md §Scoping, §Types (function), §Iteration;
  * docs/03-architecture/interpreter-vm.md §Checker.
  * Invariants: reads resolutions from `resolveScopes` and never re-derives scope; walks in source order;
@@ -188,7 +188,6 @@ class NameChecker {
     }
   }
 
-  /** `global x` must come before every other occurrence of `x` in the same def, parameters included. */
   /** A parameter name may appear only once in a `def` (E-DUPLICATE-PARAM), at its repeat. */
   private checkParameterNames(def: DefStmt): void {
     const seen = new Set<string>();
