@@ -41,7 +41,11 @@ export function scopeNames(opts: CheckOptions): ResolveOptions {
   };
 }
 
-/** Runs every checker rule over `program`, whose names `scopes` resolved with `scopeNames(opts)`. */
+/**
+ * Runs every checker rule over `program`, whose names `scopes` resolved with `scopeNames(opts)`. Diagnostics
+ * are sorted by position (file in run order, then line, then column). The sort is stable, so diagnostics at
+ * the same position keep the fixed order of the passes below.
+ */
 export function check(program: Program, scopes: ScopeInfo, opts: CheckOptions): CheckResult {
   const diagnostics = [
     ...checkFileCount(program, opts.limits),
