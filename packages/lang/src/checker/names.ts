@@ -17,6 +17,7 @@ import {
   type Program,
 } from '../parser/ast';
 import { assertNever } from '../invariant';
+import { INTRINSICS } from '../intrinsics/intrinsics';
 import type { FunctionScope, ScopeInfo } from '../scope/scope';
 import type { Diagnostic } from '../types';
 import type { CheckOptions } from './check';
@@ -29,10 +30,8 @@ import {
   reservedName,
   unknownName,
 } from './diagnostics';
-import { boundedDistance } from './levenshtein';
+import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
 
-/** language-spec.md / errors-and-diagnostics.md: suggestions are names within Levenshtein distance 2. */
-const MAX_SUGGESTION_DISTANCE = 2;
 const RANGE = 'range';
 
 /** How a NameExpr is used: called, as the `range` of a `for` header, or as a plain value. */
@@ -58,7 +57,7 @@ class NameChecker {
     private readonly opts: CheckOptions,
   ) {
     this.constantNames = new Set(opts.constants.map((c) => c.name));
-    for (const sig of opts.intrinsicSignatures) this.commandArity.set(sig.name, (sig.maxArgs ?? 1) > 0);
+    for (const [name, arity] of INTRINSICS) this.commandArity.set(name, (arity.max ?? 1) > 0);
     for (const sig of opts.hostSignatures) this.commandArity.set(sig.name, sig.params.length > 0);
   }
 
@@ -239,7 +238,7 @@ class NameChecker {
     return [
       ...(fn?.locals ?? []),
       ...this.scopes.globals,
-      ...this.opts.intrinsicSignatures.map((s) => s.name),
+      ...INTRINSICS.keys(),
       ...this.opts.hostSignatures.map((s) => s.name),
       ...this.opts.constants.map((c) => c.name),
     ];
