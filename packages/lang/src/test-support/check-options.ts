@@ -29,18 +29,23 @@ export const TEST_OPTIONS: CheckOptions = {
     host(5, 'crop', [], true),
     host(6, 'sell', ['const', 'int'], true, ['a crop like `RADISH`', 'a number']),
     host(7, 'inventory', ['const'], true),
-    host(8, 'world_size', [], false),
+    host(8, 'world_size', [], true),
     host(9, 'halt', [], true),
     host(10, 'spawn', ['function'], true),
+    host(11, 'moisture', [], true),
+    host(12, 'water', [], true),
+    host(13, 'refill', [], true),
+    host(14, 'random', ['int'], false),
   ],
   constants: [
     { name: 'RADISH', id: 10, group: 'crop' },
     { name: 'CORN', id: 11, group: 'crop' },
     { name: 'NORTH', id: 1, group: 'direction' },
     { name: 'EAST', id: 2, group: 'direction' },
+    { name: 'SOUTH', id: 3, group: 'direction' },
   ],
-  lockedFeatures: new Set(),
-  lockedNames: new Set(),
+  lockedFeatures: new Map(),
+  lockedNames: new Map(),
   limits: DEFAULT_LIMITS,
 };
 
@@ -54,4 +59,12 @@ export function checkSources(
   if (parsed.diagnostics.length > 0)
     throw new Error(`test source does not parse: ${parsed.diagnostics[0]?.code ?? ''}`);
   return check(parsed.program, resolveScopes(parsed.program, scopeNames(options)), options).diagnostics;
+}
+
+/** Only the error-severity diagnostics of `checkSources`, for tests of error rules that ignore warnings. */
+export function checkErrors(
+  files: readonly SourceFile[] | string,
+  options: CheckOptions = TEST_OPTIONS,
+): readonly Diagnostic[] {
+  return checkSources(files, options).filter((d) => d.severity === 'error');
 }
