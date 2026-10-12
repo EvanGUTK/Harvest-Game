@@ -9,21 +9,13 @@
 
 import { childNodes, type AstNode, type CallExpr, type MethodCallExpr, type Program } from '../parser/ast';
 import { assertNever } from '../invariant';
-import { INTRINSICS, METHODS, type Arity as IntrinsicArity } from '../intrinsics/intrinsics';
+import { INTRINSICS, METHODS, acceptsArgCount, type Arity } from '../intrinsics/intrinsics';
 import type { ScopeInfo } from '../scope/scope';
 import { bindingName, scopeStatements } from '../scope/bindings';
 import type { Diagnostic, Span } from '../types';
 import type { CheckOptions } from './check';
 import { unknownMethod, wrongArgCount } from './diagnostics';
 import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
-
-/** An accepted argument count: `max: null` means any number from `min` up. */
-type Arity = { readonly min: number; readonly max: number | null };
-
-/** lang's own arity table (intrinsics.ts) in this module's shape, where `max: null` means unbounded. */
-function arityOf(arity: IntrinsicArity): Arity {
-  return { min: arity.min, max: arity.max ?? null };
-}
 
 /** Beginner descriptions of what each intrinsic takes (chief ruling W3: the checker's own hint table). */
 const INTRINSIC_HINTS: ReadonlyMap<string, string> = new Map([
@@ -59,8 +51,7 @@ export function checkArity(program: Program, scopes: ScopeInfo, opts: CheckOptio
  */
 function checkMethod(call: MethodCallExpr): Diagnostic | null {
   const name = call.method.name;
-  const methodArity = [...METHODS].find(([method]) => method === name)?.[1];
-  const arity = methodArity === undefined ? undefined : arityOf(methodArity);
+  const arity = [...METHODS].find(([method]) => method === name)?.[1];
   if (arity === undefined) return unknownMethod(call.method.span, name, closestMethod(name));
   return mismatch(call.span, `\`.${name}\``, arity, call.args.length, null);
 }
@@ -87,9 +78,7 @@ function mismatch(
   given: number,
   hint: string | null,
 ): Diagnostic | null {
-  const tooFew = given < arity.min;
-  const tooMany = arity.max !== null && given > arity.max;
-  return tooFew || tooMany ? wrongArgCount(range, who, arity.min, arity.max, given, hint) : null;
+  return acceptsArgCount(arity, given) ? null : wrongArgCount(range, who, arity, given, hint);
 }
 
 /** "a, b and c": the hints of a host signature as one phrase, when there is one hint per parameter. */
@@ -116,7 +105,7 @@ class CallTargets {
         hint: joinHints(sig.paramHints, max),
       });
     }
-    for (const [name, arity] of INTRINSICS) this.intrinsics.set(name, arityOf(arity));
+    for (const [name, arity] of INTRINSICS) this.intrinsics.set(name, arity);
     this.userFunctions = certainUserArities(program);
   }
 
