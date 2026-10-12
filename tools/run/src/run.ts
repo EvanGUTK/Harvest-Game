@@ -7,13 +7,12 @@
  * engine is not wired.
  */
 
-import { RULES_VERSION, SHOWDOWN_DEFAULTS } from '@harvest/content';
-import { LANGUAGE_VERSION } from '@harvest/lang';
 import type { Diagnostic } from '@harvest/lang';
-import type { PlayerInput, SimConfig, SimResult } from '@harvest/sim';
+import type { PlayerInput, SimResult } from '@harvest/sim';
 import { parseCliArgs } from './args';
 import type { RunOptions } from './args';
 import { compileProgram } from './compile';
+import { showdownConfig } from './config';
 import {
   formatDiagnostics,
   formatFooter,
@@ -42,24 +41,6 @@ type Compiled = { input: PlayerInput; participant: Participant; diagnostics: rea
 function compileOne(runtime: Runtime, program: LoadedProgram): Compiled {
   const { input, compiled, diagnostics } = compileProgram(runtime, program.slot, program.files);
   return { input, participant: { slot: program.slot, file: program.label, compiled }, diagnostics };
-}
-
-function configOf(options: RunOptions): SimConfig {
-  return {
-    rulesVersion: RULES_VERSION,
-    languageVersion: LANGUAGE_VERSION,
-    seed: options.seed,
-    gridSize: options.gridSize,
-    cycleBudget: options.cycleBudget,
-    startCredits: SHOWDOWN_DEFAULTS.startCredits,
-    startWater: SHOWDOWN_DEFAULTS.startWater,
-    startMoisture: SHOWDOWN_DEFAULTS.startMoisture,
-    moistureDecay: true,
-    sharedMarket: true,
-    randomEnabled: SHOWDOWN_DEFAULTS.randomEnabled,
-    spawnEnabled: SHOWDOWN_DEFAULTS.spawnEnabled,
-    modifiers: { rocks: false, weather: false },
-  };
 }
 
 function report(io: Io, options: RunOptions, compiled: readonly Compiled[], sim: SimResult): void {
@@ -102,7 +83,7 @@ export function main(argv: readonly string[], io: Io, loadRuntime: () => Runtime
   }
   const compiled = loaded.programs.map((program) => compileOne(engine.runtime, program));
   const sim = engine.runtime.simulation.run(
-    configOf(parsed.options),
+    showdownConfig(parsed.options),
     compiled.map((c) => c.input),
   );
   report(io, parsed.options, compiled, sim);

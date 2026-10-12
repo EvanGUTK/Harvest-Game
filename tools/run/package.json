@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./compile": "./src/compile.ts",
+    "./config": "./src/config.ts",
     "./runtime": "./src/runtime.ts"
   },
   "bin": {
