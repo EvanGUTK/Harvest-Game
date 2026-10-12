@@ -4,23 +4,19 @@
  * Spec: docs/03-architecture/interpreter-vm.md §Bytecode (module layout).
  * Invariants checked: function 0 is the module body at pc 0; functions are contiguous and cover the
  * code; every word decodes as an instruction of its function; every operand is in range for its kind;
- * every jump lands on an instruction start of the same function; every function ends in RETURN,
- * HALT or JUMP, so execution never falls off its end.
+ * every jump lands on an instruction start of the same function; the stack analysis (stack.ts) finds
+ * no underflow, no slot of the wrong kind, no join reached with two stack shapes, no height past the
+ * declared maxStack, no RETURN without a value and no fall-through off a function's end (chief ruling
+ * 2026-10-12 on #45).
  */
 
 import { InvariantError, assertNever } from '../invariant';
 import { CALLABLE_INTRINSICS, METHOD_IDS } from '../intrinsics/intrinsics';
 import type { FunctionInfo, ModuleData } from './bytecode';
-import {
-  Op,
-  decodeInstruction,
-  instructionWidth,
-  type DecodedInstruction,
-  type OperandKind,
-} from './opcodes';
+import { analyzeStack } from './stack';
+import { decodeInstruction, instructionWidth, type DecodedInstruction, type OperandKind } from './opcodes';
 
 const MAX_RANGE_ARGS = 3;
-const FINAL_OPS: ReadonlySet<number> = new Set([Op.RETURN, Op.HALT, Op.JUMP]);
 
 /** Every structural problem found, in code order; an empty list means the module is valid. */
 export function moduleProblems(data: ModuleData): string[] {
@@ -45,6 +41,9 @@ function layoutProblems(data: ModuleData): string[] {
       problems.push(`fn ${String(index)} starts at ${String(fn.entry)}, not ${String(expectedEntry)}`);
     if (fn.end <= fn.entry) problems.push(`fn ${String(index)} is empty`);
     if (fn.arity > fn.localNames.length) problems.push(`fn ${String(index)} has more parameters than locals`);
+    if (!Number.isSafeInteger(fn.maxStack) || fn.maxStack < 0) {
+      problems.push(`fn ${String(index)} declares an invalid maxStack ${String(fn.maxStack)}`);
+    }
     expectedEntry = fn.end;
   });
   if (expectedEntry !== data.code.length)
@@ -56,7 +55,6 @@ function functionProblems(data: ModuleData, fn: FunctionInfo, index: number): st
   const problems: string[] = [];
   const starts = new Set<number>();
   const jumps: DecodedInstruction[] = [];
-  let last: DecodedInstruction | undefined;
   for (let pc = fn.entry; pc < fn.end;) {
     const instruction = decodeInstruction(data.code, pc, fn.end);
     if (instruction === undefined)
@@ -70,7 +68,6 @@ function functionProblems(data: ModuleData, fn: FunctionInfo, index: number): st
           `pc ${String(pc)}: ${instruction.spec.name} ${kind} operand ${String(value)} out of range`,
         );
     });
-    last = instruction;
     pc += instructionWidth(instruction.spec);
   }
   for (const jump of jumps) {
@@ -80,8 +77,9 @@ function functionProblems(data: ModuleData, fn: FunctionInfo, index: number): st
         `pc ${String(jump.pc)}: ${jump.spec.name} target ${String(target)} is not an instruction of fn ${String(index)}`,
       );
   }
-  if (last === undefined || !FINAL_OPS.has(data.code[last.pc] ?? -1))
-    problems.push(`fn ${String(index)} does not end in RETURN, HALT or JUMP`);
+  if (problems.length > 0) return problems;
+  const stack = analyzeStack(data.code, fn.entry, fn.end, fn.maxStack);
+  if (stack.problem !== undefined) problems.push(`fn ${String(index)}: ${stack.problem}`);
   return problems;
 }
 

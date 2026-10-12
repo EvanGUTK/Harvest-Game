@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { InvariantError } from '../invariant';
-import { assemble } from '../test-support/assemble';
+import { assemble, type AssemblyFunction } from '../test-support/assemble';
 import type { ModuleData } from './bytecode';
 import { Op } from './opcodes';
 import { assertValidModule, moduleProblems } from './validate';
@@ -52,7 +52,15 @@ const single = (words: readonly number[], poolSize = 0): ModuleData => ({
   code: Int32Array.from(words),
   pool: Array.from({ length: poolSize }, (_, value) => ({ kind: 'int' as const, value })),
   functions: [
-    { name: '<module>', arity: 0, localNames: [], entry: 0, end: words.length, file: 'main.sprout' },
+    {
+      name: '<module>',
+      arity: 0,
+      localNames: [],
+      entry: 0,
+      end: words.length,
+      file: 'main.sprout',
+      maxStack: 8,
+    },
   ],
   globals: [],
   constantDefs: [],
@@ -111,9 +119,8 @@ describe('moduleProblems (interpreter-vm.md §Bytecode: module layout)', () => {
     expect(moduleProblems(withCode(data, (c) => (c[0] = 99))).join()).toContain(
       'no instruction decodes at pc 0',
     );
-    const lastBodyPc = (data.functions[0]?.end ?? 1) - 1;
-    expect(moduleProblems(withCode(data, (c) => (c[lastBodyPc] = Op.POP))).join()).toContain(
-      'does not end in RETURN, HALT or JUMP',
+    expect(moduleProblems(single([Op.CONST, 0, Op.POP], 1)).join()).toContain(
+      'POP falls off the end of the function',
     );
   });
 
@@ -138,14 +145,111 @@ describe('moduleProblems (interpreter-vm.md §Bytecode: module layout)', () => {
     );
     expect(moduleProblems(single([Op.CALL_METHOD, 3, 1, Op.HALT])).join()).toContain('method operand 3');
     expect(moduleProblems(single([Op.ITER_INIT, 4, Op.HALT])).join()).toContain('iterArgs operand 4');
-    expect(
-      moduleProblems(single([Op.ITER_INIT, 3, Op.CALL_INTRINSIC, 6, 1, Op.CALL_METHOD, 2, 2, Op.HALT])),
-    ).toEqual([]);
+    const C = [Op.CONST, 0];
+    const valid = [
+      ...C,
+      ...C,
+      ...C,
+      Op.ITER_INIT,
+      3,
+      Op.POP,
+      ...C,
+      Op.CALL_INTRINSIC,
+      6,
+      1,
+      ...C,
+      ...C,
+      ...C,
+    ];
+    expect(moduleProblems(single([...valid, Op.CALL_METHOD, 2, 2, Op.POP, Op.POP, Op.HALT], 1))).toEqual([]);
   });
 
   it('throws LANG-BAD-BYTECODE from assertValidModule', () => {
     expect(() => {
       assertValidModule(withCode(valid(), (c) => (c[0] = 99)));
     }).toThrow(InvariantError);
+  });
+});
+
+describe('stack analysis (chief ruling 2026-10-12 on #45: malformed bytecode never reaches the VM)', () => {
+  /** A one-function module assembled from raw words, so maxStack is measured, not hand-declared. */
+  const words = (code: readonly number[]) => moduleProblems(single(code, 1)).join(' | ');
+  const C = [Op.CONST, 0];
+
+  it('rejects an op that pops more than the stack holds', () => {
+    expect(words([...C, Op.ADD, Op.RETURN])).toContain('ADD needs 2 stack slots but has 1');
+    expect(words([Op.POP, Op.HALT])).toContain('POP needs 1 stack slots but has 0');
+    expect(words([Op.BUILD_LIST, 5, Op.HALT])).toContain('BUILD_LIST needs 5 stack slots but has 0');
+    expect(words([...C, ...C, Op.BUILD_DICT, 2, Op.HALT])).toContain(
+      'BUILD_DICT needs 4 stack slots but has 2',
+    );
+    expect(words([...C, Op.CALL, 1, Op.HALT])).toContain('CALL needs 2 stack slots but has 1');
+  });
+
+  it('rejects RETURN without a value', () => {
+    const data = single([Op.RETURN], 1);
+    expect(moduleProblems(data).join()).toContain('RETURN needs 1 stack slots but has 0');
+  });
+
+  it('rejects a join reached with two different stacks', () => {
+    // CONST; JUMP_IF_FALSE L; CONST; L: HALT  -> L (pc 6) is reached with [] and [value]
+    expect(words([...C, Op.JUMP_IF_FALSE, 6, ...C, Op.HALT])).toContain(
+      'pc 6 is reached with stacks [] and [value]',
+    );
+  });
+
+  it('rejects a slot of the wrong kind: ITER_NEXT without an iterator, REPEAT_NEXT on an iterator', () => {
+    expect(words([...C, Op.ITER_NEXT, 4, Op.HALT])).toContain(
+      'ITER_NEXT expects a iterator but finds a value',
+    );
+    expect(words([...C, Op.ITER_INIT, 0, Op.REPEAT_NEXT, 6, Op.HALT])).toContain(
+      'REPEAT_NEXT expects a counter but finds a iterator',
+    );
+    expect(words([...C, Op.ITER_INIT, 0, Op.NOT, Op.HALT])).toContain(
+      'NOT expects a value but finds a iterator',
+    );
+  });
+
+  it('accepts POP of loop state, as break does, and a well-formed loop', () => {
+    // CONST; ITER_INIT 0; top: ITER_NEXT out; POP; JUMP top; out: HALT
+    expect(words([...C, Op.ITER_INIT, 0, Op.ITER_NEXT, 9, Op.POP, Op.JUMP, 4, Op.HALT])).toBe('');
+    // CONST; ITER_INIT 0; ITER_NEXT out; POP; POP (break); JUMP out; out: HALT
+    expect(words([...C, Op.ITER_INIT, 0, Op.ITER_NEXT, 10, Op.POP, Op.POP, Op.JUMP, 10, Op.HALT])).toBe('');
+  });
+
+  it('rejects a function whose stack grows past its declared maxStack', () => {
+    const data = single([...C, ...C, Op.POP, Op.POP, Op.HALT], 1);
+    const [fn] = data.functions;
+    if (!fn) throw new Error('fixture');
+    expect(moduleProblems({ ...data, functions: [{ ...fn, maxStack: 1 }] }).join()).toContain(
+      'CONST grows the stack past its declared maximum 1',
+    );
+    expect(moduleProblems({ ...data, functions: [{ ...fn, maxStack: 2 }] })).toEqual([]);
+  });
+
+  it('rejects the reviewer’s five malformed modules, built with assemble()', () => {
+    const bodies: AssemblyFunction['body'][] = [
+      (e, pool) => (e.emit(Op.CONST, pool.add({ kind: 'int', value: 1 })), e.emit(Op.ADD), e.emit(Op.HALT)),
+      (e) => (e.emit(Op.POP), e.emit(Op.HALT)),
+      (e, pool) => {
+        const join = e.newLabel();
+        e.emit(Op.CONST, pool.add({ kind: 'bool', value: true }));
+        e.emitJump(Op.JUMP_IF_FALSE, join);
+        e.emit(Op.CONST, pool.add({ kind: 'int', value: 1 }));
+        e.mark(join);
+        e.emit(Op.HALT);
+      },
+      (e, pool) => {
+        const out = e.newLabel();
+        e.emit(Op.CONST, pool.add({ kind: 'int', value: 1 }));
+        e.emitJump(Op.ITER_NEXT, out);
+        e.mark(out);
+        e.emit(Op.HALT);
+      },
+      (e) => (e.emit(Op.BUILD_LIST, 5), e.emit(Op.HALT)),
+    ];
+    for (const body of bodies) {
+      expect(() => assemble({ functions: [{ name: '<module>', body }] })).toThrow(InvariantError);
+    }
   });
 });
