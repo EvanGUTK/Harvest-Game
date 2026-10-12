@@ -185,7 +185,17 @@ export interface VM {
    * move × distance). See simulation-engine.md §Clock arithmetic.
    */
   resume(value: Value, cost?: number): void;
+  /**
+   * The counterpart of `resume` for a host call that failed inside the host (R-BAD-ARG for wait(0),
+   * goto(9, 9), plant(5); R-TYPE for a non-int sell count). The applied cost (default 0: nothing
+   * beyond the 1-cycle call, like a VM runtime error) is charged, and the next run() yields `{ kind: 'error' }` with the call's source range.
+   */
+  raise(error: { code: string; message: string }, cost?: number): void;
   readonly cycles: number;
+  /** The first `maxPrintLines` lines `print` wrote, in order. */
+  readonly output: readonly string[];
+  /** How many further lines were dropped after the first `maxPrintLines` (the Output panel's notice). */
+  readonly droppedLines: number;
   snapshot(): VMSnapshot;
 }
 
