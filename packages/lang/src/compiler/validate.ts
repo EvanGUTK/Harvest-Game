@@ -4,10 +4,11 @@
  * Spec: docs/03-architecture/interpreter-vm.md §Bytecode (module layout).
  * Invariants checked: function 0 is the module body at pc 0; functions are contiguous and cover the
  * code; every word decodes as an instruction of its function; every operand is in range for its kind;
- * every jump lands on an instruction start of the same function; the stack analysis (stack.ts) finds
- * no underflow, no slot of the wrong kind, no join reached with two stack shapes, no height past the
- * declared maxStack, no RETURN without a value and no fall-through off a function's end (chief ruling
- * 2026-10-12 on #45). Function 0 takes no parameters, and pool strings respect the 256-unit limit.
+ * every jump lands on an instruction start of the same function. Only then, once per function, the
+ * stack analysis (stack.ts) runs and finds no underflow, no slot of the wrong kind, no join reached
+ * with two stack shapes, no RETURN without a value and no fall-through off a function's end; its
+ * measured height must equal the declared maxStack (chief rulings 2026-10-12 on #45: one fault, one
+ * problem; a mismatch either way is LANG-BAD-MAX-STACK). Function 0 takes no parameters, and pool strings respect the 256-unit limit.
  */
 
 import { InvariantError, assertNever } from '../invariant';
@@ -71,11 +72,22 @@ function layoutProblems(data: ModuleData): string[] {
   return problems;
 }
 
+/** Structural checks first; the stack analysis runs once, and only on structurally sound code. */
 function functionProblems(data: ModuleData, fn: FunctionInfo, index: number): ModuleProblem[] {
-  return [...bytecodeProblems(data, fn, index).map(badBytecode), ...maxStackProblems(data, fn, index)];
+  const structural = structuralProblems(data, fn, index);
+  if (structural.length > 0) return structural.map(badBytecode);
+  const stack = analyzeStack(data.code, fn.entry, fn.end);
+  if (stack.problem !== undefined) return [badBytecode(`fn ${String(index)}: ${stack.problem}`)];
+  if (stack.maxHeight === fn.maxStack) return [];
+  return [
+    {
+      code: 'LANG-BAD-MAX-STACK',
+      message: `fn ${String(index)} declares maxStack ${String(fn.maxStack)} but reaches ${String(stack.maxHeight)}`,
+    },
+  ];
 }
 
-function bytecodeProblems(data: ModuleData, fn: FunctionInfo, index: number): string[] {
+function structuralProblems(data: ModuleData, fn: FunctionInfo, index: number): string[] {
   const problems: string[] = [];
   const starts = new Set<number>();
   const jumps: DecodedInstruction[] = [];
@@ -101,22 +113,7 @@ function bytecodeProblems(data: ModuleData, fn: FunctionInfo, index: number): st
         `pc ${String(jump.pc)}: ${jump.spec.name} target ${String(target)} is not an instruction of fn ${String(index)}`,
       );
   }
-  if (problems.length > 0) return problems;
-  const stack = analyzeStack(data.code, fn.entry, fn.end, fn.maxStack);
-  if (stack.problem !== undefined) problems.push(`fn ${String(index)}: ${stack.problem}`);
   return problems;
-}
-
-/** §Bytecode defines maxStack as the deepest the stack gets, so a larger declaration is wrong too. */
-function maxStackProblems(data: ModuleData, fn: FunctionInfo, index: number): ModuleProblem[] {
-  const stack = analyzeStack(data.code, fn.entry, fn.end);
-  if (stack.problem !== undefined || stack.maxHeight === fn.maxStack) return [];
-  return [
-    {
-      code: 'LANG-BAD-MAX-STACK',
-      message: `fn ${String(index)} declares maxStack ${String(fn.maxStack)} but reaches ${String(stack.maxHeight)}`,
-    },
-  ];
 }
 
 function operandInRange(

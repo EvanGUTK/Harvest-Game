@@ -15,10 +15,11 @@ export type StackAnalysis = { readonly problem?: string; readonly maxHeight: num
 type Shape = readonly SlotKind[];
 
 /**
- * Runs the abstract stack over code[entry, end), starting empty at `entry`. `limit` (the function's
- * declared maxStack) is enforced when given; without it the deepest height is just measured.
+ * Runs the abstract stack over code[entry, end), starting empty at `entry`, and measures the deepest
+ * height. The caller compares that with the declared maxStack (validate.ts), so a mismatch is one
+ * problem with one code.
  */
-export function analyzeStack(code: Int32Array, entry: number, end: number, limit?: number): StackAnalysis {
+export function analyzeStack(code: Int32Array, entry: number, end: number): StackAnalysis {
   const shapes = new Map<number, Shape>([[entry, []]]);
   const pending: number[] = [entry];
   let maxHeight = 0;
@@ -39,12 +40,6 @@ export function analyzeStack(code: Int32Array, entry: number, end: number, limit
       const after = apply(shape, transition);
       if (typeof after === 'string') return { problem: `pc ${String(pc)}: ${name} ${after}`, maxHeight };
       maxHeight = Math.max(maxHeight, after.length);
-      if (limit !== undefined && after.length > limit) {
-        return {
-          problem: `pc ${String(pc)}: ${name} grows the stack past its declared maximum ${String(limit)}`,
-          maxHeight,
-        };
-      }
       if (successor === undefined) continue;
       if (successor >= end)
         return { problem: `pc ${String(pc)}: ${name} falls off the end of the function`, maxHeight };
