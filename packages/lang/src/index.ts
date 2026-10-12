@@ -14,7 +14,7 @@
  * compiling each player's program with that player's host signatures.
  */
 
-export const LANGUAGE_VERSION = '0.1.0';
+export { LANGUAGE_VERSION } from './version';
 
 // ---------- Source, diagnostics, limits ----------
 
