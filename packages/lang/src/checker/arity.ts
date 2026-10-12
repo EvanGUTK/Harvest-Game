@@ -19,7 +19,7 @@ import { boundedDistance, MAX_SUGGESTION_DISTANCE } from './levenshtein';
 
 /** Beginner descriptions of what each intrinsic takes (chief ruling W3: the checker's own hint table). */
 const INTRINSIC_HINTS: ReadonlyMap<string, string> = new Map([
-  ['range', 'a stop number, or a start, a stop and a step'],
+  ['range', 'a stop, or a start and a stop, and optionally a step'],
   ['len', 'a list, a dict or text'],
   ['abs', 'a number'],
   ['min', 'a list, or two or more values'],

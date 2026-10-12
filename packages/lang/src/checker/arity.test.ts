@@ -75,8 +75,8 @@ describe('E-WRONG-ARG-COUNT for intrinsics (standard-library.md §Pure helpers)'
 
   it('checks ranges and open-ended counts', () => {
     expect(messages('for i in range():\n    pass\nfor i in range(1, 2, 3, 4):\n    pass\n')).toEqual([
-      '`range` needs 1 to 3 things in the brackets: a stop number, or a start, a stop and a step.',
-      '`range` needs 1 to 3 things in the brackets: a stop number, or a start, a stop and a step.',
+      '`range` needs 1 to 3 things in the brackets: a stop, or a start and a stop, and optionally a step.',
+      '`range` needs 1 to 3 things in the brackets: a stop, or a start and a stop, and optionally a step.',
     ]);
     expect(messages('min()\n')).toEqual([
       '`min` needs at least 1 thing in the brackets: a list, or two or more values.',
