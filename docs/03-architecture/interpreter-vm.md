@@ -38,8 +38,8 @@ type CompileOptions = {
   languageVersion: string;
   hostSignatures: readonly HostSignature[];   // per player: host costs are baked from these
   constants: readonly ConstantDef[];
-  lockedFeatures: ReadonlySet<Feature>;       // syntax gating (the gating map in curriculum.md)
-  lockedNames: ReadonlySet<string>;           // builtin and constant gating by name
+  lockedFeatures: ReadonlyMap<Feature, LockReason>;  // syntax gating (the gating map in curriculum.md), with why
+  lockedNames: ReadonlyMap<string, LockReason>;      // builtin and constant gating by name, with why
   limits: Limits;
 };
 
@@ -56,6 +56,8 @@ type HostSignature = {
   unlock?: { chapter?: number; node?: string };   // campaign gating as fields (chapter that teaches it, skill node that sells it); the editor builds its 🔒 text from them, the checker gates through lockedNames
   paramHints?: readonly string[];  // one description per parameter ('a direction like `NORTH`') for E-WRONG-ARG-COUNT
 };
+type LockReason =   // picks the E-LOCKED-FEATURE suffix: chapter not reached, node not bought, or off in this mode
+  | { kind: 'chapter'; chapter: number } | { kind: 'node'; node: string } | { kind: 'mode'; mode: 'single-player-only' | 'ranked' };
 type ConstantDef = { name: string; id: number; group: string };   // e.g. { name: 'RADISH', id: 10, group: 'crop' }
 type ValueKind = 'int' | 'bool' | 'none' | 'str' | 'list' | 'dict' | 'function' | 'const';
 

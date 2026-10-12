@@ -8,10 +8,11 @@
 
 import type { Program } from '../parser/ast';
 import type { ResolveOptions, ScopeInfo } from '../scope/scope';
-import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits } from '../types';
+import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits, LockReason } from '../types';
 import { INTRINSIC_NAMES } from '../intrinsics/intrinsics';
 import { checkArity } from './arity';
 import { checkDuplicateDefs, checkFileCount } from './files';
+import { checkGating } from './gating';
 import { checkPureLoops } from './infinite-loop';
 import { checkNames } from './names';
 import { checkReachability } from './reachability';
@@ -21,8 +22,8 @@ import { checkUseBeforeDef } from './use-before-def';
 export type CheckOptions = {
   readonly hostSignatures: readonly HostSignature[];
   readonly constants: readonly ConstantDef[];
-  readonly lockedFeatures: ReadonlySet<Feature>;
-  readonly lockedNames: ReadonlySet<string>;
+  readonly lockedFeatures: ReadonlyMap<Feature, LockReason>;
+  readonly lockedNames: ReadonlyMap<string, LockReason>;
   readonly limits: Limits;
 };
 
@@ -40,11 +41,16 @@ export function scopeNames(opts: CheckOptions): ResolveOptions {
   };
 }
 
-/** Runs every checker rule over `program`, whose names `scopes` resolved with `scopeNames(opts)`. */
+/**
+ * Runs every checker rule over `program`, whose names `scopes` resolved with `scopeNames(opts)`. Diagnostics
+ * are sorted by position (file in run order, then line, then column). The sort is stable, so diagnostics at
+ * the same position keep the fixed order of the passes below.
+ */
 export function check(program: Program, scopes: ScopeInfo, opts: CheckOptions): CheckResult {
   const diagnostics = [
     ...checkFileCount(program, opts.limits),
     ...checkDuplicateDefs(program),
+    ...checkGating(program, scopes, opts),
     ...checkNames(program, scopes, opts),
     ...checkArity(program, scopes, opts),
     ...checkReachability(program),

@@ -73,7 +73,10 @@ describe('E-UNKNOWN-NAME (errors-and-diagnostics.md: "I don\'t know `harvset`. D
   });
 
   it('never suggests a locked name', () => {
-    const options = { ...TEST_OPTIONS, lockedNames: new Set(['sell']) };
+    const options = {
+      ...TEST_OPTIONS,
+      lockedNames: new Map([['sell', { kind: 'chapter', chapter: 8 } as const]]),
+    };
     expect(checkErrors('selll(RADISH, 1)\n', options)[0]?.message).toBe("I don't know `selll`.");
   });
 });

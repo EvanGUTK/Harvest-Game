@@ -4,8 +4,9 @@
  * Invariant: builders are pure; the caller decides where and whether a diagnostic applies.
  */
 
+import { assertNever } from '../invariant';
 import type { Arity } from '../intrinsics/intrinsics';
-import type { Diagnostic, Span } from '../types';
+import type { Diagnostic, LockReason, Span } from '../types';
 
 function error(code: string, range: Span, message: string): Diagnostic {
   return { code, severity: 'error', range, message };
@@ -175,4 +176,35 @@ export function unusedVariable(range: Span, name: string): Diagnostic {
     range,
     message: `\`${name}\` is given a value but never used.`,
   };
+}
+
+/**
+ * E-LOCKED-FEATURE. A chapter or node lock reads "<subject> isn't unlocked yet." plus the suffix for why
+ * (curriculum.md §Feature gating map). A mode lock reads only its why-sentence, because nothing unlocks
+ * inside a ranked match or a showdown (standard-library.md; chief ruling 2026-10-12). Subjects are the
+ * token (`while`, `+`, `.append`) or a phrase ("Lists", "Storing a value with `=`"); `plural` picks "aren't".
+ */
+export function lockedFeature(range: Span, subject: string, plural: boolean, reason: LockReason): Diagnostic {
+  return error('E-LOCKED-FEATURE', range, lockMessage(subject, plural, reason));
+}
+
+function lockMessage(subject: string, plural: boolean, reason: LockReason): string {
+  const stem = `${subject} ${plural ? "aren't" : "isn't"} unlocked yet.`;
+  switch (reason.kind) {
+    case 'chapter':
+      return `${stem} You'll get it in Chapter ${String(reason.chapter)}.`;
+    case 'node':
+      return `${stem} Buy the ${reason.node} node in the skill tree.`;
+    case 'mode':
+      return reason.mode === 'single-player-only'
+        ? `${callForm(subject)} is single-player only in v1.`
+        : `${callForm(subject)} is turned off in ranked matches so replays stay clean.`;
+    default:
+      return assertNever(reason);
+  }
+}
+
+/** "`spawn`" → "`spawn()`": the catalogue writes mode-locked builtins as calls. */
+function callForm(subject: string): string {
+  return subject.startsWith('`') && subject.endsWith('`') ? `${subject.slice(0, -1)}()\`` : subject;
 }
