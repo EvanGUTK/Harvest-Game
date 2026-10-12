@@ -44,8 +44,8 @@ export const TEST_OPTIONS: CheckOptions = {
     { name: 'EAST', id: 2, group: 'direction' },
     { name: 'SOUTH', id: 3, group: 'direction' },
   ],
-  lockedFeatures: new Set(),
-  lockedNames: new Set(),
+  lockedFeatures: new Map(),
+  lockedNames: new Map(),
   limits: DEFAULT_LIMITS,
 };
 

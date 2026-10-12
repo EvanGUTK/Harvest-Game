@@ -8,7 +8,7 @@
 
 import type { Program } from '../parser/ast';
 import type { ResolveOptions, ScopeInfo } from '../scope/scope';
-import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits } from '../types';
+import type { ConstantDef, Diagnostic, Feature, HostSignature, Limits, LockReason } from '../types';
 import { INTRINSIC_NAMES } from '../intrinsics/intrinsics';
 import { checkArity } from './arity';
 import { checkDuplicateDefs, checkFileCount } from './files';
@@ -21,8 +21,8 @@ import { checkUseBeforeDef } from './use-before-def';
 export type CheckOptions = {
   readonly hostSignatures: readonly HostSignature[];
   readonly constants: readonly ConstantDef[];
-  readonly lockedFeatures: ReadonlySet<Feature>;
-  readonly lockedNames: ReadonlySet<string>;
+  readonly lockedFeatures: ReadonlyMap<Feature, LockReason>;
+  readonly lockedNames: ReadonlyMap<string, LockReason>;
   readonly limits: Limits;
 };
 

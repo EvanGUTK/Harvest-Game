@@ -128,14 +128,24 @@ export type HostSignature = {
 
 // ---------- Compile ----------
 
+/**
+ * Why a feature or name is locked; it picks the E-LOCKED-FEATURE suffix (curriculum.md §Feature gating map;
+ * standard-library.md for the two multiplayer cases): the chapter is not reached yet, the skill-tree node
+ * (display name, e.g. 'Sell') is not bought yet, or the builtin is off in this mode.
+ */
+export type LockReason =
+  | { readonly kind: 'chapter'; readonly chapter: number }
+  | { readonly kind: 'node'; readonly node: string }
+  | { readonly kind: 'mode'; readonly mode: 'single-player-only' | 'ranked' };
+
 export type CompileOptions = {
   languageVersion: string;
   hostSignatures: readonly HostSignature[];
   constants: readonly ConstantDef[];
-  /** Campaign gating: language features not yet unlocked produce E-LOCKED-FEATURE. */
-  lockedFeatures: ReadonlySet<Feature>;
-  /** Campaign gating: builtins and constants not yet unlocked. E-LOCKED-FEATURE wins over E-UNKNOWN-NAME. */
-  lockedNames: ReadonlySet<string>;
+  /** Campaign gating: each locked language feature, with why. Using one is E-LOCKED-FEATURE. */
+  lockedFeatures: ReadonlyMap<Feature, LockReason>;
+  /** Builtins and constants not usable yet, with why. E-LOCKED-FEATURE wins over E-UNKNOWN-NAME. */
+  lockedNames: ReadonlyMap<string, LockReason>;
   limits: Limits;
 };
 
