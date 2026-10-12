@@ -114,3 +114,4 @@ export type { BytecodeModule, CompileOptions, CompileResult, LockReason } from '
 // ---------- VM ----------
 
 export type { LangEngine, VM, VMSnapshot, VMYield } from './types';
+export { createLangEngine } from './engine';

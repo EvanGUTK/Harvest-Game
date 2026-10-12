@@ -9,7 +9,9 @@ The Sprout language: lexer → parser → checker → compiler → resumable, cy
 - **Hashing:** `fnv1a32Bytes`, `fnv1a32Ascii`, `fnv1a32Words` (FNV-1a, 32-bit; `FNV1A_OFFSET_BASIS`, `FNV1A_PRIME`, `HashInputError`). The `lang` goldens hash UTF-8 bytes with it; `sim` imports it for PRNG stream ids and the state hash (`lang` cannot import `sim`).
 - **Integer math:** `floorDiv`, `floorMod` (`src/int-math.ts`, Python floor semantics; the one module where lint allows `/`). Invariant violations throw `InvariantError` with a stable `code`.
 
-**Status:** LANG-01 lexer done (`src/lexer/`). LANG-02 parser in progress (`src/parser/`). Next: LANG-05 value model.
+- **Engine:** `createLangEngine()` returns the `LangEngine` hosts use: `compile` (lex → parse → resolve → check → emit → validate), `countTokens`, `createVM`, `restoreVM` and `values`.
+
+**Status:** lexer, parser, checker, compiler, VM (`src/vm/`) and snapshots are in place; `createLangEngine()` wires them. Next: LANG-06.4 benchmarks and the LANG-05.7 throughput pass.
 
 **Purity:** no dependencies, no DOM/Node APIs, no `Date`, `Math.random`, floats or `eval`.
 
