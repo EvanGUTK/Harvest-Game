@@ -1,4 +1,4 @@
-import { BOTS, SHOWDOWN_DEFAULTS } from '@harvest/content';
+import { BOTS, SHOWDOWN_DEFAULTS, STARTER_PROGRAM } from '@harvest/content';
 import { DEFAULT_LIMITS, countTokens, parse, tokenize, utf8Length } from '@harvest/lang';
 import type { SourceFiles } from '@harvest/lang';
 import { describe, expect, it } from 'vitest';
@@ -51,5 +51,33 @@ describe('BOTS (multiplayer-modes.md §Bots)', () => {
     const counts = BOTS.map((b) => countTokens(filesOf(b.source)));
     expect(counts[0]).toBeLessThan(counts[1] ?? 0);
     expect(counts[1]).toBeLessThan(counts[2] ?? 0);
+  });
+});
+
+describe('STARTER_PROGRAM (standard-library.md §Example: a complete starter showdown program)', () => {
+  it('tokenizes without diagnostics', () => {
+    const lexed = tokenize({ name: 'main.sprout', text: STARTER_PROGRAM }, DEFAULT_LIMITS);
+    expect(lexed.diagnostics).toEqual([]);
+    expect(lexed.tokens.some((t) => t.kind === 'ERROR')).toBe(false);
+  });
+
+  it('parses without diagnostics', () => {
+    expect(parse(filesOf(STARTER_PROGRAM), DEFAULT_LIMITS).diagnostics).toEqual([]);
+  });
+
+  it('fits the source size limit of one showdown file', () => {
+    expect(utf8Length(STARTER_PROGRAM)).toBeLessThanOrEqual(DEFAULT_LIMITS.maxSourceBytes);
+  });
+
+  it('farms the 2 bottom rows of radishes, then refills and sells (the lines the doc describes)', () => {
+    expect(STARTER_PROGRAM).toContain('for y in range(2):');
+    expect(STARTER_PROGRAM).toContain('plant(RADISH)');
+    expect(STARTER_PROGRAM).toContain('refill()');
+    expect(STARTER_PROGRAM).toContain('sell(RADISH, inventory(RADISH))');
+  });
+
+  it('uses nothing a showdown does not allow: no spawn, no random', () => {
+    expect(STARTER_PROGRAM).not.toMatch(/\bspawn\s*\(/);
+    expect(STARTER_PROGRAM).not.toMatch(/\brandom\s*\(/);
   });
 });
