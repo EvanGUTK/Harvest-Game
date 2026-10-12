@@ -106,6 +106,11 @@ describe('E-WRONG-ARG-COUNT for direct calls of user functions (language-spec.md
     ]);
   });
 
+  it('treats a def name that some def declares `global` (and may rebind) as uncertain', () => {
+    const source = 'def f(a):\n    pass\ndef g():\n    global f\n    f = h\ndef h():\n    pass\nf()\n';
+    expect(messages(source)).toEqual([]);
+  });
+
   it('leaves calls whose target is only known at run time to R-WRONG-ARG-COUNT', () => {
     expect(messages('def f(a):\n    pass\ndef f(a, b):\n    pass\nf()\n')).toEqual([]);
     expect(messages('def f(a):\n    pass\nf = 3\nf()\n')).toEqual([]);
