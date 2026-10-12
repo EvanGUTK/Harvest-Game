@@ -6,7 +6,7 @@
 |---|---|---|---|
 | Unit | Vitest | beside source | every exported function with behaviour; every diagnostic code; every limit |
 | Golden | Vitest + `__golden__/` | `lang`, `sim` | program + seed → expected hash. `lang` goldens: FNV-1a over `str()` of every global plus the print output. `sim` goldens: `finalStateHash` plus the event count (see simulation-engine.md §State hash) |
-| Cross-engine determinism | Playwright (Chromium, Firefox, WebKit) + Node | `sim` | golden hashes identical in all four engines (browsers installed with `pnpm exec playwright install --with-deps chromium firefox webkit`) |
+| Cross-engine determinism | Playwright (Chromium, Firefox, WebKit) + Node | `sim` | golden hashes identical in all four engines (`pnpm test:determinism`; browsers installed with `pnpm exec playwright install --with-deps chromium firefox webkit`) |
 | Differential | nightly CI | `lang` | random Python-subset programs vs CPython output (pinned CPython 3.12) |
 | Property/fuzz | Vitest + fast-check | `lang` | lexer/parser never throw; compile(valid) ok |
 | Integration | Vitest | `server` | room phase machine, matchmaker windows, ledger transactions (against the Neon `ci` branch via `DATABASE_URL_CI`; runs are serialised by the `ci-db` concurrency group) |
@@ -33,6 +33,12 @@ The driver (`packages/sim/src/golden/scripted.ts`) plays the calls in time order
 A scripted golden is `{ hashes, finalStateHash, eventCount }`: `hashes` are the `hash` events in order (when the budget is a multiple of 1,000 the last is the final hash), and `eventCount` is fixed at 0 because the scripted kind runs without the scheduler's event log; slice 2 fills it from the real engine.
 
 Files, in `packages/sim/src/__golden__/`: `cases.ts` (`export const cases = [...]`, the scenarios, hand-written) and `expected.ts` (the goldens keyed by case name, **generated**). `pnpm test` compares a fresh run of every case with `expected.ts` and fails on any difference; it never rewrites it. To change a golden on purpose (a `RULES_VERSION` bump, with the reason in the commit), run `pnpm golden:update`, review the diff of `expected.ts` and commit it.
+
+## Cross-engine determinism (SIM-08)
+
+`pnpm test:determinism` plays every golden case inside Chromium, Firefox and WebKit and compares each hash with `expected.ts`; the Node run (`pnpm test`) covers the fourth engine. The harness lives in `packages/sim/determinism/`: `browser-entry.ts` is the page side (it runs the same `runScripted` over the same `cases` and exposes the results as `window.goldens`), `bundle.ts` builds that entry with esbuild in memory on every run (nothing is cached on disk, so a stale bundle cannot pass), and `golden.pw.ts` loads the bundle into a blank page and compares in Node, outside the browser. `*.pw.ts` keeps Vitest from picking the spec up. The page runs the engine unchanged: no stubbed `Date`, `Math` or `Intl`, which is the point.
+
+Install the browsers once with `pnpm exec playwright install --with-deps chromium firefox webkit` (without `--with-deps` on a machine that already has the system libraries). The check is a local command for now; wiring it into CI is OPS work and a GitHub workflow is not part of SIM-08 slice 1. Failure output names the browser project, the case and the first differing hash, so a divergence points at the engine that produced it.
 
 ## Naming
 
