@@ -5,6 +5,7 @@
  * never count for an outer loop.
  */
 
+import { assertNever } from '../invariant';
 import type { Statement, WhileStmt } from '../parser/ast';
 
 /** `while True:` written literally: the only loop the checker can prove never ends by itself. */
@@ -50,5 +51,7 @@ export function blocksOf(stmt: Statement, withDefBodies: boolean): readonly (rea
     case 'ReturnStmt':
     case 'GlobalStmt':
       return [];
+    default:
+      return assertNever(stmt);
   }
 }

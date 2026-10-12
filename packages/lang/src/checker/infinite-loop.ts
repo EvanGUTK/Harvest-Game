@@ -9,6 +9,7 @@
  */
 
 import { childNodes, type AstNode, type Program, type Statement } from '../parser/ast';
+import { assertNever } from '../invariant';
 import type { ScopeInfo } from '../scope/scope';
 import type { Diagnostic, Span } from '../types';
 import type { CheckOptions } from './check';
@@ -115,7 +116,8 @@ class EffectAnalysis {
   /** A call the analysis cannot resolve statically is assumed to touch the farm. */
   private callTarget(callee: AstNode): CallTarget {
     if (callee.type !== 'NameExpr') return { kind: 'touches' };
-    switch (this.scopes.resolutions.get(callee)?.kind) {
+    const kind = this.scopes.resolutions.get(callee)?.kind;
+    switch (kind) {
       case 'builtin':
         return this.worldBuiltins.has(callee.name) ? { kind: 'touches' } : { kind: 'pure' };
       case 'intrinsic':
@@ -127,6 +129,8 @@ class EffectAnalysis {
       case 'unknown':
       case undefined:
         return { kind: 'touches' };
+      default:
+        return assertNever(kind);
     }
   }
 }

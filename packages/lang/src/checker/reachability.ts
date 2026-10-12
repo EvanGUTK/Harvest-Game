@@ -5,6 +5,7 @@
  * returns is still reachable, because only the statement itself is considered, not its branches.
  */
 
+import { assertNever } from '../invariant';
 import type { Program, Statement } from '../parser/ast';
 import type { Diagnostic } from '../types';
 import { unreachable, type UnreachableCause } from './diagnostics';
@@ -47,5 +48,7 @@ function causeOf(stmt: Statement): UnreachableCause | null {
     case 'RepeatStmt':
     case 'DefStmt':
       return null;
+    default:
+      return assertNever(stmt);
   }
 }
