@@ -100,6 +100,10 @@ export function isList(v: RtValue): v is ListObj {
   return typeof v === 'object' && v !== null && v.tag === 'list';
 }
 
+export function isFn(v: RtValue): v is FnObj {
+  return typeof v === 'object' && v !== null && v.tag === 'fn';
+}
+
 export function isDict(v: RtValue): v is DictObj {
   return typeof v === 'object' && v !== null && v.tag === 'dict';
 }

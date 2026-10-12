@@ -8,7 +8,8 @@
  * stack analysis (stack.ts) runs and finds no underflow, no slot of the wrong kind, no join reached
  * with two stack shapes, no RETURN without a value and no fall-through off a function's end; its
  * measured height must equal the declared maxStack (chief rulings 2026-10-12 on #45: one fault, one
- * problem; a mismatch either way is LANG-BAD-MAX-STACK). Function 0 takes no parameters, and pool strings respect the 256-unit limit.
+ * problem; a mismatch either way is LANG-BAD-MAX-STACK). Function 0 takes no parameters, and pool
+ * strings respect the 256-unit limit.
  */
 
 import { InvariantError, assertNever } from '../invariant';
