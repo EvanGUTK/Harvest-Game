@@ -176,11 +176,10 @@ describe('E-GLOBAL-AFTER-USE (errors-and-diagnostics.md: "Put `global total` bef
     ]);
   });
 
-  it('counts assignments, nested blocks and parameters as uses', () => {
+  it('counts assignments and nested blocks as uses', () => {
     expect(codes('def f():\n    if a:\n        n = 1\n    global n\na = 1\n')).toEqual([
       'E-GLOBAL-AFTER-USE',
     ]);
-    expect(codes('def f(n):\n    global n\n')).toEqual(['E-GLOBAL-AFTER-USE']);
   });
 
   it('accepts `global` first, a repeated `global`, and module-level `global` anywhere', () => {
@@ -190,5 +189,40 @@ describe('E-GLOBAL-AFTER-USE (errors-and-diagnostics.md: "Put `global total` bef
 
   it('does not mix up two defs', () => {
     expect(codes('n = 0\ndef f():\n    print(n)\ndef g():\n    global n\n    n = 1\n')).toEqual([]);
+  });
+});
+
+describe('E-DUPLICATE-PARAM (chief ruling 2026-10-12: a parameter name may appear only once in a def)', () => {
+  it('reports the repeated parameter with the catalogue wording', () => {
+    expect(checkSources('def f(a, b, a):\n    return a\n')).toEqual([
+      {
+        code: 'E-DUPLICATE-PARAM',
+        severity: 'error',
+        range: span(1, 13, 1, 14),
+        message: '`a` is listed twice in the parameters of `f`. Give each parameter a different name.',
+      },
+    ]);
+  });
+
+  it('accepts distinct parameters, and the same name in two different defs', () => {
+    expect(codes('def f(a, b):\n    pass\ndef g(a):\n    pass\n')).toEqual([]);
+  });
+});
+
+describe('E-GLOBAL-PARAM (chief ruling 2026-10-12: a parameter cannot be declared global in its own def)', () => {
+  it('reports the name inside the `global` statement, instead of E-GLOBAL-AFTER-USE', () => {
+    expect(checkSources('x = 0\ndef f(x):\n    global x\n')).toEqual([
+      {
+        code: 'E-GLOBAL-PARAM',
+        severity: 'error',
+        range: span(3, 12, 3, 13),
+        message:
+          "`x` is a parameter of `f`, so it can't be declared `global`. Rename the parameter or drop the `global` line.",
+      },
+    ]);
+  });
+
+  it('leaves `global` of a non-parameter alone', () => {
+    expect(codes('n = 0\ndef f(x):\n    global n\n    n = x\n')).toEqual([]);
   });
 });

@@ -42,6 +42,8 @@ This is the canonical list. The compiler and VM may emit only the codes below, s
 | `E-BREAK-OUTSIDE` | `break` outside a loop | `break` only works inside a loop. |
 | `E-CONTINUE-OUTSIDE` | `continue` outside a loop | `continue` only works inside a loop. |
 | `E-GLOBAL-AFTER-USE` | `global total` below a line that already uses `total` in the same `def` | Put `global total` before the first line that uses `total`. |
+| `E-DUPLICATE-PARAM` | `def f(a, a):` | `a` is listed twice in the parameters of `f`. Give each parameter a different name. *(At the second occurrence.)* |
+| `E-GLOBAL-PARAM` | `def f(x):` then `global x` | `x` is a parameter of `f`, so it can't be declared `global`. Rename the parameter or drop the `global` line. *(At the name in the `global` statement; reported instead of `E-GLOBAL-AFTER-USE`.)* |
 | `E-DUPLICATE-DEF` | the same function name defined in two files | `tend` is defined in two files: `main.sprout` and `helpers.sprout`. Keep one. *(Within one file a later `def` just replaces the earlier one.)* |
 | `E-RANGE-ONLY-IN-FOR` | `r = range(5)`, `5 in range(10)` | `range` can only be used in `for x in range(...)`. |
 | `E-RESERVED-NAME` | `move = 1`, `def plant():`, `for EAST in …`, `RADISH = 3` | `move` is a built-in command, so it can't be used as a name. Pick another name. For a constant: `RADISH` is a built-in name, so it can't be used as a name. Pick another name. |

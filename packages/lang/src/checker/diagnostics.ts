@@ -73,3 +73,21 @@ export function tooManyFiles(range: Span, maxFiles: number): Diagnostic {
       : `Your program can have at most ${String(maxFiles)} files.`;
   return error('E-TOO-MANY-FILES', range, message);
 }
+
+/** The same name twice in one parameter list (chief ruling 2026-10-12); reported at the repeat. */
+export function duplicateParam(range: Span, name: string, fn: string): Diagnostic {
+  return error(
+    'E-DUPLICATE-PARAM',
+    range,
+    `\`${name}\` is listed twice in the parameters of \`${fn}\`. Give each parameter a different name.`,
+  );
+}
+
+/** `global x` where x is a parameter of the same def (chief ruling 2026-10-12); reported at the global name. */
+export function globalParam(range: Span, name: string, fn: string): Diagnostic {
+  return error(
+    'E-GLOBAL-PARAM',
+    range,
+    `\`${name}\` is a parameter of \`${fn}\`, so it can't be declared \`global\`. Rename the parameter or drop the \`global\` line.`,
+  );
+}

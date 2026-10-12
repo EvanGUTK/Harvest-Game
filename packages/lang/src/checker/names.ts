@@ -20,7 +20,15 @@ import { assertNever } from '../invariant';
 import type { FunctionScope, ScopeInfo } from '../scope/scope';
 import type { Diagnostic } from '../types';
 import type { CheckOptions } from './check';
-import { builtinNotValue, globalAfterUse, rangeOnlyInFor, reservedName, unknownName } from './diagnostics';
+import {
+  builtinNotValue,
+  duplicateParam,
+  globalAfterUse,
+  globalParam,
+  rangeOnlyInFor,
+  reservedName,
+  unknownName,
+} from './diagnostics';
 import { boundedDistance } from './levenshtein';
 
 /** language-spec.md / errors-and-diagnostics.md: suggestions are names within Levenshtein distance 2. */
@@ -115,6 +123,7 @@ class NameChecker {
   private visitDef(def: DefStmt): void {
     this.checkBinding(def.name);
     for (const param of def.params) this.checkBinding(param);
+    this.checkParameterNames(def);
     this.checkGlobalOrder(def);
     const scope = this.scopes.functions.get(def) ?? null;
     for (const stmt of def.body) this.visit(stmt, scope);
@@ -175,12 +184,28 @@ class NameChecker {
   }
 
   /** `global x` must come before every other occurrence of `x` in the same def, parameters included. */
+  /** A parameter name may appear only once in a `def` (E-DUPLICATE-PARAM), at its repeat. */
+  private checkParameterNames(def: DefStmt): void {
+    const seen = new Set<string>();
+    for (const param of def.params) {
+      if (seen.has(param.name)) this.diagnostics.push(duplicateParam(param.span, param.name, def.name.name));
+      seen.add(param.name);
+    }
+  }
+
+  /**
+   * In one def, `global x` must come before every other occurrence of `x` (E-GLOBAL-AFTER-USE), and a
+   * parameter can never be declared `global` (E-GLOBAL-PARAM, reported instead of the order rule).
+   */
   private checkGlobalOrder(def: DefStmt): void {
-    const seen = new Set(def.params.map((p) => p.name));
+    const params = new Set(def.params.map((p) => p.name));
+    const seen = new Set<string>();
     const walk = (node: AstNode): void => {
       if (node.type === 'GlobalStmt') {
-        for (const name of node.names)
-          if (seen.has(name.name)) this.diagnostics.push(globalAfterUse(name.span, name.name));
+        for (const name of node.names) {
+          if (params.has(name.name)) this.diagnostics.push(globalParam(name.span, name.name, def.name.name));
+          else if (seen.has(name.name)) this.diagnostics.push(globalAfterUse(name.span, name.name));
+        }
       } else if (node.type === 'DefStmt') {
         seen.add(node.name.name);
       } else if (node.type === 'MethodCallExpr') {

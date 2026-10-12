@@ -126,6 +126,7 @@ Python rules, simplified:
 - Module-level names are **globals**.
 - A name that is assigned anywhere in a `def` body (including `for` targets and augmented assignment such as `total += 1`) and not declared `global` in that function is **local for the whole body**. Reading it before its first assignment is `R-UNBOUND-LOCAL`: *"`total` is used before it gets a value in this function. Did you mean `global total`?"*
 - `global x` must appear before any use of `x` in the same `def`; otherwise `E-GLOBAL-AFTER-USE`.
+- A parameter name may appear only once in a `def` (`E-DUPLICATE-PARAM`). A parameter cannot be declared `global` in its own function (`E-GLOBAL-PARAM`).
 - A name that is never assigned in the body is looked up as a global (read-only).
 - Builtin commands (`move`, `plant`, …), intrinsics (`range`, `len`, `abs`, `min`, `max`, `str`, `int`, `print`) and game constants (`RADISH`, `NORTH`, …) are reserved: using one as a variable, a function or parameter name, a `for` target or in `global` is `E-RESERVED-NAME`.
 - `def` is a statement: the function's name is bound when its `def` line executes. A function body may mention a global or another function that is defined further down the file, provided it is bound by the time the call actually runs. Calling a function above its `def` is `R-UNBOUND-GLOBAL`: *"`tend` isn't defined yet at this line. Move the `def` above."* The checker raises `W-USE-BEFORE-DEF` statically for the obvious top-level case. A name that is defined nowhere in the program is the compile-time `E-UNKNOWN-NAME`.
