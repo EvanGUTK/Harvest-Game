@@ -29,9 +29,7 @@ export type IdealInputs = {
 
 export type IdealProfit = {
   crop: CropId;
-  /** Moisture a growing tile loses over its growth: floorDiv(growCycles, moistureDecayEvery). */
-  drift: number;
-  /** Waterings one unit needs on average, in thousandths: floorDiv(drift × 1000, waterAmount). */
+  /** Waterings one unit needs on average, in thousandths: floorDiv(growCycles × 1000, moistureDecayEvery × waterAmount). */
   wateringsPerUnitMilli: number;
   /** Drone cycles one unit costs from till to harvest, in hundredths, with batched sells and no logic overhead. */
   cyclesPerUnitCenti: number;
@@ -94,10 +92,10 @@ export function formatHundredths(hundredths: number): string {
  * Closed-form ideal-play profit of one crop per 1,000 drone cycles, from content numbers alone, amortised over a
  * steady rotation (simulation-engine.md §Balance harness has the formula): per unit, till (if the crop needs
  * tilled soil), plant, harvest and one move; the waterings that replace the moisture a growing tile loses
- * (drift ÷ waterAmount of one watering, each one `water` call); and the refill trips for that water
+ * (growCycles ÷ (moistureDecayEvery × waterAmount), exact, each one `water` call); and the refill trips for that water
  * (one refill per waterCapacity waterings). Sells are batched so they cost nothing. The one-off lift of a
  * dry tile to the crop's minimum moisture is a per-tile setup cost and is not in the rate.
- * Everything is scaled by D = waterAmount × waterCapacity so each step stays an integer.
+ * Everything is scaled by S = waterAmount × moistureDecayEvery × waterCapacity so each step stays an integer.
  */
 export function idealProfit(crop: CropDef, inputs: IdealInputs): IdealProfit {
   const { actionCosts: cost, world } = inputs;
@@ -107,10 +105,10 @@ export function idealProfit(crop: CropDef, inputs: IdealInputs): IdealProfit {
   const move = cost.move + CALL_HOST_CYCLES;
   const waterEach = cost.water + CALL_HOST_CYCLES;
   const refillEach = cost.refill + CALL_HOST_CYCLES;
-  const drift = floorDiv(crop.growCycles, world.moistureDecayEvery);
-  const scale = world.waterAmount * world.waterCapacity;
+  const scale = world.waterAmount * world.moistureDecayEvery * world.waterCapacity;
   const fixed = till + plant + harvest + move;
-  const scaled = scale * fixed + drift * world.waterCapacity * waterEach + drift * refillEach;
+  const scaled =
+    scale * fixed + crop.growCycles * world.waterCapacity * waterEach + crop.growCycles * refillEach;
   const floorPrice = floorDiv(crop.basePrice * inputs.priceFloorBp, BASIS_POINTS);
   const profitFor = (price: number): number =>
     floorDiv((price - crop.seedCost) * PROFIT_WINDOW_CYCLES * scale, scaled);
@@ -118,11 +116,13 @@ export function idealProfit(crop: CropDef, inputs: IdealInputs): IdealProfit {
   const profitAtFloor = profitFor(floorPrice);
   const tilesToKeepBusy = ceilDiv(crop.growCycles * scale, scaled);
   const cyclesPerUnitCenti = floorDiv(scaled * 100, scale);
-  const wateringsPerUnitMilli = floorDiv(drift * 1_000, world.waterAmount);
+  const wateringsPerUnitMilli = floorDiv(
+    crop.growCycles * 1_000,
+    world.moistureDecayEvery * world.waterAmount,
+  );
   const per1000 = `× ${PROFIT_WINDOW_CYCLES} × ${scale} ÷ ${scaled}`;
   return {
     crop: crop.id,
-    drift,
     wateringsPerUnitMilli,
     cyclesPerUnitCenti,
     basePrice: crop.basePrice,
@@ -131,8 +131,8 @@ export function idealProfit(crop: CropDef, inputs: IdealInputs): IdealProfit {
     profitAtFloor,
     tilesToKeepBusy,
     lines: [
-      `${crop.id}: ${scaled} ÷ ${scale} = ${formatHundredths(cyclesPerUnitCenti)} drone cycles per unit, where ${scaled} = ${scale} × (till ${till} + plant ${plant} + harvest ${harvest} + move ${move}) + drift ${drift} × capacity ${world.waterCapacity} × water ${waterEach} + drift ${drift} × refill ${refillEach}`,
-      `  drift = growCycles ${crop.growCycles} ÷ ${world.moistureDecayEvery} = ${drift} moisture, ${drift} ÷ ${world.waterAmount} = ${wateringsPerUnitMilli} thousandths of a watering per unit; the dry-to-minimum lift is per-tile setup, not in the rate`,
+      `${crop.id}: ${scaled} ÷ ${scale} = ${formatHundredths(cyclesPerUnitCenti)} drone cycles per unit, where ${scaled} = ${scale} × (till ${till} + plant ${plant} + harvest ${harvest} + move ${move}) + growCycles ${crop.growCycles} × capacity ${world.waterCapacity} × water ${waterEach} + growCycles ${crop.growCycles} × refill ${refillEach}`,
+      `  waterings per unit = growCycles ${crop.growCycles} ÷ (decay every ${world.moistureDecayEvery} × ${world.waterAmount} per watering) = ${wateringsPerUnitMilli} thousandths; the dry-to-minimum lift is per-tile setup, not in the rate`,
       `  at base ₵${crop.basePrice}: (${crop.basePrice} − seed ${crop.seedCost}) ${per1000} = ${profitAtBase} per 1,000 drone cycles`,
       `  at floor ₵${floorPrice}: (${floorPrice} − seed ${crop.seedCost}) ${per1000} = ${profitAtFloor} per 1,000 drone cycles`,
       `  tiles to keep the drone busy: ceil(${crop.growCycles} × ${scale} ÷ ${scaled}) = ${tilesToKeepBusy}`,

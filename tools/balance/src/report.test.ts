@@ -173,10 +173,10 @@ describe('formatReport', () => {
   it('prints the ideal-profit summary and then the arithmetic of every crop', () => {
     expect(lines).toContain('Ideal-play profit per 1,000 drone cycles');
     expect(text).toContain(
-      'radish: 208926 ÷ 2400 = 87.05 drone cycles per unit, where 208926 = 2400 × (till 0 + plant 31 + harvest 31 + move 21)',
+      'radish: 10446300 ÷ 120000 = 87.05 drone cycles per unit, where 10446300 = 120000 × (till 0 + plant 31 + harvest 31 + move 21)',
     );
     expect(text).toContain(
-      '  at floor ₵24: (24 − seed 15) × 1000 × 2400 ÷ 351408 = 61 per 1,000 drone cycles',
+      '  at floor ₵24: (24 − seed 15) × 1000 × 120000 ÷ 17570400 = 61 per 1,000 drone cycles',
     );
   });
 

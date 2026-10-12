@@ -180,19 +180,19 @@ A CLI that runs bot programs × seeds × rule tweaks and reports:
 **Ideal-play profit** `[SIM-BAL]` *(closed form, amortised over a steady rotation)*. For each crop, with every action also paying the 1-cycle `CALL_HOST` and all division floored (`floorDiv`), the harness computes:
 
 - `fixed = till* + plant + harvest + move` in drone cycles, each term the action's cost plus 1 (`till*` is 0 for a crop that grows on grass).
-- `drift = floorDiv(growCycles, moistureDecayEvery)`, the moisture a growing tile loses over its growth.
-- Each watering restores `waterAmount`, so one unit needs `drift ÷ waterAmount` waterings on average, each one `water` call (cost + 1). One refill (cost + 1) serves `waterCapacity` waterings.
-- Cycles per unit = `fixed + (drift ÷ waterAmount) × (water + 1) + (drift ÷ (waterAmount × waterCapacity)) × (refill + 1)`.
+- A growing tile loses 1 moisture every `moistureDecayEvery` cycles and each watering restores `waterAmount`, so one watering covers `waterAmount × moistureDecayEvery` tile-cycles of growth (2,000 by default) and one unit needs `growCycles ÷ (waterAmount × moistureDecayEvery)` waterings on average. The ratio is exact: nothing is floored before the final division, so a `growCycles` that is not a multiple of `moistureDecayEvery` loses no fraction.
+- Each watering is one `water` call (cost + 1), and one `refill` call (cost + 1) serves `waterCapacity` waterings. The walk to the well is not modelled: it depends on where the tile is, and the single `move` in `fixed` stands for the move to the next tile.
+- Cycles per unit = `fixed + growCycles ÷ (waterAmount × moistureDecayEvery) × (water + 1) + growCycles ÷ (waterAmount × moistureDecayEvery × waterCapacity) × (refill + 1)`.
 
-To stay in integers, every term is multiplied by `D = waterAmount × waterCapacity`:
+To stay in integers, every term is multiplied by `S = waterAmount × moistureDecayEvery × waterCapacity` (120,000 by default):
 
 ```
-scaled = D × fixed + drift × waterCapacity × (water + 1) + drift × (refill + 1)
-profit per 1,000 cycles = floorDiv((price − seedCost) × 1000 × D, scaled)
-tiles to keep the drone busy = ceilDiv(growCycles × D, scaled)
+scaled = S × fixed + growCycles × waterCapacity × (water + 1) + growCycles × (refill + 1)
+profit per 1,000 cycles = floorDiv((price − seedCost) × 1000 × S, scaled)
+tiles to keep the drone busy = ceilDiv(growCycles × S, scaled)
 ```
 
-Sells are batched, so they cost nothing. The one-off cost of lifting a dry tile to the crop's `minMoisture` is a per-tile setup cost: it is paid once per tile, not per unit, so it is excluded from the per-1,000-cycle rate. With the default numbers (`D` = 2,400): radish 87.05 cycles per unit (₵34 at base, ₵0 at the floor), corn 126.15 (₵95, ₵7), melon 146.42 (₵307, ₵61). The report prints every term of `scaled` for each crop.
+Sells are batched, so they cost nothing. The one-off cost of lifting a dry tile to the crop's `minMoisture` is a per-tile setup cost: it is paid once per tile, not per unit, so it is excluded from the per-1,000-cycle rate. With the default numbers: radish 87.05 cycles per unit (`scaled` 10,446,300; ₵34 at base, ₵0 at the floor), corn 126.15 (₵95, ₵7), melon 146.42 (₵307, ₵61). The report prints every term of `scaled` for each crop.
 - `[SIM-BAL]` "hoard and dump" strategies (one large `sell` per window) must not beat steady selling
 - cycle budget pacing: the starter-program criterion below
 
