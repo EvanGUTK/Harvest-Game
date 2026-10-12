@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { INTRINSICS, INTRINSIC_NAMES, METHODS, acceptsArgCount, isIntrinsicName } from './intrinsics';
+import {
+  CALLABLE_INTRINSICS,
+  INTRINSICS,
+  INTRINSIC_NAMES,
+  METHODS,
+  METHOD_IDS,
+  acceptsArgCount,
+  isIntrinsicName,
+} from './intrinsics';
 
 describe('intrinsics table (standard-library.md §Pure helpers)', () => {
   it('lists exactly the pure helpers the language implements itself', () => {
@@ -25,5 +33,12 @@ describe('intrinsics table (standard-library.md §Pure helpers)', () => {
     expect(METHODS.get('append')).toEqual({ min: 1, max: 1 });
     expect(METHODS.get('pop')).toEqual({ min: 0, max: 1 });
     expect(METHODS.get('get')).toEqual({ min: 1, max: 2 });
+  });
+
+  it('numbers the CALL_INTRINSIC and CALL_METHOD targets stably, leaving range to ITER_INIT', () => {
+    expect(CALLABLE_INTRINSICS).toEqual(['len', 'abs', 'min', 'max', 'str', 'int', 'print']);
+    expect(METHOD_IDS).toEqual(['append', 'pop', 'get']);
+    for (const name of CALLABLE_INTRINSICS) expect(INTRINSICS.has(name)).toBe(true);
+    for (const name of METHOD_IDS) expect(METHODS.has(name)).toBe(true);
   });
 });

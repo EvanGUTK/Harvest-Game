@@ -8,7 +8,7 @@
  */
 
 import { BASIS_POINTS, WORLD } from '@harvest/content';
-import { InvariantError } from '../invariant';
+import { toInvariantError, validateConfig } from '../rules';
 import type { Sfc32 } from '../prng/sfc32';
 import type { Tile } from '../types';
 
@@ -25,16 +25,8 @@ function isWell(x: number, y: number): boolean {
 }
 
 function assertValidConfig({ gridSize, startMoisture }: LayoutConfig): void {
-  if (!Number.isInteger(gridSize) || gridSize < 1) {
-    throw new InvariantError('SIM-BAD-GRID', `grid size must be an integer ≥ 1, got ${gridSize}`);
-  }
-  const { min, max } = startMoisture;
-  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || min > max || max > WORLD.moistureMax) {
-    throw new InvariantError(
-      'SIM-BAD-MOISTURE-RANGE',
-      `starting moisture must be integers with 0 ≤ min ≤ max ≤ ${WORLD.moistureMax}, got ${min}..${max}`,
-    );
-  }
+  const [first] = validateConfig({ gridSize, startMoisture });
+  if (first !== undefined) throw toInvariantError(first);
 }
 
 /** The starting tiles of a farm, row-major (y then x), drawn from the match's `layout` stream. */

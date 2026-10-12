@@ -30,8 +30,8 @@ export function resolveScopes(program: Program, options: ResolveOptions): ScopeI
 }
 
 /**
- * The global slot order: each module-level binding and each name declared `global` inside a `def`, first
- * occurrence wins, in pre-order over the files in run order.
+ * The global slot order: each module-level binding and each name declared `global` inside a `def` (except
+ * that def's own parameters, E-GLOBAL-PARAM), first occurrence wins, in pre-order over the files in run order.
  */
 function collectGlobals(program: Program): readonly string[] {
   const names = new Set<string>();

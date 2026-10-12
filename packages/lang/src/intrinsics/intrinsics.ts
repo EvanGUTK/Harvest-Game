@@ -34,6 +34,24 @@ export const METHODS: ReadonlyMap<MethodName, Arity> = new Map<MethodName, Arity
 
 export const INTRINSIC_NAMES: ReadonlySet<string> = new Set(INTRINSICS.keys());
 
+/**
+ * The intrinsics reached through CALL_INTRINSIC id argc, numbered by position. `range` is absent: it
+ * compiles to ITER_INIT k. The ids are baked into bytecode and snapshots, so the order never changes
+ * within a LANGUAGE_VERSION.
+ */
+export const CALLABLE_INTRINSICS: readonly IntrinsicName[] = [
+  'len',
+  'abs',
+  'min',
+  'max',
+  'str',
+  'int',
+  'print',
+];
+
+/** The methods reached through CALL_METHOD m argc, numbered by position (same stability rule). */
+export const METHOD_IDS: readonly MethodName[] = ['append', 'pop', 'get'];
+
 export function isIntrinsicName(name: string): name is IntrinsicName {
   return INTRINSIC_NAMES.has(name);
 }
